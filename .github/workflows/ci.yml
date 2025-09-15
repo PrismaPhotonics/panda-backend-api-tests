@@ -1,0 +1,53 @@
+name: CI - Focus API and Load Sanity
+
+on:
+  push:
+    branches:
+      - main
+      - '**/*'
+  pull_request:
+  schedule:
+    - cron: '0 2 * * *'  # daily at 02:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Run API tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r roy_tests/focus_api_tests/requirements.txt
+          pip install pytest pytest-html pytest-xdist
+
+      - name: Run pytest (focus_api_tests)
+        env:
+          FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+          FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX }}
+          VERIFY_SSL: ${{ secrets.VERIFY_SSL }}
+        run: |
+          pytest -q roy_tests/focus_api_tests --maxfail=1 --disable-warnings
+
+      - name: Upload test report (if exists)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: |
+            ./report.html
+            ./**/junit*.xml
+            ./**/pytest*.xml
+
+
