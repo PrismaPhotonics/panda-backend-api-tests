@@ -1,7 +1,3 @@
-Here’s your **Focus Server – Load Testing (Locust)** documentation in English:
-
----
-
 # Focus Server – Load Testing (Locust)
 
 ## Requirements
