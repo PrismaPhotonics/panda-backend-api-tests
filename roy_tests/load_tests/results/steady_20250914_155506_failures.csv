@@ -1,0 +1,8 @@
+Method,Name,Error,Occurrences
+GET,GET /get_recordings_timeline (html),"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=5.0)""))",30
+VALIDATE,on_start:create-job-failed,AssertionError('Failed to create job on start'),20
+POST,POST /configure,CatchResponseError('JSON parse error: Expecting value: line 1 column 1 (char 0)'),50
+GET,GET /channels,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=5.0)""))",106
+GET,GET /live_metadata,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=5.0)""))",94
+POST,POST /recordings_in_time_range,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=5.0)""))",59
+POST,POST /recordings_in_time_range (discover),CatchResponseError('JSON parse error: Expecting value: line 1 column 1 (char 0)'),20

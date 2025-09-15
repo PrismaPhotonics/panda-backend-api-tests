@@ -1,0 +1,6 @@
+Method,Name,Error,Occurrences
+GET,GET /channels,"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",1
+VALIDATE,on_start:create-job-failed,AssertionError('Failed to create job on start'),5
+POST,POST /configure,CatchResponseError('JSON parse error: Expecting value: line 1 column 1 (char 0)'),6
+POST,POST /recordings_in_time_range (discover),CatchResponseError('JSON parse error: Expecting value: line 1 column 1 (char 0)'),20
+POST,POST /recordings_in_time_range,"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",1

@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences
+GET,GET /metadata/{job_id},"CatchResponseError('HTTP 404: {""error"":""Invalid job_id""}')",61
