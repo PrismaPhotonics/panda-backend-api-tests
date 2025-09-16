@@ -8,3 +8,5 @@
 # Locust
 focus_server_api_load_tests/load_tests/results/
 *.log
+**/__pycache__/
+*.pyc
