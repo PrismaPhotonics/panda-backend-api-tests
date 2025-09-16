@@ -1,0 +1,7 @@
+Method,Name,Error,Occurrences
+VALIDATE,on_start:create-job-failed,AssertionError('Failed to create job on start'),20
+POST,POST /configure,CatchResponseError('Non-JSON response (ct=None): '),28
+POST,POST /recordings_in_time_range,CatchResponseError('Non-JSON response (ct=None): '),22
+GET,GET /live_metadata,CatchResponseError('Non-JSON response (ct=None): '),30
+GET,GET /channels,CatchResponseError('Non-JSON response (ct=None): '),21
+POST,POST /recordings_in_time_range (discover),CatchResponseError('Non-JSON response (ct=None): '),20
