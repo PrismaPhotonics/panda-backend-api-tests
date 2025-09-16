@@ -1,2 +1,0 @@
-Method,Name,Error,Occurrences
-POLL,GET /metadata/{job_id}:timeout,TimeoutError('Timed out waiting for metadata'),20

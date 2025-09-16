@@ -1,0 +1,10 @@
+﻿# Python
+**/__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Locust results/logs
+focus_server_api_load_tests/load_tests/results/
+*.log

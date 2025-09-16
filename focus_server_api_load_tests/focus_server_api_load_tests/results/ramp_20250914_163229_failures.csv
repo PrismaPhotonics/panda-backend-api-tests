@@ -1,7 +1,0 @@
-Method,Name,Error,Occurrences
-VALIDATE,on_start:create-job-failed,AssertionError('Failed to create job on start'),9
-POST,POST /configure,CatchResponseError('Non-JSON response (ct=None): '),9
-POST,POST /recordings_in_time_range,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=15.0)""))",1
-GET,GET /channels,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=15.0)""))",3
-POST,POST /recordings_in_time_range (discover),CatchResponseError('Non-JSON response (ct=None): '),20
-GET,GET /live_metadata,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=8500): Read timed out. (read timeout=15.0)""))",5
