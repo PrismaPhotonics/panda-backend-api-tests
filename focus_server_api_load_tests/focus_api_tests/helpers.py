@@ -1,10 +1,22 @@
-﻿from datetime import datetime, timedelta, timezone
+"""Helper utilities for Focus API tests."""
+from __future__ import annotations
 
-def last_minutes_window(minutes: int, tz_aware: bool = False):
+import time
+from typing import Tuple
+
+
+def now_epoch() -> int:
+    """Return current UNIX epoch time in seconds as integer."""
+    return int(time.time())
+
+def last_minutes_window(minutes: int = 10) -> Tuple[int, int]:
+    """Return a (start, end) epoch window for the last N minutes.
+
+    Args:
+        minutes: The duration in minutes to look back from now.
+    Returns:
+        A tuple of (start_epoch, end_epoch) in seconds.
     """
-    Return a (start, end) time window for the last minutes minutes.
-    If tz_aware is True, returns timezone-aware datetimes in UTC.
-    """
-    now = datetime.now(timezone.utc) if tz_aware else datetime.utcnow()
-    start = now - timedelta(minutes=minutes)
-    return start, now
+    end = now_epoch()
+    start = end - (minutes * 60)
+    return start, end

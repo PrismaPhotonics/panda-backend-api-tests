@@ -15,16 +15,15 @@ import pytest
 import requests
 # Disable SSL warnings for self-signed certificates in test environments
 import urllib3
-from urllib3.exceptions import InsecureRequestWarning
-
-from roy_tests.focus_api_tests.focus_api_tests.helpers import last_minutes_window
-from roy_tests.focus_api_tests.focus_api_tests.models import (
+from .helpers import last_minutes_window
+from .models import (
     ChannelRange,
     ConfigureResponse,
     LiveMetadata,
     RecordingsInTimeRangeRequest,
     RecordingsInTimeRangeResponse,
 )
+from urllib3.exceptions import InsecureRequestWarning
 
 # Disable all urllib3 SSL warnings
 urllib3.disable_warnings()

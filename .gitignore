@@ -1,12 +1,11 @@
 ﻿# Python
 **/__pycache__/
+*.pyc
 .venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
-# Locust
+# Locust artifacts
 focus_server_api_load_tests/load_tests/results/
 *.log
-**/__pycache__/
-*.pyc
