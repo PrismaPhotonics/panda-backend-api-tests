@@ -1,4 +1,4 @@
-"""Pydantic models for Focus API contract tests.
+﻿"""Pydantic models for Focus API contract tests.
 
 These models define the request/response payloads used by the Focus/Streaming
 server. They are used by tests to validate schema conformity of API responses.
