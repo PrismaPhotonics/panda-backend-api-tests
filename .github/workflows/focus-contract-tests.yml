@@ -24,6 +24,9 @@ jobs:
       FOCUS_SERVER_PORT: ${{ secrets.FOCUS_SERVER_PORT || '30443' }}
       FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
+      # Control preflight strictness across all triggers (push/PR/dispatch)
+      # Input takes precedence when present; otherwise use secret or default false
+      REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'false' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
 
@@ -67,7 +70,7 @@ jobs:
             exit 0
           else
             echo "reachable=false" >> $GITHUB_OUTPUT
-            if [[ "${{ inputs.require_server || 'true' }}" == "true" ]]; then
+            if [[ "${REQUIRE_SERVER}" == "true" ]]; then
               echo "::error::Focus server unreachable (HTTP $code)"
               exit 1
             fi
