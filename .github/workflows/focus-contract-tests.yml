@@ -55,7 +55,7 @@ jobs:
             pip install pytest requests urllib3 pytest-sugar
           fi
 
-      - name: Preflight – check Focus availability
+      - name: Preflight - check Focus availability
         id: preflight
         shell: bash
         run: |
