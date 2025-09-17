@@ -1,0 +1,79 @@
+name: Focus Preflight and Pytest Runner
+description: Preflight availability (with retries), diagnostics, and optional pytest execution for Focus API
+inputs:
+  base_url:
+    description: Full base URL (scheme + host[:port]) e.g., https://10.10.10.150:30443
+    required: true
+  api_prefix:
+    description: API path prefix e.g., /focus-server or /prisma/api/focus-server
+    required: true
+  verify_ssl:
+    description: Verify TLS (true/false)
+    required: false
+    default: 'false'
+  require_server:
+    description: Fail if server is unreachable (true/false)
+    required: false
+    default: 'false'
+  retries:
+    description: Number of preflight retries
+    required: false
+    default: '3'
+  connect_timeout:
+    description: curl connect timeout seconds
+    required: false
+    default: '5'
+  test_path:
+    description: Pytest path to run (leave empty to skip tests from action)
+    required: false
+    default: ''
+  junit_path:
+    description: JUnit XML output path
+    required: false
+    default: 'reports/junit.xml'
+runs:
+  using: composite
+  steps:
+    - id: preflight
+      shell: bash
+      run: |
+        set +e
+        BASE="${{ inputs.base_url%/ }}${{ inputs.api_prefix }}"
+        echo "Preflight target: $BASE/channels"
+        reachable=false
+        tries=${{ inputs.retries }}
+        for i in $(seq 1 "$tries"); do
+          code=$(curl -sk --connect-timeout ${{ inputs.connect_timeout }} -o /dev/null -w "%{http_code}" "$BASE/channels")
+          echo "Attempt $i: HTTP $code"
+          if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+            reachable=true
+            break
+          fi
+          sleep 2
+        done
+        echo "reachable=$reachable" >> "$GITHUB_OUTPUT"
+        if [ "$reachable" != "true" ]; then
+          echo "--- Diagnostic curl -vk $BASE/channels ---"
+          curl -vk "$BASE/channels" || true
+          if [ "${{ inputs.require_server }}" = "true" ]; then
+            echo "::error::Focus server unreachable after $tries attempts"
+            exit 1
+          fi
+        fi
+
+    - id: pytest
+      if: inputs.test_path != ''
+      shell: bash
+      env:
+        FOCUS_BASE_URL: ${{ inputs.base_url }}
+        FOCUS_API_PREFIX: ${{ inputs.api_prefix }}
+        VERIFY_SSL: ${{ inputs.verify_ssl }}
+      run: |
+        if [ "${{ steps.preflight.outputs.reachable }}" = "true" ]; then
+          mkdir -p "$(dirname '${{ inputs.junit_path }}')"
+          pytest -q "${{ inputs.test_path }}" --junitxml="${{ inputs.junit_path }}" --maxfail=1 --disable-warnings
+        else
+          echo "Skipping pytest because server is unreachable and require_server=false"
+        fi
+
+
