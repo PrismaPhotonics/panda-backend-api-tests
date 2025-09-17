@@ -29,7 +29,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r roy_tests/focus_api_tests/requirements.txt
+          # Install API tests requirements from the correct path
+          if [ -f focus_server_api_load_tests/focus_api_tests/requirements.txt ]; then
+            pip install -r focus_server_api_load_tests/focus_api_tests/requirements.txt
+          fi
           pip install pytest pytest-html pytest-xdist
 
       - name: Run pytest (focus_api_tests)
@@ -38,7 +41,7 @@ jobs:
           FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX }}
           VERIFY_SSL: ${{ secrets.VERIFY_SSL }}
         run: |
-          pytest -q roy_tests/focus_api_tests --maxfail=1 --disable-warnings
+          pytest -q focus_server_api_load_tests/focus_api_tests --maxfail=1 --disable-warnings
 
       - name: Upload test report (if exists)
         if: always()
