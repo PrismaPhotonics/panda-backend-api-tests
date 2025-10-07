@@ -1,0 +1,95 @@
+# Focus Server Automation Framework - Global Settings
+# ==================================================
+
+# Framework settings
+framework:
+  name: "Focus Server Automation Framework"
+  version: "1.0.0"
+  author: "Senior QA Automation Architect"
+  timeout:
+    default: 30
+    api_call: 60
+    infrastructure_operation: 300
+    test_execution: 1800
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  file:
+    enabled: true
+    path: "reports/logs"
+    max_size: "10MB"
+    backup_count: 5
+  console:
+    enabled: true
+    colored: true
+
+# Test execution settings
+test_execution:
+  parallel:
+    enabled: false
+    workers: 4
+  retry:
+    enabled: true
+    max_attempts: 3
+    delay: 5
+  reporting:
+    html:
+      enabled: true
+      path: "reports/html-reports"
+    allure:
+      enabled: true
+      path: "reports/allure-results"
+    junit:
+      enabled: true
+      path: "reports/junit-results.xml"
+
+# API client settings
+api_client:
+  timeout: 60
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff_factor: 1.0
+  headers:
+    default:
+      "Content-Type": "application/json"
+      "User-Agent": "Focus-Server-Automation/1.0.0"
+
+# Infrastructure settings
+infrastructure:
+  kubernetes:
+    context_timeout: 30
+    operation_timeout: 300
+    namespace: "default"
+  ssh:
+    connection_timeout: 10
+    command_timeout: 60
+  monitoring:
+    health_check_interval: 30
+    metrics_collection: true
+
+# Performance settings
+performance:
+  response_time:
+    warning_threshold: 5.0
+    critical_threshold: 10.0
+  throughput:
+    min_requests_per_second: 10
+  resource_usage:
+    max_cpu_percent: 80
+    max_memory_percent: 80
+
+# Security settings
+security:
+  ssl_verify: true
+  certificate_validation: true
+  sensitive_data_masking: true
+
+# Data management
+data_management:
+  test_data_cleanup: true
+  temporary_files_cleanup: true
+  database_cleanup: true

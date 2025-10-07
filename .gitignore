@@ -1,0 +1,69 @@
+# ===================================================================
+# Python Automation Project - Git Ignore Configuration
+# ===================================================================
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+.pytest_cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test reports and logs
+reports/
+*.log
+.coverage
+htmlcov/
+.pytest_cache/
+allure-results/
+html-reports/
+
+# Environment and configuration
+.env
+.env.local
+*.secret
+credentials.json
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Type checking
+.pytype/
+
+# Pyre
+.pyre/

@@ -1,0 +1,230 @@
+# Focus Server Automation Framework - Environment Configurations
+# =============================================================
+
+environments:
+  local:
+    name: "Local Development"
+    description: "Local development environment"
+    
+    # Focus Server
+    focus_server:
+      base_url: "http://localhost:8500"
+      port_forward:
+        enabled: true
+        service: "focus-server-service"
+        namespace: "default"
+        local_port: 8500
+        remote_port: 5000
+    
+    # MongoDB
+    mongodb:
+      host: "localhost"
+      port: 27017
+      username: "prisma"
+      password: "prisma"
+      database: "focus_db"
+      auth_source: "admin"
+      ssl: false
+    
+    # RabbitMQ
+    rabbitmq:
+      host: "localhost"
+      port: 5672
+      management_port: 15672
+      username: "prisma"
+      password: "prismapanda"
+      vhost: "/"
+      ssl: false
+    
+    # Kubernetes
+    kubernetes:
+      context: "local"
+      namespace: "default"
+      config_file: "~/.kube/config"
+    
+    # SSH Access
+    ssh:
+      host: "localhost"
+      port: 22
+      username: "prisma"
+      password: "PASSW0RD"
+      key_file: null
+    
+    # Test Data
+    test_data:
+      base_path: "/tmp/focus_test_data"
+      cleanup_after_test: true
+
+  staging:
+    name: "Staging Environment"
+    description: "Staging environment for integration testing"
+    
+    # Focus Server
+    focus_server:
+      base_url: "http://localhost:8500"  # Via port-forward
+      port_forward:
+        enabled: true
+        service: "focus-server-service"
+        namespace: "default"
+        local_port: 8500
+        remote_port: 5000
+      direct_access:
+        host: "10.10.10.150"
+        port: 30443
+        ssl: true
+    
+    # MongoDB
+    mongodb:
+      host: "10.10.10.103"
+      port: 27017
+      username: "prisma"
+      password: "prisma"
+      database: "prisma"
+      auth_source: "prisma"
+      ssl: false
+      replica_set: null
+    
+    # RabbitMQ
+    rabbitmq:
+      host: "10.10.10.101"
+      port: 5672
+      management_port: 15672
+      username: "prisma"
+      password: "prismapanda"
+      vhost: "/"
+      ssl: false
+    
+    # Kubernetes
+    kubernetes:
+      context: "staging"
+      namespace: "default"
+      config_file: "~/.kube/config"
+      cluster_host: "10.10.10.150"
+    
+    # SSH Access
+    ssh:
+      host: "10.10.10.150"
+      port: 22
+      username: "prisma"
+      password: "PASSW0RD"
+      key_file: null
+    
+    # Test Data
+    test_data:
+      base_path: "/tmp/focus_staging_test_data"
+      cleanup_after_test: true
+    
+    # Infrastructure Services
+    services:
+      focus_server:
+        deployment: "focus-server"
+        service: "focus-server-service"
+        pod_selector: "app=focus-server"
+      mongodb:
+        deployment: "mongodb"
+        service: "mongodb"
+        pod_selector: "app=mongodb"
+      rabbitmq:
+        deployment: "rabbitmq-panda"
+        service: "rabbitmq-panda"
+        pod_selector: "app=rabbitmq"
+
+  production:
+    name: "Production Environment"
+    description: "Production environment - use with extreme caution"
+    
+    # Focus Server
+    focus_server:
+      base_url: "https://focus.prod.prisma-photonics.com"
+      ssl: true
+      verify_ssl: true
+    
+    # MongoDB
+    mongodb:
+      host: "prod-mongodb.cluster.amazonaws.com"
+      port: 27017
+      username: "${MONGODB_USERNAME}"
+      password: "${MONGODB_PASSWORD}"
+      database: "focus_prod"
+      auth_source: "admin"
+      ssl: true
+      replica_set: "prod-replica-set"
+    
+    # RabbitMQ
+    rabbitmq:
+      host: "prod-rabbitmq.cluster.amazonaws.com"
+      port: 5671
+      management_port: 15671
+      username: "${RABBITMQ_USERNAME}"
+      password: "${RABBITMQ_PASSWORD}"
+      vhost: "/"
+      ssl: true
+    
+    # Kubernetes
+    kubernetes:
+      context: "production"
+      namespace: "focus-prod"
+      config_file: "~/.kube/prod-config"
+    
+    # SSH Access (if needed)
+    ssh:
+      host: "prod-bastion.prisma-photonics.com"
+      port: 22
+      username: "automation"
+      key_file: "~/.ssh/prod_automation_key"
+    
+    # Test Data
+    test_data:
+      base_path: "/tmp/focus_prod_test_data"
+      cleanup_after_test: true
+      read_only: true  # Production should be read-only
+
+# Default environment
+default_environment: "staging"
+
+# Environment-specific test configurations
+test_configurations:
+  staging:
+    # MongoDB Outage Tests
+    mongodb_outage:
+      enabled: true
+      methods:
+        - "scale_down"
+        - "delete_pod"
+        - "network_block"
+      recovery_timeout: 300
+      cleanup_required: true
+    
+    # RabbitMQ Outage Tests
+    rabbitmq_outage:
+      enabled: true
+      methods:
+        - "scale_down"
+        - "delete_pod"
+      recovery_timeout: 300
+      cleanup_required: true
+    
+    # Performance Tests
+    performance:
+      enabled: true
+      max_concurrent_requests: 10
+      test_duration_minutes: 5
+    
+    # Load Tests
+    load_testing:
+      enabled: false  # Disabled by default for staging
+      max_users: 50
+      ramp_up_time: 60
+  
+  production:
+    # Production tests are mostly read-only
+    mongodb_outage:
+      enabled: false  # Never run outage tests in production
+    rabbitmq_outage:
+      enabled: false
+    performance:
+      enabled: true
+      max_concurrent_requests: 5
+      test_duration_minutes: 2
+    load_testing:
+      enabled: false  # Never run load tests in production
