@@ -4,7 +4,7 @@
 environments:
   local:
     name: "Local Development"
-    description: "Local development environment"
+    description: "Local development environment (via SSH tunnel or port-forward)"
     
     # Focus Server
     focus_server:
@@ -26,15 +26,17 @@ environments:
       auth_source: "admin"
       ssl: false
     
-    # RabbitMQ
+    # RabbitMQ (via SSH tunnel on port 5673, or change if using 5672)
     rabbitmq:
       host: "localhost"
-      port: 5672
-      management_port: 15672
+      port: 5673  # Changed from 5672 to avoid conflict!
+      management_port: 15673  # Changed from 15672 to avoid conflict!
       username: "prisma"
       password: "prismapanda"
       vhost: "/"
       ssl: false
+      # NOTE: Create SSH tunnel first:
+      #   ssh -L 5673:localhost:5672 -L 15673:localhost:15672 prisma@10.10.10.150
     
     # Kubernetes
     kubernetes:
@@ -84,15 +86,17 @@ environments:
       ssl: false
       replica_set: null
     
-    # RabbitMQ
+    # RabbitMQ (via kubectl port-forward on server)
     rabbitmq:
-      host: "10.10.10.101"
+      host: "10.10.10.150"  # Server IP (kubectl port-forward running)
       port: 5672
       management_port: 15672
-      username: "prisma"
-      password: "prismapanda"
+      username: "user"  # Default username (try: user, guest, or admin)
+      password: "prismapanda"  # From secret: kubectl get secret rabbitmq-panda
       vhost: "/"
       ssl: false
+      # NOTE: Run on server (10.10.10.150):
+      #   kubectl port-forward --address 0.0.0.0 -n default svc/rabbitmq-panda 5672:5672 15672:15672
     
     # Kubernetes
     kubernetes:
@@ -106,7 +110,7 @@ environments:
       host: "10.10.10.150"
       port: 22
       username: "prisma"
-      password: "PASSW0RD"
+      password: "PASSW0RD"  # For automation - stored securely
       key_file: null
     
     # Test Data

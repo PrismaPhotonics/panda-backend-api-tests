@@ -69,19 +69,26 @@ def test_pz_microservices_listing(pz_integration):
     - Expected microservices are present
     """
     logger.info("=" * 80)
-    logger.info("Testing PZ Microservices Listing")
+    logger.info("🧪 TEST: PZ Microservices Listing")
     logger.info("=" * 80)
     
     try:
+        # Show PZ root path
+        logger.info(f"📂 PZ Repository Path: {pz_integration.pz_root}")
+        logger.info(f"📂 Checking: {pz_integration.pz_root / 'microservices'}")
+        
         # List all microservices
+        logger.info("🔍 Scanning for microservices...")
         microservices = pz_integration.list_microservices()
         
-        logger.info(f"Found {len(microservices)} microservices:")
-        for service in microservices[:15]:
-            logger.info(f"  ✓ {service}")
-        
-        if len(microservices) > 15:
-            logger.info(f"  ... and {len(microservices) - 15} more")
+        logger.info(f"")
+        logger.info(f"✅ SUCCESS: Found {len(microservices)} microservices!")
+        logger.info(f"")
+        logger.info(f"📦 Complete Microservices List:")
+        logger.info(f"-" * 80)
+        for idx, service in enumerate(microservices, 1):
+            logger.info(f"  {idx:2d}. {service}")
+        logger.info(f"-" * 80)
         
         # Verify minimum microservices exist
         assert len(microservices) > 0, "No microservices found"

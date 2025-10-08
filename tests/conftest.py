@@ -320,6 +320,202 @@ def pz_integration():
         pytest.skip(f"PZ repository not available: {e}")
 
 
+# ===================================================================
+# New Fixtures for Complete API Testing
+# ===================================================================
+
+@pytest.fixture(scope="session")
+def baby_analyzer_mq_client(config_manager):
+    """
+    Fixture to provide BabyAnalyzerMQClient for RabbitMQ command interface.
+    
+    Args:
+        config_manager: Configuration manager instance
+        
+    Returns:
+        Connected BabyAnalyzerMQClient instance
+        
+    Yields:
+        BabyAnalyzerMQClient
+        
+    Cleanup:
+        Disconnects from RabbitMQ
+    """
+    try:
+        from src.apis.baby_analyzer_mq_client import BabyAnalyzerMQClient
+        
+        # Get RabbitMQ config
+        rabbitmq_config = config_manager.get("rabbitmq", {})
+        
+        client = BabyAnalyzerMQClient(
+            host=rabbitmq_config.get("host", "localhost"),
+            port=rabbitmq_config.get("port", 5672),
+            username=rabbitmq_config.get("username", "guest"),
+            password=rabbitmq_config.get("password", "guest")
+        )
+        
+        # Connect
+        client.connect()
+        logging.getLogger(__name__).info("Baby Analyzer MQ client connected")
+        
+        yield client
+        
+        # Disconnect
+        client.disconnect()
+        logging.getLogger(__name__).info("Baby Analyzer MQ client disconnected")
+        
+    except Exception as e:
+        pytest.skip(f"RabbitMQ not available: {e}")
+
+
+@pytest.fixture(scope="function")
+def live_config_payload():
+    """
+    Fixture to provide a valid live configuration payload.
+    
+    Returns:
+        Dictionary with live mode configuration (no timestamps)
+    """
+    from src.utils.helpers import generate_config_payload
+    
+    return generate_config_payload(
+        sensors_min=0,
+        sensors_max=50,
+        freq_min=0,
+        freq_max=500,
+        nfft=1024,
+        canvas_height=1000,
+        live=True
+    )
+
+
+@pytest.fixture(scope="function")
+def historic_config_payload():
+    """
+    Fixture to provide a valid historic configuration payload.
+    
+    Returns:
+        Dictionary with historic mode configuration (with timestamps)
+    """
+    from src.utils.helpers import generate_config_payload
+    
+    return generate_config_payload(
+        sensors_min=0,
+        sensors_max=50,
+        freq_min=0,
+        freq_max=500,
+        nfft=1024,
+        canvas_height=1000,
+        live=False,
+        duration_minutes=5
+    )
+
+
+@pytest.fixture(scope="function")
+def configured_live_task(focus_server_api, live_config_payload):
+    """
+    Fixture to configure a live monitoring task.
+    
+    Args:
+        focus_server_api: FocusServerAPI client
+        live_config_payload: Live configuration payload
+        
+    Yields:
+        task_id for the configured task
+        
+    Cleanup:
+        Task cleanup after test
+    """
+    from src.utils.helpers import generate_task_id
+    from src.models.focus_server_models import ConfigTaskRequest
+    
+    task_id = generate_task_id("live_test")
+    
+    try:
+        # Configure task
+        config_request = ConfigTaskRequest(**live_config_payload)
+        response = focus_server_api.config_task(task_id, config_request)
+        
+        assert response.status == "Config received successfully"
+        logging.getLogger(__name__).info(f"Configured live task: {task_id}")
+        
+        yield task_id
+        
+    finally:
+        # Cleanup
+        logging.getLogger(__name__).info(f"Cleaning up task: {task_id}")
+
+
+@pytest.fixture(scope="function")
+def configured_historic_task(focus_server_api, historic_config_payload):
+    """
+    Fixture to configure a historic playback task.
+    
+    Args:
+        focus_server_api: FocusServerAPI client
+        historic_config_payload: Historic configuration payload
+        
+    Yields:
+        task_id for the configured task
+        
+    Cleanup:
+        Task cleanup after test
+    """
+    from src.utils.helpers import generate_task_id
+    from src.models.focus_server_models import ConfigTaskRequest
+    
+    task_id = generate_task_id("historic_test")
+    
+    try:
+        # Configure task
+        config_request = ConfigTaskRequest(**historic_config_payload)
+        response = focus_server_api.config_task(task_id, config_request)
+        
+        assert response.status == "Config received successfully"
+        logging.getLogger(__name__).info(f"Configured historic task: {task_id}")
+        
+        yield task_id
+        
+    finally:
+        # Cleanup
+        logging.getLogger(__name__).info(f"Cleaning up task: {task_id}")
+
+
+@pytest.fixture(scope="session")
+def sensors_list(focus_server_api):
+    """
+    Fixture to provide list of available sensors.
+    
+    Args:
+        focus_server_api: FocusServerAPI client
+        
+    Returns:
+        List of sensor indices
+    """
+    try:
+        response = focus_server_api.get_sensors()
+        return response.sensors
+    except Exception as e:
+        pytest.skip(f"Could not retrieve sensors list: {e}")
+
+
+@pytest.fixture(scope="session")
+def live_metadata(focus_server_api):
+    """
+    Fixture to provide live metadata.
+    
+    Args:
+        focus_server_api: FocusServerAPI client
+        
+    Returns:
+        LiveMetadataFlat instance
+    """
+    try:
+        return focus_server_api.get_live_metadata_flat()
+    except Exception as e:
+        pytest.skip(f"Could not retrieve live metadata: {e}")
+
+
 @pytest.fixture(scope="session")
 def environment_validation(config_manager: ConfigManager) -> bool:
     """

@@ -36,11 +36,14 @@ class ConfigManager:
         """
         if cls._instance is None:
             cls._instance = super(ConfigManager, cls).__new__(cls)
+            # Set environment BEFORE loading configs
+            if env:
+                cls._current_env = env
             cls._instance._load_configs()
-        
-        if env and cls._current_env != env:
+        elif env and cls._current_env != env:
+            # Environment changed - reload configs
             cls._current_env = env
-            cls._instance._load_configs()  # Reload if environment changes
+            cls._instance._load_configs()  # Reload with new environment
         
         return cls._instance
     
@@ -51,8 +54,14 @@ class ConfigManager:
         Args:
             env: Environment name (staging, production, etc.)
         """
-        if not hasattr(self, 'environment'):
-            self.environment = env or self._current_env or "staging"
+        # Update instance environment if provided
+        if env:
+            self.environment = env
+            if self._current_env != env:
+                self._current_env = env
+                self._load_configs()
+        elif not hasattr(self, 'environment'):
+            self.environment = self._current_env or "staging"
     
     def _load_configs(self):
         """Load configuration from YAML files."""
@@ -75,8 +84,10 @@ class ConfigManager:
             with open(environments_path, 'r', encoding='utf-8') as f:
                 env_data = yaml.safe_load(f) or {}
             
-            # Set current environment
-            if not self._current_env:
+            # Set current environment - FIXED: Use environment from instance if available
+            if not self._current_env and hasattr(self, 'environment'):
+                self._current_env = self.environment
+            elif not self._current_env:
                 self._current_env = env_data.get("default_environment", "staging")
             
             # Load environment-specific settings

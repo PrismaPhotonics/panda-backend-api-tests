@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(python:*)",
+      "Bash(git submodule:*)",
+      "Bash(rm:*)",
+      "Bash(git rm:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(if [ -f requirements.txt ])",
+      "Bash(then cat requirements.txt)",
+      "Bash(else echo \"No requirements.txt found\")",
+      "Bash(fi)",
+      "Bash(git restore:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

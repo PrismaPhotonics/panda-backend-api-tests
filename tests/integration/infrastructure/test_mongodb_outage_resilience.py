@@ -23,6 +23,9 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     
     These tests verify that the Focus Server handles MongoDB outages gracefully
     without launching processing jobs or creating side effects.
+    
+    NOTE: These tests REQUIRE Kubernetes to be available as they manipulate
+    MongoDB deployments and pods to simulate outage scenarios.
     """
     
     @pytest.fixture(scope="class", autouse=True)
@@ -30,7 +33,17 @@ class TestMongoDBOutageResilience(InfrastructureTest):
         """
         Set up MongoDB manager for the test class.
         Ensures MongoDB is restored after all tests in the class.
+        
+        Skips all tests in this class if Kubernetes is not available.
         """
+        # Check if Kubernetes is available
+        if mongodb_manager.k8s_apps_v1 is None or mongodb_manager.k8s_core_v1 is None:
+            pytest.skip(
+                "Kubernetes is not available. "
+                "These tests require Kubernetes to simulate MongoDB outages. "
+                "Please configure kubeconfig to run these tests."
+            )
+        
         request.cls.mongodb_manager = mongodb_manager
         self.logger.info("MongoDB manager initialized for outage resilience tests")
         

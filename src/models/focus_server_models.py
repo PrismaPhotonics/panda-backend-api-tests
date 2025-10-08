@@ -6,7 +6,7 @@ Pydantic models for Focus Server API requests and responses.
 """
 
 from enum import IntEnum
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict, ValidationInfo
 from typing import List, Dict, Tuple, Optional, Union, Any
 from datetime import datetime
 
@@ -22,8 +22,9 @@ class DisplayInfo(BaseModel):
     """Display information for the canvas."""
     height: int = Field(..., description="Height of the canvas", gt=0)
     
-    @validator('height')
-    def validate_height(cls, v):
+    @field_validator('height')
+    @classmethod
+    def validate_height(cls, v: int) -> int:
         if v <= 0:
             raise ValueError('Height must be positive')
         return v
@@ -34,9 +35,10 @@ class Channels(BaseModel):
     min: int = Field(..., description="Minimum channel value", ge=1)
     max: int = Field(..., description="Maximum channel value", ge=1)
     
-    @validator('max')
-    def validate_channel_range(cls, v, values):
-        if 'min' in values and v < values['min']:
+    @field_validator('max')
+    @classmethod
+    def validate_channel_range(cls, v: int, info: ValidationInfo) -> int:
+        if info.data.get('min') and v < info.data['min']:
             raise ValueError('max channel must be >= min channel')
         return v
 
@@ -46,9 +48,10 @@ class FrequencyRange(BaseModel):
     min: int = Field(..., description="Minimum frequency required", ge=0)
     max: int = Field(..., description="Maximum frequency required", ge=0)
     
-    @validator('max')
-    def validate_frequency_range(cls, v, values):
-        if 'min' in values and v < values['min']:
+    @field_validator('max')
+    @classmethod
+    def validate_frequency_range(cls, v: int, info: ValidationInfo) -> int:
+        if info.data.get('min') and v < info.data['min']:
             raise ValueError('max frequency must be >= min frequency')
         return v
 
@@ -83,29 +86,28 @@ class ConfigureRequest(BaseModel):
     )
     view_type: ViewType = Field(..., description="Type of view to render")
     
-    @validator('end_time')
-    def validate_time_range(cls, v, values):
-        if v is not None and 'start_time' in values and values['start_time'] is not None:
-            if v <= values['start_time']:
+    model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+    
+    @field_validator('end_time')
+    @classmethod
+    def validate_time_range(cls, v: Optional[int], info: ValidationInfo) -> Optional[int]:
+        if v is not None and info.data.get('start_time') is not None:
+            if v <= info.data['start_time']:
                 raise ValueError('end_time must be > start_time')
         return v
     
-    @validator('view_type')
-    def validate_waterfall_requirements(cls, v, values):
+    @field_validator('view_type')
+    @classmethod
+    def validate_waterfall_requirements(cls, v: ViewType, info: ValidationInfo) -> ViewType:
         if v == ViewType.WATERFALL:
             # For waterfall view, certain fields should not be set
-            if 'displayTimeAxisDuration' in values and values['displayTimeAxisDuration'] is not None:
+            if info.data.get('displayTimeAxisDuration') is not None:
                 raise ValueError('displayTimeAxisDuration not applicable for waterfall view')
-            if 'frequencyRange' in values and values['frequencyRange'] is not None:
+            if info.data.get('frequencyRange') is not None:
                 raise ValueError('frequencyRange not applicable for waterfall view')
-            if 'nfftSelection' in values and values['nfftSelection'] != 1:
+            if info.data.get('nfftSelection') and info.data['nfftSelection'] != 1:
                 raise ValueError('nfftSelection must be 1 for waterfall view')
         return v
-    
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = True
-        validate_assignment = True
 
 
 class ConfigureResponse(BaseModel):
@@ -122,29 +124,29 @@ class ConfigureResponse(BaseModel):
     stream_url: str = Field(..., description="URL for the gRPC stream")
     view_type: ViewType = Field(..., description="Type of view rendered")
     
-    @validator('status')
-    def validate_status(cls, v):
+    model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+    
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v: str) -> str:
         valid_statuses = ['success', 'error', 'pending', 'failed']
         if v.lower() not in valid_statuses:
             raise ValueError(f'Status must be one of: {valid_statuses}')
         return v.lower()
     
-    @validator('stream_amount', 'frequencies_amount', 'channel_amount')
-    def validate_positive_counts(cls, v):
+    @field_validator('stream_amount', 'frequencies_amount', 'channel_amount')
+    @classmethod
+    def validate_positive_counts(cls, v: int) -> int:
         if v < 0:
             raise ValueError('Count values must be non-negative')
         return v
     
-    @validator('stream_port')
-    def validate_port_range(cls, v):
+    @field_validator('stream_port')
+    @classmethod
+    def validate_port_range(cls, v: int) -> int:
         if not (1 <= v <= 65535):
             raise ValueError('Port must be between 1 and 65535')
         return v
-    
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = True
-        validate_assignment = True
 
 
 class ChannelRange(BaseModel):
@@ -152,9 +154,10 @@ class ChannelRange(BaseModel):
     lowest_channel: int = Field(..., description="The lowest available channel number", ge=1)
     highest_channel: int = Field(..., description="The highest available channel number", ge=1)
     
-    @validator('highest_channel')
-    def validate_channel_range(cls, v, values):
-        if 'lowest_channel' in values and v < values['lowest_channel']:
+    @field_validator('highest_channel')
+    @classmethod
+    def validate_channel_range(cls, v: int, info: ValidationInfo) -> int:
+        if info.data.get('lowest_channel') and v < info.data['lowest_channel']:
             raise ValueError('highest_channel must be >= lowest_channel')
         return v
 
@@ -177,10 +180,11 @@ class LiveMetadata(BaseModel):
     number_of_channels: int = Field(..., description="Number of traces (sensors/channels)", gt=0)
     fiber_description: str = Field(..., description="Recording machine description of the fiber")
     
-    @validator('fiber_length_meters')
-    def validate_fiber_length(cls, v, values):
-        if v is not None and 'fiber_start_meters' in values and values['fiber_start_meters'] is not None:
-            if v <= values['fiber_start_meters']:
+    @field_validator('fiber_length_meters')
+    @classmethod
+    def validate_fiber_length(cls, v: Optional[int], info: ValidationInfo) -> Optional[int]:
+        if v is not None and info.data.get('fiber_start_meters') is not None:
+            if v <= info.data['fiber_start_meters']:
                 raise ValueError('fiber_length_meters must be > fiber_start_meters')
         return v
 
@@ -190,9 +194,10 @@ class RecordingsInTimeRangeRequest(BaseModel):
     start_time: int = Field(..., description="Start time in epoch format", ge=0)
     end_time: int = Field(..., description="End time in epoch format", ge=0)
     
-    @validator('end_time')
-    def validate_time_range(cls, v, values):
-        if 'start_time' in values and v <= values['start_time']:
+    @field_validator('end_time')
+    @classmethod
+    def validate_time_range(cls, v: int, info: ValidationInfo) -> int:
+        if info.data.get('start_time') and v <= info.data['start_time']:
             raise ValueError('end_time must be > start_time')
         return v
 
@@ -201,8 +206,9 @@ class RecordingsInTimeRangeResponse(BaseModel):
     """Response model for recordings in time range endpoint."""
     root: List[Tuple[int, int]] = Field(..., description="List of (start_time, end_time) tuples for available recordings")
     
-    @validator('root')
-    def validate_recordings(cls, v):
+    @field_validator('root')
+    @classmethod
+    def validate_recordings(cls, v: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
         for recording in v:
             if len(recording) != 2:
                 raise ValueError('Each recording must be a tuple of (start_time, end_time)')
@@ -221,9 +227,7 @@ class ErrorResponse(BaseModel):
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
     timestamp: Optional[datetime] = Field(None, description="Error timestamp")
     
-    class Config:
-        """Pydantic configuration."""
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class HealthCheckResponse(BaseModel):
@@ -234,16 +238,15 @@ class HealthCheckResponse(BaseModel):
     dependencies: Optional[Dict[str, str]] = Field(None, description="Dependency status")
     timestamp: Optional[datetime] = Field(None, description="Health check timestamp")
     
-    @validator('status')
-    def validate_status(cls, v):
+    model_config = ConfigDict(validate_assignment=True)
+    
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v: str) -> str:
         valid_statuses = ['healthy', 'unhealthy', 'degraded']
         if v.lower() not in valid_statuses:
             raise ValueError(f'Status must be one of: {valid_statuses}')
         return v.lower()
-    
-    class Config:
-        """Pydantic configuration."""
-        validate_assignment = True
 
 
 class JobStatusResponse(BaseModel):
@@ -256,13 +259,188 @@ class JobStatusResponse(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     completed_at: Optional[datetime] = Field(None, description="Job completion timestamp")
     
-    @validator('status')
-    def validate_status(cls, v):
+    model_config = ConfigDict(validate_assignment=True)
+    
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v: str) -> str:
         valid_statuses = ['pending', 'running', 'completed', 'failed', 'cancelled']
         if v.lower() not in valid_statuses:
             raise ValueError(f'Status must be one of: {valid_statuses}')
         return v.lower()
+
+
+# ===================================================================
+# New API Models (As per Complete API Documentation)
+# ===================================================================
+
+class ConfigTaskRequest(BaseModel):
+    """
+    Configuration request for POST /config/{task_id} endpoint.
     
-    class Config:
-        """Pydantic configuration."""
-        validate_assignment = True
+    Configures and starts a new baby analyzer instance for processing DAS data.
+    """
+    displayTimeAxisDuration: float = Field(..., description="Display time axis duration", gt=0)
+    nfftSelection: int = Field(..., description="NFFT selection for spectrogram", gt=0)
+    canvasInfo: Dict[str, int] = Field(..., description="Canvas info with height key")
+    sensors: Dict[str, int] = Field(..., description="Sensor range (min, max)")
+    frequencyRange: Dict[str, int] = Field(..., description="Frequency range (min, max)")
+    start_time: Optional[str] = Field(None, description="Start time (yymmddHHMMSS) or null for live")
+    end_time: Optional[str] = Field(None, description="End time (yymmddHHMMSS) or null for live")
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    @field_validator('canvasInfo')
+    @classmethod
+    def validate_canvas_info(cls, v: Dict[str, int]) -> Dict[str, int]:
+        """Validate canvas info contains height."""
+        if 'height' not in v or v['height'] <= 0:
+            raise ValueError('canvasInfo must contain positive height')
+        return v
+    
+    @field_validator('sensors')
+    @classmethod
+    def validate_sensors(cls, v: Dict[str, int]) -> Dict[str, int]:
+        """Validate sensor range."""
+        if 'min' not in v or 'max' not in v:
+            raise ValueError('sensors must contain min and max keys')
+        if v['max'] <= v['min']:
+            raise ValueError('sensors.max must be > sensors.min')
+        return v
+    
+    @field_validator('frequencyRange')
+    @classmethod
+    def validate_frequency_range(cls, v: Dict[str, int]) -> Dict[str, int]:
+        """Validate frequency range."""
+        if 'min' not in v or 'max' not in v:
+            raise ValueError('frequencyRange must contain min and max keys')
+        if v['max'] <= v['min']:
+            raise ValueError('frequencyRange.max must be > frequencyRange.min')
+        return v
+
+
+class ConfigTaskResponse(BaseModel):
+    """
+    Response model for POST /config/{task_id} endpoint.
+    
+    Response codes:
+    - 200: Config received successfully
+    - 500: Error parsing configuration
+    """
+    status: str = Field(..., description="Response status message")
+    task_id: Optional[str] = Field(None, description="Task ID that was configured")
+    
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class SensorsListResponse(BaseModel):
+    """
+    Response model for GET /sensors endpoint.
+    
+    Returns list of available sensor indices.
+    """
+    sensors: List[int] = Field(..., description="List of sensor indices [0, 1, 2, ..., n]")
+    
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class LiveMetadataFlat(BaseModel):
+    """
+    Response model for GET /live_metadata endpoint.
+    
+    Returns flat dictionary of RecordingMetadata fields.
+    """
+    prr: float = Field(..., description="Pulse repetition rate", gt=0)
+    num_samples_per_trace: int = Field(..., description="Samples per trace", gt=0)
+    dtype: str = Field(..., description="Data type")
+    dx: Optional[float] = Field(None, description="Distance between sensors (meters)", gt=0)
+    fiber_start_meters: Optional[int] = Field(None, description="Fiber start offset", ge=0)
+    fiber_length_meters: Optional[int] = Field(None, description="Fiber length", gt=0)
+    sw_version: Optional[str] = Field(None, description="Software version")
+    number_of_channels: Optional[int] = Field(None, description="Number of channels", gt=0)
+    fiber_description: Optional[str] = Field(None, description="Fiber description")
+    
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class WaterfallSensorData(BaseModel):
+    """Individual sensor data in waterfall row."""
+    id: int = Field(..., description="Sensor ID", ge=0)
+    intensity: List[float] = Field(..., description="Intensity values")
+    
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class WaterfallRowData(BaseModel):
+    """Single waterfall row."""
+    canvasId: str = Field(..., description="Canvas identifier")
+    sensors: List[WaterfallSensorData] = Field(..., description="Sensor data")
+    startTimestamp: int = Field(..., description="Start timestamp (epoch millis)", ge=0)
+    endTimestamp: int = Field(..., description="End timestamp (epoch millis)", ge=0)
+    
+    @field_validator('endTimestamp')
+    @classmethod
+    def validate_timestamps(cls, v: int, info: ValidationInfo) -> int:
+        if info.data.get('startTimestamp') and v <= info.data['startTimestamp']:
+            raise ValueError('endTimestamp must be > startTimestamp')
+        return v
+    
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class WaterfallDataBlock(BaseModel):
+    """Waterfall data block containing rows and amplitude range."""
+    rows: List[WaterfallRowData] = Field(..., description="Waterfall rows")
+    current_max_amp: float = Field(..., description="Current maximum amplitude")
+    current_min_amp: float = Field(..., description="Current minimum amplitude")
+    
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class WaterfallGetResponse(BaseModel):
+    """
+    Response model for GET /waterfall/{task_id}/{row_count} endpoint.
+    
+    Response codes:
+    - 200: Empty response (no data available yet)
+    - 201: Data retrieved successfully
+    - 208: Baby analyzer has exited
+    - 400: Invalid row_count (must be > 0)
+    - 404: Consumer not found for task_id
+    """
+    status_code: int = Field(..., description="HTTP status code")
+    data: Optional[List[WaterfallDataBlock]] = Field(None, description="Waterfall data blocks")
+    message: Optional[str] = Field(None, description="Status message")
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    @field_validator('status_code')
+    @classmethod
+    def validate_status_code(cls, v: int) -> int:
+        valid_codes = [200, 201, 208, 400, 404]
+        if v not in valid_codes:
+            raise ValueError(f'status_code must be one of: {valid_codes}')
+        return v
+
+
+class TaskMetadataGetResponse(BaseModel):
+    """
+    Response model for GET /metadata/{task_id} endpoint.
+    
+    Response codes:
+    - 200: Empty (consumer not running)
+    - 201: Metadata dictionary returned
+    - 404: Invalid task_id
+    """
+    status_code: int = Field(..., description="HTTP status code")
+    metadata: Optional[LiveMetadataFlat] = Field(None, description="Task metadata")
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    @field_validator('status_code')
+    @classmethod
+    def validate_status_code(cls, v: int) -> int:
+        valid_codes = [200, 201, 404]
+        if v not in valid_codes:
+            raise ValueError(f'status_code must be one of: {valid_codes}')
+        return v

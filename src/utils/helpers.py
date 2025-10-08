@@ -375,3 +375,175 @@ def mask_sensitive_data(data: str, sensitive_keys: List[str] = None) -> str:
         masked_data = masked_data.replace(key, "*" * len(key))
     
     return masked_data
+
+
+# ===================================================================
+# Additional Utilities for Focus Server API Testing
+# ===================================================================
+
+def datetime_to_yymmddHHMMSS(dt: datetime) -> str:
+    """
+    Convert datetime to yymmddHHMMSS format string.
+    
+    Args:
+        dt: Datetime object to convert
+        
+    Returns:
+        Time string in yymmddHHMMSS format
+    
+    Example:
+        >>> dt = datetime(2025, 10, 7, 14, 30, 45)
+        >>> datetime_to_yymmddHHMMSS(dt)
+        '251007143045'
+    """
+    return dt.strftime("%y%m%d%H%M%S")
+
+
+def yymmddHHMMSS_to_datetime(time_str: str) -> datetime:
+    """
+    Convert yymmddHHMMSS format string to datetime.
+    
+    Args:
+        time_str: Time string in yymmddHHMMSS format
+        
+    Returns:
+        Datetime object
+        
+    Raises:
+        ValueError: If time_str format is invalid
+    
+    Example:
+        >>> yymmddHHMMSS_to_datetime('251007143045')
+        datetime.datetime(2025, 10, 7, 14, 30, 45)
+    """
+    if len(time_str) != 12:
+        raise ValueError(f"Invalid time format: {time_str}. Expected: yymmddHHMMSS")
+    
+    return datetime.strptime(time_str, "%y%m%d%H%M%S")
+
+
+def generate_time_range(
+    start_time: Optional[datetime] = None,
+    duration_minutes: int = 10
+) -> tuple[str, str]:
+    """
+    Generate time range in yymmddHHMMSS format.
+    
+    Args:
+        start_time: Start datetime (default: now - duration_minutes)
+        duration_minutes: Duration in minutes (default: 10)
+        
+    Returns:
+        Tuple of (start_time_str, end_time_str) in yymmddHHMMSS format
+    
+    Example:
+        >>> start, end = generate_time_range(duration_minutes=5)
+        >>> # Returns 5-minute range ending at current time
+    """
+    if start_time is None:
+        end_time = datetime.now()
+        start_time = end_time - timedelta(minutes=duration_minutes)
+    else:
+        end_time = start_time + timedelta(minutes=duration_minutes)
+    
+    return (
+        datetime_to_yymmddHHMMSS(start_time),
+        datetime_to_yymmddHHMMSS(end_time)
+    )
+
+
+def generate_task_id(prefix: str = "task") -> str:
+    """
+    Generate unique task ID.
+    
+    Args:
+        prefix: ID prefix (default: "task")
+        
+    Returns:
+        Unique task ID in format: {prefix}_{timestamp}_{uuid}
+    
+    Example:
+        >>> generate_task_id("test")
+        'test_20251007143045_a1b2c3d4'
+    """
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    unique_id = uuid.uuid4().hex[:8]
+    return f"{prefix}_{timestamp}_{unique_id}"
+
+
+def poll_until(condition_func, timeout_seconds: int = 60, poll_interval: float = 1.0):
+    """
+    Poll until condition is met or timeout.
+    
+    Args:
+        condition_func: Function that returns True when condition met
+        timeout_seconds: Maximum wait time in seconds
+        poll_interval: Time between polls in seconds
+        
+    Returns:
+        True if condition met
+        
+    Raises:
+        TimeoutError: If timeout reached before condition met
+    """
+    start_time = time.time()
+    logger = logging.getLogger(__name__)
+    
+    while time.time() - start_time < timeout_seconds:
+        try:
+            if condition_func():
+                elapsed = time.time() - start_time
+                logger.debug(f"Condition met after {elapsed:.2f}s")
+                return True
+        except Exception as e:
+            logger.debug(f"Poll attempt failed: {e}")
+        
+        time.sleep(poll_interval)
+    
+    elapsed = time.time() - start_time
+    raise TimeoutError(f"Condition not met after {elapsed:.2f}s")
+
+
+def generate_config_payload(
+    sensors_min: int = 0,
+    sensors_max: int = 100,
+    freq_min: int = 0,
+    freq_max: int = 500,
+    nfft: int = 1024,
+    canvas_height: int = 1000,
+    live: bool = True,
+    duration_minutes: int = 10
+) -> Dict[str, Any]:
+    """
+    Generate configuration task payload for testing.
+    
+    Args:
+        sensors_min: Minimum sensor index
+        sensors_max: Maximum sensor index
+        freq_min: Minimum frequency Hz
+        freq_max: Maximum frequency Hz
+        nfft: NFFT selection
+        canvas_height: Canvas height pixels
+        live: Live mode flag
+        duration_minutes: Duration for historic mode
+        
+    Returns:
+        Configuration payload dictionary
+    """
+    payload = {
+        "displayTimeAxisDuration": 10.0,
+        "nfftSelection": nfft,
+        "canvasInfo": {"height": canvas_height},
+        "sensors": {"min": sensors_min, "max": sensors_max},
+        "frequencyRange": {"min": freq_min, "max": freq_max}
+    }
+    
+    if live:
+        payload["start_time"] = None
+        payload["end_time"] = None
+    else:
+        start_str, end_str = generate_time_range(duration_minutes=duration_minutes)
+        payload["start_time"] = start_str
+        payload["end_time"] = end_str
+    
+    return payload

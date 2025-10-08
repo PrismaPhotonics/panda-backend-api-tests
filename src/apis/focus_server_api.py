@@ -12,7 +12,9 @@ from src.core.api_client import BaseAPIClient
 from src.core.exceptions import APIError, ValidationError
 from src.models.focus_server_models import (
     ConfigureRequest, ConfigureResponse, ChannelRange, LiveMetadata,
-    RecordingsInTimeRangeRequest, RecordingsInTimeRangeResponse
+    RecordingsInTimeRangeRequest, RecordingsInTimeRangeResponse,
+    ConfigTaskRequest, ConfigTaskResponse, SensorsListResponse,
+    LiveMetadataFlat, WaterfallGetResponse, TaskMetadataGetResponse
 )
 
 
@@ -347,3 +349,293 @@ class FocusServerAPI(BaseAPIClient):
             if isinstance(e, APIError):
                 raise
             raise APIError(f"Failed to get API information: {e}") from e
+    
+    # ===================================================================
+    # New API Methods (Complete API Documentation)
+    # ===================================================================
+    
+    def config_task(self, task_id: str, payload: ConfigTaskRequest) -> ConfigTaskResponse:
+        """
+        Configure and start a new baby analyzer instance for processing DAS data.
+        
+        POST /config/{task_id}
+        
+        Args:
+            task_id: Unique identifier for the processing task
+            payload: Configuration request payload
+            
+        Returns:
+            Configuration response
+            
+        Raises:
+            APIError: If API call fails (500: error parsing configuration)
+            ValidationError: If payload validation fails
+        
+        Flow:
+            - Creates baby analyzer command with spectrogram processing
+            - Starts baby analyzer via SvClient
+            - Creates buffered recording consumer for the task
+            - Determines live vs historic mode based on timestamps
+        """
+        if not task_id or not isinstance(task_id, str):
+            raise ValidationError("task_id must be a non-empty string")
+        
+        self.logger.info(f"Configuring task: {task_id}")
+        
+        try:
+            # Validate payload
+            if not isinstance(payload, ConfigTaskRequest):
+                raise ValidationError("Payload must be a ConfigTaskRequest instance")
+            
+            # Convert to dict for JSON serialization
+            payload_dict = payload.model_dump()
+            
+            # Send request
+            response = self.post(f"/config/{task_id}", json=payload_dict)
+            
+            # Parse response
+            response_data = response.json()
+            config_response = ConfigTaskResponse(**response_data)
+            
+            self.logger.info(f"Task {task_id} configured successfully")
+            return config_response
+            
+        except Exception as e:
+            self.logger.error(f"Failed to configure task {task_id}: {e}")
+            if isinstance(e, (APIError, ValidationError)):
+                raise
+            raise APIError(f"Failed to configure task: {e}") from e
+    
+    def get_sensors(self) -> SensorsListResponse:
+        """
+        Get total number of available sensors on the fiber.
+        
+        GET /sensors
+        
+        Returns:
+            SensorsListResponse containing list of sensor indices [0, 1, 2, ..., n]
+            
+        Raises:
+            APIError: If API call fails
+        """
+        self.logger.debug("Getting sensors list")
+        
+        try:
+            response = self.get("/sensors")
+            response_data = response.json()
+            
+            sensors_response = SensorsListResponse(**response_data)
+            self.logger.debug(f"Retrieved {len(sensors_response.sensors)} sensors")
+            
+            return sensors_response
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get sensors list: {e}")
+            if isinstance(e, APIError):
+                raise
+            raise APIError(f"Failed to get sensors list: {e}") from e
+    
+    def get_live_metadata_flat(self) -> LiveMetadataFlat:
+        """
+        Retrieve current fiber metadata from live stream.
+        
+        GET /live_metadata
+        
+        Returns:
+            Flat dictionary of RecordingMetadata fields including:
+            - prr (pulse repetition rate)
+            - num_samples_per_trace
+            - dtype
+            - Other metadata fields
+            
+        Raises:
+            APIError: If API call fails
+        """
+        self.logger.debug("Getting live metadata (flat)")
+        
+        try:
+            response = self.get("/live_metadata")
+            response_data = response.json()
+            
+            live_metadata = LiveMetadataFlat(**response_data)
+            self.logger.debug(
+                f"Live metadata: PRR={live_metadata.prr}, "
+                f"channels={live_metadata.number_of_channels}"
+            )
+            
+            return live_metadata
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get live metadata: {e}")
+            if isinstance(e, APIError):
+                raise
+            raise APIError(f"Failed to get live metadata: {e}") from e
+    
+    def get_waterfall(self, task_id: str, row_count: int) -> WaterfallGetResponse:
+        """
+        Retrieve processed waterfall data for a specific task.
+        
+        GET /waterfall/{task_id}/{row_count}
+        
+        Args:
+            task_id: Task identifier
+            row_count: Number of rows requested (must be > 0)
+            
+        Returns:
+            WaterfallGetResponse with status code and data:
+            - 200: Empty response (no data available yet)
+            - 201: Data retrieved successfully
+            - 208: Baby analyzer has exited
+            - 400: Invalid row_count
+            - 404: Consumer not found
+            
+        Raises:
+            APIError: If API call fails
+            ValidationError: If task_id or row_count is invalid
+        
+        Flow:
+            - Checks if consumer exists and is running
+            - Retrieves data from buffered queue
+            - Sends keepalive to baby analyzer
+            - Returns processed spectrogram rows
+        
+        Response Format:
+            [{
+                "rows": [{
+                    "canvasId": str,
+                    "sensors": [{
+                        "id": int,
+                        "intensity": [float, ...]
+                    }],
+                    "startTimestamp": int (epoch millis),
+                    "endTimestamp": int (epoch millis)
+                }],
+                "current_max_amp": float,
+                "current_min_amp": float
+            }]
+        """
+        if not task_id or not isinstance(task_id, str):
+            raise ValidationError("task_id must be a non-empty string")
+        
+        if not isinstance(row_count, int) or row_count <= 0:
+            raise ValidationError("row_count must be a positive integer")
+        
+        self.logger.debug(f"Getting waterfall data for task {task_id}, row_count={row_count}")
+        
+        try:
+            response = self.get(f"/waterfall/{task_id}/{row_count}")
+            status_code = response.status_code
+            
+            # Handle different response codes
+            if status_code == 200:
+                # Empty response - no data yet
+                waterfall_response = WaterfallGetResponse(
+                    status_code=200,
+                    data=None,
+                    message="No data available yet"
+                )
+            elif status_code == 201:
+                # Data retrieved successfully
+                response_data = response.json()
+                waterfall_response = WaterfallGetResponse(
+                    status_code=201,
+                    data=response_data,
+                    message="Data retrieved successfully"
+                )
+            elif status_code == 208:
+                # Baby analyzer has exited
+                waterfall_response = WaterfallGetResponse(
+                    status_code=208,
+                    data=None,
+                    message="Baby analyzer has exited"
+                )
+            elif status_code == 400:
+                # Invalid row_count
+                waterfall_response = WaterfallGetResponse(
+                    status_code=400,
+                    data=None,
+                    message="Invalid row_count"
+                )
+            elif status_code == 404:
+                # Consumer not found
+                waterfall_response = WaterfallGetResponse(
+                    status_code=404,
+                    data=None,
+                    message="Consumer not found for task_id"
+                )
+            else:
+                raise APIError(f"Unexpected status code: {status_code}")
+            
+            self.logger.debug(
+                f"Waterfall response for task {task_id}: "
+                f"status={status_code}, message={waterfall_response.message}"
+            )
+            
+            return waterfall_response
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get waterfall data for task {task_id}: {e}")
+            if isinstance(e, (APIError, ValidationError)):
+                raise
+            raise APIError(f"Failed to get waterfall data: {e}") from e
+    
+    def get_task_metadata(self, task_id: str) -> TaskMetadataGetResponse:
+        """
+        Get metadata for a specific task's recording.
+        
+        GET /metadata/{task_id}
+        
+        Args:
+            task_id: Task identifier
+            
+        Returns:
+            TaskMetadataGetResponse with status code and metadata:
+            - 200: Empty (consumer not running)
+            - 201: Metadata dictionary
+            - 404: Invalid task_id
+            
+        Raises:
+            APIError: If API call fails
+            ValidationError: If task_id is invalid
+        """
+        if not task_id or not isinstance(task_id, str):
+            raise ValidationError("task_id must be a non-empty string")
+        
+        self.logger.debug(f"Getting task metadata for task: {task_id}")
+        
+        try:
+            response = self.get(f"/metadata/{task_id}")
+            status_code = response.status_code
+            
+            # Handle different response codes
+            if status_code == 200:
+                # Empty - consumer not running
+                metadata_response = TaskMetadataGetResponse(
+                    status_code=200,
+                    metadata=None
+                )
+            elif status_code == 201:
+                # Metadata available
+                response_data = response.json()
+                metadata_response = TaskMetadataGetResponse(
+                    status_code=201,
+                    metadata=LiveMetadataFlat(**response_data)
+                )
+            elif status_code == 404:
+                # Invalid task_id
+                metadata_response = TaskMetadataGetResponse(
+                    status_code=404,
+                    metadata=None
+                )
+            else:
+                raise APIError(f"Unexpected status code: {status_code}")
+            
+            self.logger.debug(f"Task metadata response for {task_id}: status={status_code}")
+            
+            return metadata_response
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get task metadata for {task_id}: {e}")
+            if isinstance(e, (APIError, ValidationError)):
+                raise
+            raise APIError(f"Failed to get task metadata: {e}") from e

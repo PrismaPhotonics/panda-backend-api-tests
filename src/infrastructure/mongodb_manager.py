@@ -52,14 +52,27 @@ class MongoDBManager:
         self.logger.info("MongoDB manager initialized")
     
     def _load_k8s_config(self):
-        """Load Kubernetes configuration."""
+        """Load Kubernetes configuration (optional - only if available)."""
         try:
             config.load_kube_config()
             self.k8s_apps_v1 = client.AppsV1Api()
             self.k8s_core_v1 = client.CoreV1Api()
             self.logger.debug("Kubernetes configuration loaded successfully")
         except config.ConfigException as e:
-            raise InfrastructureError(f"Failed to load Kubernetes config: {e}") from e
+            # Kubernetes config not available - this is OK for local development
+            self.logger.warning(f"Kubernetes config not available: {e}")
+            self.logger.info("Kubernetes operations will be disabled (OK for local dev)")
+            self.k8s_apps_v1 = None
+            self.k8s_core_v1 = None
+    
+    def _ensure_k8s_available(self):
+        """Ensure Kubernetes is available, raise error if not."""
+        if self.k8s_apps_v1 is None or self.k8s_core_v1 is None:
+            raise InfrastructureError(
+                "Kubernetes is not available. "
+                "This operation requires a valid kubeconfig. "
+                "Are you running outside of a Kubernetes environment?"
+            )
     
     def connect(self) -> bool:
         """
@@ -148,6 +161,8 @@ class MongoDBManager:
         Args:
             replicas: Number of replicas to scale to
         """
+        self._ensure_k8s_available()
+        
         deployment_name = self._get_mongodb_deployment_name()
         namespace = self.k8s_config["namespace"]
         
@@ -171,6 +186,8 @@ class MongoDBManager:
     
     def delete_mongodb_pod(self):
         """Delete MongoDB pod to simulate pod failure."""
+        self._ensure_k8s_available()
+        
         pod_name = self._get_mongodb_pod_name()
         namespace = self.k8s_config["namespace"]
         
@@ -200,8 +217,9 @@ class MongoDBManager:
         Restore MongoDB to normal operation.
         
         Args:
-            replicas: Number of replicas to restore to
+            replicas: Number of replicas to restore
         """
+        self._ensure_k8s_available()
         self.logger.info(f"Restoring MongoDB to {replicas} replicas...")
         self.scale_down_mongodb(replicas)
         
@@ -354,20 +372,23 @@ class MongoDBManager:
                 status["connected"] = True
                 self.disconnect()
             
-            # Get deployment status
-            deployment_name = self._get_mongodb_deployment_name()
-            namespace = self.k8s_config["namespace"]
+            # Get deployment status (only if K8s is available)
+            if self.k8s_apps_v1 is not None:
+                deployment_name = self._get_mongodb_deployment_name()
+                namespace = self.k8s_config["namespace"]
+                
+                deployment = self.k8s_apps_v1.read_namespaced_deployment(
+                    name=deployment_name,
+                    namespace=namespace
+                )
             
-            deployment = self.k8s_apps_v1.read_namespaced_deployment(
-                name=deployment_name,
-                namespace=namespace
-            )
-            
-            status["replicas"] = deployment.spec.replicas or 0
-            status["ready_replicas"] = deployment.status.ready_replicas or 0
-            
-            # Get pod name
-            status["pod_name"] = self._get_mongodb_pod_name()
+                status["replicas"] = deployment.spec.replicas or 0
+                status["ready_replicas"] = deployment.status.ready_replicas or 0
+                
+                # Get pod name
+                status["pod_name"] = self._get_mongodb_pod_name()
+            else:
+                status["error"] = "Kubernetes not available"
             
         except Exception as e:
             self.logger.error(f"Error getting MongoDB status: {e}")

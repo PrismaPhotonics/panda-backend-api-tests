@@ -49,7 +49,7 @@ class KubernetesManager:
         self.logger.info("Kubernetes manager initialized")
     
     def _load_k8s_config(self):
-        """Load Kubernetes configuration."""
+        """Load Kubernetes configuration (optional - only if available)."""
         try:
             config.load_kube_config()
             self.k8s_apps_v1 = client.AppsV1Api()
@@ -57,7 +57,21 @@ class KubernetesManager:
             self.k8s_batch_v1 = client.BatchV1Api()
             self.logger.debug("Kubernetes configuration loaded successfully")
         except config.ConfigException as e:
-            raise InfrastructureError(f"Failed to load Kubernetes config: {e}") from e
+            # Kubernetes config not available - this is OK for local development
+            self.logger.warning(f"Kubernetes config not available: {e}")
+            self.logger.info("Kubernetes operations will be disabled (OK for local dev)")
+            self.k8s_apps_v1 = None
+            self.k8s_core_v1 = None
+            self.k8s_batch_v1 = None
+    
+    def _ensure_k8s_available(self):
+        """Ensure Kubernetes is available, raise error if not."""
+        if self.k8s_apps_v1 is None or self.k8s_core_v1 is None:
+            raise InfrastructureError(
+                "Kubernetes is not available. "
+                "This operation requires a valid kubeconfig. "
+                "Are you running outside of a Kubernetes environment?"
+            )
     
     def get_pods(self, namespace: Optional[str] = None, label_selector: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -70,6 +84,8 @@ class KubernetesManager:
         Returns:
             List of pod information dictionaries
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -108,6 +124,8 @@ class KubernetesManager:
         Returns:
             List of deployment information dictionaries
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -142,6 +160,8 @@ class KubernetesManager:
         Returns:
             List of job information dictionaries
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -181,6 +201,8 @@ class KubernetesManager:
         Returns:
             Pod logs as string
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -211,6 +233,8 @@ class KubernetesManager:
         Returns:
             True if scaling was successful
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -245,6 +269,8 @@ class KubernetesManager:
         Returns:
             True if deletion was successful
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -277,6 +303,8 @@ class KubernetesManager:
         Returns:
             True if deletion was successful
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
@@ -371,6 +399,8 @@ class KubernetesManager:
         Returns:
             Dictionary containing cluster information
         """
+        self._ensure_k8s_available()
+        
         try:
             # Get cluster version
             version = self.k8s_core_v1.get_code()
@@ -412,6 +442,8 @@ class KubernetesManager:
         Returns:
             True if resource exists
         """
+        self._ensure_k8s_available()
+        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
