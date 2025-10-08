@@ -68,5 +68,5 @@ dmypy.json
 # Pyre
 .pyre/
 
-# External PZ repository - managed as Git Submodule
-# external/pz/ - commented out to allow submodule tracking
+# External PZ repository - NOT tracked (private repository)
+external/pz/
