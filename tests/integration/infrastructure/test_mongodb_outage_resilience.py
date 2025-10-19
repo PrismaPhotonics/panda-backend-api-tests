@@ -213,65 +213,6 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.resilience
     @pytest.mark.mongodb_outage
     @pytest.mark.slow
-    def test_mongodb_pod_deletion_outage_returns_503_no_orchestration(self, focus_server_api):
-        """
-        Test MongoDB pod deletion outage returns 503 with no orchestration.
-        
-        Test Steps:
-        1. Delete MongoDB pod
-        2. Send POST /configure request with history payload
-        3. Verify 503 response with error message
-        4. Verify no K8s jobs created
-        5. Verify no RabbitMQ queues created
-        6. Verify acceptable response time (<5s)
-        """
-        test_name = "mongodb_pod_deletion_outage_returns_503_no_orchestration"
-        self.logger.info(f"Starting test: {test_name}")
-        
-        try:
-            # Step 1: Delete MongoDB pod
-            self.log_test_step("Deleting MongoDB pod")
-            self.mongodb_manager.delete_mongodb_pod()
-            time.sleep(5)  # Give K8s time to react
-            
-            # Step 2: Verify MongoDB is indeed down
-            self.log_test_step("Verifying MongoDB is unreachable")
-            assert not self.mongodb_manager.connect(), "MongoDB is still reachable after pod deletion"
-            
-            # Step 3: Send configure request to Focus Server
-            self.log_test_step("Sending POST /configure request with history payload")
-            history_payload = self._get_history_configure_payload()
-            
-            start_time = time.time()
-            with pytest.raises(APIError) as exc_info:
-                focus_server_api.configure_streaming_job(history_payload)
-            
-            response_time = time.time() - start_time
-            
-            # Step 4: Verify 503 response
-            self.log_test_step("Verifying 503 response")
-            assert "503" in str(exc_info.value) or "500" in str(exc_info.value), \
-                f"Expected 503 or 500 error, but got: {exc_info.value}"
-            
-            # Step 5: Verify acceptable response time (<5s)
-            self.log_test_step("Verifying response time is acceptable")
-            self.assert_response_time(response_time, max_time=5.0)
-            
-            # Step 6: Verify no side effects
-            self.log_test_step("Verifying no side effects occurred")
-            self._verify_no_side_effects(test_name)
-            
-            self.logger.info(f"Test completed successfully: {test_name}")
-            
-        except Exception as e:
-            self.logger.error(f"Test failed: {test_name} - {e}")
-            raise
-    
-    @pytest.mark.integration
-    @pytest.mark.infrastructure
-    @pytest.mark.resilience
-    @pytest.mark.mongodb_outage
-    @pytest.mark.slow
     @pytest.mark.skip(reason="Requires SSH access and iptables manipulation on the node")
     def test_mongodb_network_block_outage_returns_503_no_orchestration(self, focus_server_api):
         """

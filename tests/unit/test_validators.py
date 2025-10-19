@@ -295,13 +295,16 @@ class TestConfigurationCompatibility:
     def test_high_throughput_configuration(self):
         """Test: High throughput configuration (warnings)."""
         result = validate_configuration_compatibility(
-            nfft=128,  # Small NFFT
-            sensor_range=500,  # Large sensor range
-            prr=5000.0  # High PRR
+            nfft=64,  # Very small NFFT to generate high row rate
+            sensor_range=1000,  # Large sensor range
+            prr=10000.0  # Very high PRR
         )
         
         # Should have warnings about high data rate
+        # With these params: rows_per_sec = 10000/64 = 156.25 (OK)
+        # output_mbps = (156.25 * 1000 * 32 * 4 * 8) / 1e6 = ~160 Mbps (>100, triggers warning)
         assert len(result["warnings"]) > 0
+        assert result["is_compatible"]  # Still compatible, just has warnings
     
     def test_low_throughput_configuration(self):
         """Test: Low throughput configuration."""

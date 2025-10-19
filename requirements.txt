@@ -13,6 +13,11 @@ pytest-xdist>=3.3.1  # For parallel execution
 # HTTP and API Testing
 requests>=2.31.0
 httpx>=0.24.1  # Modern HTTP client
+beautifulsoup4>=4.12.0  # For API Healing Framework (Swagger parsing)
+
+# Browser Automation and UI Testing
+playwright>=1.40.0  # AI-powered UI testing with self-healing selectors
+pytest-playwright>=0.4.3  # Pytest plugin for Playwright
 
 # Infrastructure Management
 kubernetes>=28.1.0

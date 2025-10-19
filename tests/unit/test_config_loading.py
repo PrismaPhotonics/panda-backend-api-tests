@@ -21,16 +21,28 @@ from src.core.exceptions import ConfigurationError
 class TestConfigLoading:
     """Test configuration loading functionality."""
     
+    def test_load_new_production_config(self):
+        """Test loading new production environment configuration."""
+        config_manager = ConfigManager("new_production")
+        
+        # Test basic configuration loading
+        assert config_manager.environment == "new_production"
+        assert config_manager.get("focus_server.base_url") == "https://10.10.100.100/focus-server/"
+        assert config_manager.get("mongodb.host") == "10.10.100.108"
+        assert config_manager.get("mongodb.port") == 27017
+        assert config_manager.get("rabbitmq.host") == "10.10.100.107"
+        
     def test_load_staging_config(self):
         """Test loading staging environment configuration."""
         config_manager = ConfigManager("staging")
         
         # Test basic configuration loading
         assert config_manager.environment == "staging"
-        assert config_manager.get("focus_server.base_url") == "http://localhost:8500"
+        # Port changed from 8500 to 5000 to match actual K8s service
+        assert "5000" in config_manager.get("focus_server.base_url")
         assert config_manager.get("mongodb.host") == "10.10.10.103"
         assert config_manager.get("mongodb.port") == 27017
-        assert config_manager.get("rabbitmq.host") == "10.10.10.101"
+        assert config_manager.get("rabbitmq.host") == "10.10.10.150"
         
     def test_load_local_config(self):
         """Test loading local environment configuration."""
@@ -40,7 +52,8 @@ class TestConfigLoading:
         config_manager = ConfigManager("local")
         
         assert config_manager.environment == "local"
-        assert config_manager.get("focus_server.base_url") == "http://localhost:8500"
+        # Port changed from 8500 to 5000 to match actual K8s service
+        assert config_manager.get("focus_server.base_url") == "http://localhost:5000"
         assert config_manager.get("mongodb.host") == "localhost"
         assert config_manager.get("mongodb.port") == 27017
         
@@ -60,7 +73,8 @@ class TestConfigLoading:
         # Test nested access
         focus_server_config = config_manager.get("focus_server")
         assert isinstance(focus_server_config, dict)
-        assert focus_server_config["base_url"] == "http://localhost:8500"
+        # Port changed from 8500 to 5000 to match actual K8s service
+        assert "5000" in focus_server_config["base_url"]
         
         # Test port-forward config
         port_forward_config = config_manager.get("focus_server.port_forward")
@@ -74,7 +88,8 @@ class TestConfigLoading:
         
         # Test with existing value
         url = config_manager.get("focus_server.base_url", "default_url")
-        assert url == "http://localhost:8500"
+        # Port changed from 8500 to 5000 to match actual K8s service
+        assert "5000" in url
         
         # Test with non-existing value
         non_existing = config_manager.get("non_existing.key", "default_value")

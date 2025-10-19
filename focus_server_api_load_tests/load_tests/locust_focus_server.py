@@ -70,7 +70,7 @@ def pick_valid_window(client) -> Optional[Tuple[int, int]]:
             resp.failure(f"HTTP {resp.status_code}: {resp.text[:200]}")
             return None
         if not _is_json(resp):
-            resp.failure(f"Non-JSON response (ct={resp.headers.get('Content-Type')!r}): {resp.text[:200]}")
+            resp.failure("Non-JSON response (ct={resp.headers.get('Content-Type')!r}): {resp.text[:200]}")
             return None
         data = resp.json()
     recs = parse_recordings_payload(data)

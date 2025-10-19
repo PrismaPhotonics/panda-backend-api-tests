@@ -1,0 +1,19 @@
+--- usersettings.json (original)
++++ usersettings.json (cleaned)
+@@ -22,7 +22,6 @@
+     "SensorsRange": 2222
+   },
+   "Defaults": {
+-    "_TimeStatus": "Range",
+     "DisplayTimeAxisDuration": 30,
+     "EndChannel": 109,
+     "EndFrequency_hz": 1000,
+@@ -79,7 +78,6 @@
+   },
+   "TemplateTypes": [
+     "SD",
+-    "SC",
+-    ""
++    "SC"
+   ]
+ }

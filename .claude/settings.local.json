@@ -13,7 +13,9 @@
       "Bash(else echo \"No requirements.txt found\")",
       "Bash(fi)",
       "Bash(git restore:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

@@ -147,9 +147,11 @@ def test_kubernetes_direct_connection():
         # Create API clients
         core_v1 = client.CoreV1Api()
         
-        # Get cluster version
+        # Get cluster version using VersionApi
         logger.info("Retrieving cluster version...")
-        version = core_v1.get_code()
+        from kubernetes.client import VersionApi
+        version_api = VersionApi()
+        version = version_api.get_code()
         logger.info(f"Kubernetes Version: {version.git_version}")
         
         # List nodes

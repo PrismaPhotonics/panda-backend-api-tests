@@ -5,17 +5,17 @@ Focus Server Data Models
 Pydantic models for Focus Server API requests and responses.
 """
 
-from enum import IntEnum
-from pydantic import BaseModel, Field, field_validator, ConfigDict, ValidationInfo
+from enum import Enum
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, ValidationInfo
 from typing import List, Dict, Tuple, Optional, Union, Any
 from datetime import datetime
 
 
-class ViewType(IntEnum):
+class ViewType(str, Enum):
     """View type enumeration for Focus Server."""
-    MULTICHANNEL = 0
-    SINGLECHANNEL = 1
-    WATERFALL = 2
+    MULTICHANNEL = "0"
+    SINGLECHANNEL = "1"
+    WATERFALL = "2"
 
 
 class DisplayInfo(BaseModel):
@@ -88,6 +88,14 @@ class ConfigureRequest(BaseModel):
     
     model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
     
+    @field_validator('view_type', mode='before')
+    @classmethod
+    def convert_view_type_input(cls, v: Union[int, str]) -> str:
+        """Convert integer view_type to string for enum validation."""
+        if isinstance(v, int):
+            return str(v)
+        return v
+    
     @field_validator('end_time')
     @classmethod
     def validate_time_range(cls, v: Optional[int], info: ValidationInfo) -> Optional[int]:
@@ -120,15 +128,26 @@ class ConfigureResponse(BaseModel):
     job_id: str = Field(..., description="Unique identifier for the streaming job")
     frequencies_amount: int = Field(..., description="Number of frequencies")
     channel_amount: int = Field(..., description="Number of channels")
-    stream_port: int = Field(..., description="Port for the gRPC stream")
+    stream_port: Union[int, str] = Field(..., description="Port for the gRPC stream")
     stream_url: str = Field(..., description="URL for the gRPC stream")
     view_type: ViewType = Field(..., description="Type of view rendered")
     
     model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
     
+    @field_validator('view_type', mode='before')
+    @classmethod
+    def convert_view_type(cls, v: Union[int, str]) -> str:
+        """Convert integer view_type to string for enum validation."""
+        if isinstance(v, int):
+            return str(v)
+        return v
+    
     @field_validator('status')
     @classmethod
     def validate_status(cls, v: str) -> str:
+        # Empty string is allowed (server may return this)
+        if v == '':
+            return v
         valid_statuses = ['success', 'error', 'pending', 'failed']
         if v.lower() not in valid_statuses:
             raise ValueError(f'Status must be one of: {valid_statuses}')
@@ -143,8 +162,10 @@ class ConfigureResponse(BaseModel):
     
     @field_validator('stream_port')
     @classmethod
-    def validate_port_range(cls, v: int) -> int:
-        if not (1 <= v <= 65535):
+    def validate_port_range(cls, v: Union[int, str]) -> Union[int, str]:
+        # Convert to int if string
+        port = int(v) if isinstance(v, str) else v
+        if not (1 <= port <= 65535):
             raise ValueError('Port must be between 1 and 65535')
         return v
 
@@ -317,6 +338,26 @@ class ConfigTaskRequest(BaseModel):
         if v['max'] <= v['min']:
             raise ValueError('frequencyRange.max must be > frequencyRange.min')
         return v
+    
+    @model_validator(mode='after')
+    def validate_time_range(self) -> 'ConfigTaskRequest':
+        """Validate time range for historic playback."""
+        # Only validate if both times are provided (historic mode)
+        if self.start_time and self.end_time:
+            # Both times should be valid format (yymmddHHMMSS)
+            import re
+            time_pattern = r'^\d{12}$'
+            
+            if not re.match(time_pattern, self.start_time):
+                raise ValueError('start_time must be in format yymmddHHMMSS (12 digits)')
+            if not re.match(time_pattern, self.end_time):
+                raise ValueError('end_time must be in format yymmddHHMMSS (12 digits)')
+            
+            # Check that end_time > start_time
+            if self.end_time <= self.start_time:
+                raise ValueError('end_time must be > start_time for historic playback')
+        
+        return self
 
 
 class ConfigTaskResponse(BaseModel):

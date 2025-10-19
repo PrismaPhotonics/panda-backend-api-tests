@@ -38,15 +38,16 @@ class FocusServerAPI(BaseAPIClient):
         base_url = api_config.get("base_url")
         timeout = config_manager.get("api_client.timeout", 60)
         max_retries = config_manager.get("api_client.retry.max_attempts", 3)
+        verify_ssl = config_manager.get("api_client.verify_ssl", False)  # Default: False for self-signed certs
         
         if not base_url:
             raise ValidationError("Focus Server base URL not configured")
         
-        super().__init__(base_url, timeout, max_retries)
+        super().__init__(base_url, timeout, max_retries, verify_ssl)
         self.config_manager = config_manager
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info(f"Focus Server API client initialized for {base_url}")
+        self.logger.info(f"Focus Server API client initialized for {base_url} (SSL verify: {verify_ssl})")
     
     def configure_streaming_job(self, payload: ConfigureRequest) -> ConfigureResponse:
         """
@@ -77,11 +78,12 @@ class FocusServerAPI(BaseAPIClient):
             
             # Parse response
             response_data = response.json()
+            self.logger.debug(f"Raw response: {response_data}")
             configure_response = ConfigureResponse(**response_data)
             
-            self.logger.info(f"Streaming job configured successfully: {configure_response.job_id}")
+            self.logger.info(f"Streaming job configured successfully")
             return configure_response
-            
+                
         except Exception as e:
             self.logger.error(f"Failed to configure streaming job: {e}")
             if isinstance(e, (APIError, ValidationError)):

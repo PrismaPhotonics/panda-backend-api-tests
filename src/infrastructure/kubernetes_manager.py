@@ -403,7 +403,9 @@ class KubernetesManager:
         
         try:
             # Get cluster version
-            version = self.k8s_core_v1.get_code()
+            from kubernetes.client import VersionApi
+            version_api = VersionApi()
+            version = version_api.get_code()
             
             # Get nodes
             nodes = self.k8s_core_v1.list_node()

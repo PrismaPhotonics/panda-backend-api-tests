@@ -343,11 +343,13 @@ class BabyAnalyzerMQClient:
             ValidationError: If ROI is invalid or not connected
             InfrastructureError: If command sending fails
         """
-        if end <= start:
-            raise ValidationError("end sensor must be > start sensor")
-        
+        # Validate non-negative values first (more specific error)
         if start < 0 or end < 0:
             raise ValidationError("Sensor indices must be non-negative")
+        
+        # Then validate range order
+        if end <= start:
+            raise ValidationError("end sensor must be > start sensor")
         
         self.logger.debug(f"Sending ROI change command: sensors [{start}, {end}]")
         

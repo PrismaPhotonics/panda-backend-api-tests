@@ -1,4 +1,4 @@
-# Focus Server Automation Framework - Environment Configurations
+﻿# Focus Server Automation Framework - Environment Configurations
 # =============================================================
 
 environments:
@@ -8,12 +8,12 @@ environments:
     
     # Focus Server
     focus_server:
-      base_url: "http://localhost:8500"
+      base_url: "http://localhost:5000"
       port_forward:
         enabled: true
         service: "focus-server-service"
         namespace: "default"
-        local_port: 8500
+        local_port: 5000
         remote_port: 5000
     
     # MongoDB
@@ -60,15 +60,15 @@ environments:
   staging:
     name: "Staging Environment"
     description: "Staging environment for integration testing"
-    
+
     # Focus Server
     focus_server:
-      base_url: "http://localhost:8500"  # Via port-forward
+      base_url: "http://10.10.10.150:5000"  # Via port-forward on remote host
       port_forward:
         enabled: true
         service: "focus-server-service"
         namespace: "default"
-        local_port: 8500
+        local_port: 5000
         remote_port: 5000
       direct_access:
         host: "10.10.10.150"
@@ -133,6 +133,235 @@ environments:
         service: "rabbitmq-panda"
         pod_selector: "app=rabbitmq"
 
+  # ============================================================================
+  # NEW PRODUCTION ENVIRONMENT (Panda Namespace - K8s Cluster)
+  # ============================================================================
+  new_production:
+    name: "New Production Environment (Panda)"
+    description: "Production environment with Kubernetes panda namespace (Oct 2025)"
+    
+    # Focus Server (Production)
+    focus_server:
+      base_url: "https://10.10.100.100/focus-server/"  # Backend URL
+      frontend_url: "https://10.10.10.100/liveView"    # Frontend URL
+      frontend_api_url: "https://10.10.10.150:30443/prisma/api/internal/sites/prisma-210-1000"
+      site_id: "prisma-210-1000"
+      ssl: true
+      verify_ssl: false  # Self-signed cert
+      
+      # Port forwarding (if needed for local access)
+      port_forward:
+        enabled: false
+        service: "focus-server-service"
+        namespace: "default"
+        local_port: 5000
+        remote_port: 5000
+    
+    # gRPC Configuration (Discovered from Frontend Config)
+    grpc:
+      timeout_seconds: 500              # NEW: GrpcTimeout (NOT 180s!)
+      stream_min_timeout_seconds: 600   # NEW: GrpcStreamMinTimeout_sec
+      num_retries: 10                   # NEW: NumGrpcRetries
+      retry_backoff_factor: 2.0         # Exponential backoff
+    
+    # System Constraints (Discovered from Frontend Config)
+    constraints:
+      frequency:
+        max_hz: 1000                    # NEW: FrequencyMax
+        min_hz: 0                       # NEW: FrequencyMin
+        min_range_hz: 1                 # NEW: FrequencyMinRange
+      sensors:
+        total_range: 2222               # NEW: SensorsRange (0-2222)
+        default_start: 11               # NEW: StartChannel
+        default_end: 109                # NEW: EndChannel
+      windows:
+        max_concurrent: 30              # NEW: MaxWindows
+        num_live_screens: 30            # NEW: NumLiveScreens
+        num_tabs: 10                    # NEW: NumTabs
+    
+    # NFFT Configuration (Discovered from Frontend Config)
+    nfft:
+      default: 1024                     # NEW: Default Nfft
+      valid_values:                     # NEW: nfftSingleChannel options
+        - 128
+        - 256
+        - 512
+        - 1024
+        - 2048
+        - 4096
+        - 8192
+        - 16384
+        - 32768
+        - 65536
+    
+    # Display Defaults (Discovered from Frontend Config)
+    defaults:
+      frequency:
+        start_hz: 0                     # NEW: StartFrequency_hz
+        end_hz: 1000                    # NEW: EndFrequency_hz
+      waterfall:
+        num_lines: 200                  # NEW: NumLinesToDisplay
+      time:
+        window_seconds: 30              # NEW: TimeWindow "30s"
+        display_axis_duration: 30       # NEW: DisplayTimeAxisDuration
+      view_type: "MultiChannelSpectrogram"  # NEW: ViewType
+      refresh_rate_hz: 20               # NEW: RefreshRate
+    
+    # Features (Discovered from Frontend Config)
+    features:
+      enable_reconnection: true         # NEW: EnableReconnection
+      enable_debug_tools: false         # NEW: EnableDebugTools
+      split_screen: true                # NEW: SplitScreen
+      full_screen: false                # NEW: FullScreen
+    
+    # Saved Data (Discovered from Frontend Config)
+    saved_data:
+      folder: "C:\\Panda\\SavedData"    # NEW: SavedData.Folder
+      enable_save: true                 # NEW: EnableSave
+      enable_load: true                 # NEW: EnableLoad
+    
+    # MongoDB (LoadBalancer External IP)
+    mongodb:
+      host: "10.10.100.108"              # External LoadBalancer IP
+      port: 27017
+      username: "prisma"
+      password: "prisma"
+      database: "prisma"
+      auth_source: "prisma"
+      connection_string: "mongodb://prisma:prisma@10.10.100.108:27017/?authSource=prisma"
+      ssl: false
+      replica_set: null
+      # Internal K8s service: mongodb.panda:27017
+      # ClusterIP: 10.43.74.248
+    
+    # RabbitMQ (LoadBalancer External IP)
+    rabbitmq:
+      host: "10.10.100.107"              # External LoadBalancer IP
+      port: 5672                         # AMQP
+      ssl_port: 5671                     # AMQP SSL
+      management_port: 15672             # Management UI
+      prometheus_port: 9419              # Prometheus metrics
+      erlang_port: 4369                  # Erlang Port Mapper
+      inter_node_port: 25672             # Inter-node communication
+      username: "prisma"
+      password: "prismapanda"
+      vhost: "/"
+      ssl: false
+      exchange: "prisma"
+      # Internal K8s service: rabbitmq-panda.panda
+      # ClusterIP: 10.43.10.166
+    
+    # Kubernetes (Access via SSH to worker node)
+    kubernetes:
+      # API Server
+      api_server: "https://10.10.100.102:6443"
+      dashboard: "https://10.10.100.102/"
+      
+      # Cluster Context
+      context: "panda-cluster"
+      namespace: "panda"
+      config_file: "~/.kube/config-panda"
+      
+      # Access Method: SSH to worker node
+      access_method: "ssh_tunnel"
+      ssh_gateway:
+        jump_host: "10.10.100.3"         # panda2worker (root access)
+        target_host: "10.10.100.113"      # worker-node (prisma user)
+        jump_user: "root"
+        jump_password: "PASSW0RD"
+        target_user: "prisma"
+        target_password: "PASSW0RD"
+      
+      # K9s Access (on worker node)
+      k9s:
+        available: true
+        command: "k9s"
+        default_namespace: "panda"
+        
+      # Services in panda namespace
+      services:
+        focus_server:
+          name: "panda-panda-focus-server"
+          type: "ClusterIP"
+          cluster_ip: "10.43.103.101"
+          internal_endpoint: "panda-panda-focus-server.panda:5000"
+          pod_selector: "app.kubernetes.io/name=panda-panda-focus-server"
+        
+        mongodb:
+          name: "mongodb"
+          type: "LoadBalancer"
+          cluster_ip: "10.43.74.248"
+          internal_endpoint: "mongodb.panda:27017"
+          external_ip: "10.10.100.108:27017"
+          pod_selector: "app.kubernetes.io/instance=mongodb"
+        
+        rabbitmq:
+          name: "rabbitmq-panda"
+          type: "LoadBalancer"
+          cluster_ip: "10.43.10.166"
+          internal_endpoint: "rabbitmq-panda.panda:5672"
+          external_ip: "10.10.100.107"
+          pod_selector: "app.kubernetes.io/instance=rabbitmq-panda"
+        
+        grpc_service:
+          name: "grpc-service-1-343"
+          type: "NodePort"
+          cluster_ip: "10.43.249.136"
+          internal_endpoint: "grpc-service-1-343.panda:12301"
+          pod_selector: "app=grpc-service"
+    
+    # SSH Access (Direct to worker node for K9s/kubectl)
+    ssh:
+      # Jump host (first hop)
+      jump_host:
+        host: "10.10.100.3"
+        port: 22
+        username: "root"
+        password: "PASSW0RD"
+        description: "panda2worker - Proxmox worker node"
+      
+      # Target host (second hop - has kubectl and k9s)
+      target_host:
+        host: "10.10.100.113"
+        port: 22
+        username: "prisma"
+        password: "PASSW0RD"
+        description: "worker-node - K8s worker with kubectl/k9s access"
+      
+      # SSH command to connect
+      connect_command: |
+        ssh root@10.10.100.3
+        # Then from panda2worker:
+        ssh prisma@10.10.100.113
+        # Then run: k9s
+    
+    # Test Data
+    test_data:
+      base_path: "/tmp/focus_new_staging_test_data"
+      cleanup_after_test: true
+    
+    # Infrastructure Services
+    services:
+      focus_server:
+        deployment: "focus-server"
+        service: "focus-server-service"
+        pod_selector: "app=focus-server"
+      mongodb:
+        deployment: "mongodb"
+        service: "mongodb"
+        pod_selector: "app=mongodb"
+      rabbitmq:
+        deployment: "rabbitmq-panda"
+        service: "rabbitmq-panda"
+        pod_selector: "app=rabbitmq"
+    
+    # Logging Configuration (From Frontend Config)
+    logging:
+      log_grpc_messages: false          # NEW: Logger.LogGrpcMessages
+      log_grpc_validation: false        # NEW: Logger.LogGrpcValidation
+      log_paging: false                 # NEW: Logger.LogPaging
+      log_working_queue: false          # NEW: Logger.LogWorkingQueue
+
   production:
     name: "Production Environment"
     description: "Production environment - use with extreme caution"
@@ -184,7 +413,7 @@ environments:
       read_only: true  # Production should be read-only
 
 # Default environment
-default_environment: "staging"
+default_environment: "new_production"
 
 # Environment-specific test configurations
 test_configurations:

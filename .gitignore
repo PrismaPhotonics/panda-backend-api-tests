@@ -70,3 +70,7 @@ dmypy.json
 
 # External PZ repository - NOT tracked (private repository)
 external/pz/
+
+# Cloned repositories - NOT tracked (separate git repos)
+panda-backend-api-tests/
+pz/

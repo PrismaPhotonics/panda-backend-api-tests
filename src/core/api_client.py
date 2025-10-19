@@ -8,6 +8,7 @@ Base API client for the Focus Server automation framework.
 import requests
 import time
 import logging
+import json
 from typing import Dict, Any, Optional, Union
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -27,7 +28,7 @@ class BaseAPIClient:
     - Response validation
     """
     
-    def __init__(self, base_url: str, timeout: int = 60, max_retries: int = 3):
+    def __init__(self, base_url: str, timeout: int = 60, max_retries: int = 3, verify_ssl: bool = False):
         """
         Initialize the base API client.
         
@@ -35,18 +36,25 @@ class BaseAPIClient:
             base_url: Base URL for the API
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
+            verify_ssl: Whether to verify SSL certificates (default: False for self-signed certs)
         """
         self.base_url = base_url.rstrip('/')
         self.timeout = timeout
         self.max_retries = max_retries
+        self.verify_ssl = verify_ssl
         self.logger = logging.getLogger(self.__class__.__name__)
+        
+        # Suppress SSL warnings if verification is disabled
+        if not self.verify_ssl:
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         
         # Create session with retry strategy
         self.session = requests.Session()
         self._setup_retry_strategy()
         self._setup_headers()
         
-        self.logger.info(f"API client initialized for {self.base_url}")
+        self.logger.info(f"API client initialized for {self.base_url} (SSL verify: {self.verify_ssl})")
     
     def _setup_retry_strategy(self):
         """Set up retry strategy for HTTP requests."""
@@ -84,7 +92,7 @@ class BaseAPIClient:
     
     def _send_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
         """
-        Send HTTP request with error handling.
+        Send HTTP request with error handling and detailed logging.
         
         Args:
             method: HTTP method
@@ -104,14 +112,70 @@ class BaseAPIClient:
         # Set timeout
         kwargs.setdefault('timeout', self.timeout)
         
-        # Log request
-        self.logger.debug(f"Sending {method} request to {url}")
+        # Set SSL verification
+        kwargs.setdefault('verify', self.verify_ssl)
+        
+        # Log detailed request information
+        self.logger.info(f"{'='*80}")
+        self.logger.info(f"→ {method} {url}")
+        
+        # Log request headers
+        if 'headers' in kwargs:
+            self.logger.debug("Request Headers:")
+            for key, value in kwargs['headers'].items():
+                self.logger.debug(f"  {key}: {value}")
+        
+        # Log request body (JSON)
+        if 'json' in kwargs:
+            self.logger.info("Request Body (JSON):")
+            try:
+                pretty_json = json.dumps(kwargs['json'], indent=2)
+                for line in pretty_json.split('\n'):
+                    self.logger.info(f"  {line}")
+            except Exception:
+                self.logger.info(f"  {kwargs['json']}")
+        
+        # Log query parameters
+        if 'params' in kwargs:
+            self.logger.debug(f"Query Parameters: {kwargs['params']}")
+        
+        # Start timing
+        start_time = time.time()
         
         try:
             response = self.session.request(method, url, **kwargs)
+            elapsed = (time.time() - start_time) * 1000  # Convert to milliseconds
             
-            # Log response
-            self.logger.debug(f"Received {response.status_code} response from {url}")
+            # Log response details
+            self.logger.info(f"← {response.status_code} {response.reason} ({elapsed:.2f}ms)")
+            
+            # Log response headers (only important ones)
+            self.logger.debug("Response Headers:")
+            important_headers = ['content-type', 'content-length', 'date', 'server']
+            for key in important_headers:
+                if key in response.headers:
+                    self.logger.debug(f"  {key}: {response.headers[key]}")
+            
+            # Log response body
+            if response.text:
+                try:
+                    # Try to parse as JSON for pretty printing
+                    response_json = response.json()
+                    self.logger.info("Response Body (JSON):")
+                    pretty_json = json.dumps(response_json, indent=2)
+                    # Limit output to first 50 lines for very large responses
+                    lines = pretty_json.split('\n')
+                    for i, line in enumerate(lines[:50]):
+                        self.logger.info(f"  {line}")
+                    if len(lines) > 50:
+                        self.logger.info(f"  ... ({len(lines) - 50} more lines)")
+                except json.JSONDecodeError:
+                    # Not JSON, log as text (truncated)
+                    self.logger.info(f"Response Body (Text): {response.text[:500]}")
+                    if len(response.text) > 500:
+                        self.logger.info("  ... (truncated)")
+            
+            self.logger.info(f"{'='*80}")
             
             # Handle HTTP errors
             if response.status_code >= 400:
@@ -120,15 +184,21 @@ class BaseAPIClient:
             return response
             
         except requests.exceptions.Timeout as e:
-            self.logger.error(f"Request timeout for {method} {url}: {e}")
+            elapsed = (time.time() - start_time) * 1000
+            self.logger.error(f"✗ Request timeout after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"{'='*80}")
             raise TimeoutError(f"Request timed out after {self.timeout} seconds", self.timeout) from e
             
         except requests.exceptions.ConnectionError as e:
-            self.logger.error(f"Connection error for {method} {url}: {e}")
+            elapsed = (time.time() - start_time) * 1000
+            self.logger.error(f"✗ Connection error after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"{'='*80}")
             raise NetworkError(f"Connection failed: {e}") from e
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"Request error for {method} {url}: {e}")
+            elapsed = (time.time() - start_time) * 1000
+            self.logger.error(f"✗ Request error after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"{'='*80}")
             raise APIError(f"Request failed: {e}") from e
     
     def _handle_http_error(self, response: requests.Response, url: str):
@@ -147,8 +217,11 @@ class BaseAPIClient:
         try:
             error_data = response.json()
             error_message = error_data.get('error', error_data.get('message', 'Unknown error'))
+            # Log the full response for debugging
+            self.logger.error(f"Full error response: {error_data}")
         except (ValueError, KeyError):
             error_message = response.text or f"HTTP {status_code} error"
+            self.logger.error(f"Raw error response: {response.text}")
         
         self.logger.error(f"HTTP {status_code} error for {url}: {error_message}")
         
