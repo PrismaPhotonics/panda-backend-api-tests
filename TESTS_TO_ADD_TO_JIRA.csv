@@ -1,0 +1,73 @@
+Test Name,Category,File Location,Priority,Jira Status,Automation Status,Notes
+Dynamic ROI - Adjustment,UI/ROI,test_dynamic_roi_adjustment.py,High,Missing,Implemented,25+ ROI tests need Jira tickets
+Dynamic ROI - CAxis Adjustment,UI/ROI,test_dynamic_roi_adjustment.py,High,Missing,Implemented,Part of ROI suite
+Dynamic ROI - Invalid Range,UI/ROI,test_dynamic_roi_adjustment.py,Medium,Missing,Implemented,Negative test
+Dynamic ROI - Multiple Changes,UI/ROI,test_dynamic_roi_adjustment.py,Medium,Missing,Implemented,Sequence test
+Dynamic ROI - Safe Changes,UI/ROI,test_dynamic_roi_adjustment.py,Medium,Missing,Implemented,Validation test
+Infrastructure - All Services Summary,Infrastructure,test_basic_connectivity.py,High,Missing,Implemented,Overall connectivity
+Infrastructure - Kubernetes Connection,Infrastructure,test_basic_connectivity.py,High,Missing,Implemented,K8s access test
+Infrastructure - Kubernetes Pods List,Infrastructure,test_basic_connectivity.py,High,Missing,Implemented,Pod enumeration
+Infrastructure - MongoDB Connection,Infrastructure,test_basic_connectivity.py,Critical,Missing,Implemented,DB connectivity
+Infrastructure - SSH Connection,Infrastructure,test_external_connectivity.py,Medium,Missing,Implemented,SSH access test
+Configuration - High Throughput,Config Validation,test_live_monitoring_flow.py,Medium,Missing,Implemented,Performance config
+Configuration - Low Throughput,Config Validation,test_live_monitoring_flow.py,Medium,Missing,Implemented,Min resources
+Configuration - Zero Canvas Height,Config Validation,test_live_monitoring_flow.py,Medium,Missing,Implemented,Edge case
+Configuration - Resource Estimation,Config Validation,test_live_monitoring_flow.py,Low,Missing,Implemented,Estimation logic
+Configuration - Compatible Config,Config Validation,test_live_monitoring_flow.py,Medium,Missing,Implemented,Compatibility check
+SingleChannel - Channel 1 Test,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Boundary test
+SingleChannel - Channel 100 Test,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Upper boundary
+SingleChannel - Different Channels Different Maps,API,test_singlechannel_view_mapping.py,High,Missing,Implemented,Mapping validation
+SingleChannel - Same Channel Consistency,API,test_singlechannel_view_mapping.py,High,Missing,Implemented,Consistency check
+SingleChannel - vs MultiChannel Comparison,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Comparison test
+SingleChannel - Different Frequency Ranges,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Frequency variation
+SingleChannel - Invalid Frequency,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Negative test
+SingleChannel - Invalid Height,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Negative test
+SingleChannel - Invalid NFFT,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Negative test
+SingleChannel - Min Not Equal Max,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Validation test
+SingleChannel - Zero Channel,API,test_singlechannel_view_mapping.py,Medium,Missing,Implemented,Edge case
+Historic Playback - Complete Flow,API,test_historic_playback_flow.py,High,Missing,Implemented,Full workflow
+Historic Playback - Data Integrity,API,test_historic_playback_flow.py,Critical,Missing,Implemented,Data validation
+Historic Playback - Short Duration,API,test_historic_playback_flow.py,Medium,Missing,Implemented,Edge case
+Historic Playback - Future Timestamps,API,test_historic_playback_flow.py,Medium,Missing,Implemented,Negative test
+Historic Playback - Reversed Time Range,API,test_historic_playback_flow.py,High,Missing,Implemented,Validation test
+Historic Playback - Very Long Duration,API,test_historic_playback_flow.py,Medium,Missing,Implemented,Edge case
+Historic Playback - Old Timestamps,API,test_historic_playback_flow.py,Medium,Missing,Implemented,Edge case
+Historic Playback - Poll Until Complete,API,test_historic_playback_flow.py,Medium,Missing,Implemented,Polling test
+Waterfall - Poll Data Live,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Waterfall specific
+Waterfall - Rapid Polling,API,test_live_monitoring_flow.py,Low,Missing,Implemented,Performance test
+Waterfall - Valid Response,API,Various,Medium,Missing,Implemented,Schema validation
+Waterfall - Response Status 200,API,Various,Medium,Missing,Implemented,Status check
+Waterfall - Invalid Task ID,API,Various,Medium,Missing,Implemented,Negative test
+Waterfall - Negative Row Count,API,Various,Medium,Missing,Implemented,Edge case
+Waterfall - Large Row Count,API,Various,Medium,Missing,Implemented,Edge case
+Waterfall - Zero Row Count,API,Various,Medium,Missing,Implemented,Edge case
+Task Metadata - Empty Task ID,API,test_live_monitoring_flow.py,High,Missing,Implemented,Validation
+Task Metadata - Get Task Metadata,API,test_live_monitoring_flow.py,High,Missing,Implemented,Retrieval test
+Task Metadata - Invalid Special Chars,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Security test
+Task Metadata - None Task ID,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Null handling
+Task Metadata - Very Long Task ID,API,test_live_monitoring_flow.py,Low,Missing,Implemented,Edge case
+Sensors - Empty Sensors List,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Empty state
+Sensors - Get Sensors List,API,test_live_monitoring_flow.py,High,Missing,Implemented,List retrieval
+Sensors - Valid Sensors List,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Validation
+Queues - Empty Queues List,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Empty state
+Queues - Valid Monitor Queues,API,test_live_monitoring_flow.py,Medium,Missing,Implemented,Monitoring
+Colormap - Commands,Feature,Various,Low,Missing,Implemented,Colormap feature
+Colormap - Serialization,Feature,Various,Low,Missing,Implemented,Data format
+Colormap - Valid Commands,Feature,Various,Low,Missing,Implemented,Command validation
+UI - Button Interactions,UI,test_button_interactions.py,Low,Missing,Implemented,UI automation
+UI - Form Validation,UI,test_form_validation.py,Low,Missing,Implemented,Form testing
+PZ Integration - Focus Server Access,External,test_pz_integration.py,High,Missing,Implemented,PZ connectivity
+PZ Integration - Import Capability,External,test_pz_integration.py,Medium,Missing,Implemented,Import test
+PZ Integration - Microservices List,External,test_pz_integration.py,Medium,Missing,Implemented,Service discovery
+PZ Integration - Repository Available,External,test_pz_integration.py,Medium,Missing,Implemented,Repo access
+PZ Integration - Version Info,External,test_pz_integration.py,Low,Missing,Implemented,Version check
+Spectrogram - Pipeline,Processing,test_spectrogram_pipeline.py,Medium,Missing,Implemented,Data processing
+MongoDB - Deleted Recordings,Data Quality,test_mongodb_data_quality.py,Medium,Missing,Implemented,Soft delete validation
+MongoDB - Outage Cleanup,Resilience,test_mongodb_outage_resilience.py,High,Missing,Implemented,Recovery test
+MongoDB - Outage Logging,Resilience,test_mongodb_outage_resilience.py,Medium,Missing,Implemented,Logging validation
+MongoDB - Outage No Live Impact,Resilience,test_mongodb_outage_resilience.py,High,Missing,Implemented,Isolation test
+Keepalive - Command Serialization,Feature,Various,Low,Missing,Implemented,Protocol test
+Keepalive - Valid Command,Feature,Various,Low,Missing,Implemented,Command validation
+Project - Main Directories Exist,Infrastructure,test_basic_functionality.py,Low,Missing,Implemented,Structure test
+Project - Python Package Structure,Infrastructure,test_basic_functionality.py,Low,Missing,Implemented,Package test
+Project - Source Structure,Infrastructure,test_basic_functionality.py,Low,Missing,Implemented,Source test

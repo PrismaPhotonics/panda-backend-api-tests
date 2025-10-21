@@ -218,6 +218,34 @@ Legacy and archived documentation for reference.
 
 ---
 
+## 🔴 Known Issues & Important Notes
+
+### MongoDB Collections - CRITICAL
+
+**Issue discovered:** Jira Xray tests reference MongoDB collections as `node2` and `node4`, but the actual system uses **GUID-based dynamic collection names**.
+
+- ✅ **Automation code is CORRECT** - discovers collection names dynamically from `base_paths`
+- ❌ **Jira documentation is OUTDATED** - needs updates to reflect reality
+- 📄 **Full explanation:** `MONGODB_COLLECTIONS_CLARIFICATION.md` (detailed technical document)
+- 📋 **Quick reference:** `MONGODB_NODE2_NODE4_ISSUE_SUMMARY.md` (executive summary)
+
+**Affected Jira tickets:** PZ-13598, PZ-13684, PZ-13685, PZ-13686, PZ-13687, PZ-13705
+
+**Example:**
+```python
+# Jira says (WRONG):
+collections = ["base_paths", "node2", "node4"]
+
+# Reality (CORRECT):
+collections = [
+    "base_paths",                              # Fixed name
+    "77e49b5d-e06a-4aae-a33e-17117418151c",   # GUID (dynamic!)
+    "77e49b5d-e06a-4aae-a33e-17117418151c-unrecognized_recordings"
+]
+```
+
+---
+
 ## 🧪 Testing
 
 ### Test Suites

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pytest Configuration
 ====================
 
@@ -26,15 +26,15 @@ try:
     # Initialize PZ integration at module load
     pz = get_pz_integration()
     logging.getLogger(__name__).info(
-        f"ג… PZ repository integrated: {len(pz.list_microservices())} microservices available"
+        f"✅ PZ repository integrated: {len(pz.list_microservices())} microservices available"
     )
 except FileNotFoundError:
     logging.getLogger(__name__).warning(
-        "ג ן¸  PZ repository not found. Run: git submodule update --init --recursive"
+        "⚠️  PZ repository not found. Run: git submodule update --init --recursive"
     )
 except Exception as e:
     logging.getLogger(__name__).warning(
-        f"ג ן¸  PZ integration failed: {e}"
+        f"⚠️  PZ integration failed: {e}"
     )
 
 
@@ -44,7 +44,7 @@ def pytest_addoption(parser):
         "--env",
         action="store",
         default="new_production",
-        help="Specify the environment to run tests against (e.g., staging, production, local)"
+        help="Specify the environment to run tests against (e.g., new_production, staging, local)"
     )
     parser.addoption(
         "--collect-pod-logs",
@@ -789,7 +789,7 @@ def pod_logs_collector(request, config_manager):
         ssh_password = k8s_config.get("ssh_password")
         
         if not all([ssh_host, ssh_user, ssh_password]):
-            logger.warning("ג ן¸  SSH credentials not configured - pod logs collection disabled")
+            logger.warning("⚠️  SSH credentials not configured - pod logs collection disabled")
             yield None
             return
         
@@ -826,7 +826,7 @@ def pod_logs_collector(request, config_manager):
                 except Exception as e:
                     logger.warning(f"Could not start streaming logs for {service}: {e}")
             
-            logger.info("ג… Real-time log streaming active")
+            logger.info("✅ Real-time log streaming active")
         
         yield collector
         
@@ -857,7 +857,7 @@ def pod_logs_collector(request, config_manager):
                 except Exception as e:
                     logger.warning(f"Could not save logs for {service}: {e}")
             
-            logger.info(f"ג… Logs saved to {logs_dir}")
+            logger.info(f"✅ Logs saved to {logs_dir}")
         
         # Cleanup
         collector.disconnect()
