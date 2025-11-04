@@ -90,7 +90,7 @@ class MongoDBManager:
                 port=self.mongo_config["port"],
                 username=self.mongo_config["username"],
                 password=self.mongo_config["password"],
-                authSource=self.mongo_config.get("auth_source", "admin"),
+                authSource=self.mongo_config.get("auth_source", "prisma"),  # Changed from "admin" to "prisma"
                 serverSelectionTimeoutMS=5000,  # 5 seconds timeout
                 connectTimeoutMS=5000,
                 socketTimeoutMS=5000
@@ -121,6 +121,22 @@ class MongoDBManager:
             self.client.close()
             self.client = None
             self.logger.info("Disconnected from MongoDB")
+    
+    def get_database(self, database_name: Optional[str] = None):
+        """
+        Get MongoDB database instance.
+        
+        Args:
+            database_name: Name of the database (defaults to configured database)
+            
+        Returns:
+            Database instance
+        """
+        if not self.client:
+            raise DatabaseError("MongoDB client not connected. Call connect() first.")
+        
+        db_name = database_name or self.mongo_config.get("database", "prisma")
+        return self.client[db_name]
     
     def _get_mongodb_deployment_name(self) -> str:
         """Get MongoDB deployment name from configuration."""

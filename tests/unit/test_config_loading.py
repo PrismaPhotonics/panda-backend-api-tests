@@ -21,28 +21,16 @@ from src.core.exceptions import ConfigurationError
 class TestConfigLoading:
     """Test configuration loading functionality."""
     
-    def test_load_new_production_config(self):
-        """Test loading new production environment configuration."""
-        config_manager = ConfigManager("new_production")
-        
-        # Test basic configuration loading
-        assert config_manager.environment == "new_production"
-        assert config_manager.get("focus_server.base_url") == "https://10.10.100.100/focus-server/"
-        assert config_manager.get("mongodb.host") == "10.10.100.108"
-        assert config_manager.get("mongodb.port") == 27017
-        assert config_manager.get("rabbitmq.host") == "10.10.100.107"
-        
     def test_load_staging_config(self):
         """Test loading staging environment configuration."""
         config_manager = ConfigManager("staging")
         
         # Test basic configuration loading
         assert config_manager.environment == "staging"
-        # Port changed from 8500 to 5000 to match actual K8s service
-        assert "5000" in config_manager.get("focus_server.base_url")
-        assert config_manager.get("mongodb.host") == "10.10.10.103"
+        assert config_manager.get("focus_server.base_url") == "https://10.10.10.100/focus-server/"
+        assert config_manager.get("mongodb.host") == "10.10.100.108"
         assert config_manager.get("mongodb.port") == 27017
-        assert config_manager.get("rabbitmq.host") == "10.10.10.150"
+        assert config_manager.get("rabbitmq.host") == "10.10.100.107"
         
     def test_load_local_config(self):
         """Test loading local environment configuration."""

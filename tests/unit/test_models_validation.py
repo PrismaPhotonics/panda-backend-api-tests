@@ -17,10 +17,6 @@ from src.models.focus_server_models import (
     ConfigTaskRequest,
     SensorsListResponse,
     LiveMetadataFlat,
-    WaterfallGetResponse,
-    WaterfallDataBlock,
-    WaterfallRowData,
-    WaterfallSensorData
 )
 from src.models.baby_analyzer_models import (
     KeepaliveCommand,
@@ -198,49 +194,6 @@ class TestLiveMetadataFlat:
             )
 
 
-class TestWaterfallModels:
-    """Unit tests for Waterfall response models."""
-    
-    def test_valid_waterfall_response(self):
-        """Test: Valid waterfall response."""
-        sensor_data = WaterfallSensorData(id=0, intensity=[1.0, 2.0, 3.0])
-        row = WaterfallRowData(
-            canvasId="canvas1",
-            sensors=[sensor_data],
-            startTimestamp=1000,
-            endTimestamp=2000
-        )
-        block = WaterfallDataBlock(
-            rows=[row],
-            current_max_amp=10.0,
-            current_min_amp=-10.0
-        )
-        response = WaterfallGetResponse(
-            status_code=201,
-            data=[block]
-        )
-        
-        assert response.status_code == 201
-        assert len(response.data) == 1
-        assert len(response.data[0].rows) == 1
-    
-    def test_invalid_waterfall_status_code(self):
-        """Test: Invalid waterfall status code."""
-        with pytest.raises(ValidationError):
-            WaterfallGetResponse(
-                status_code=999,  # Invalid
-                data=None
-            )
-    
-    def test_invalid_timestamp_order(self):
-        """Test: Invalid timestamp order (end < start)."""
-        with pytest.raises(ValidationError):
-            WaterfallRowData(
-                canvasId="canvas1",
-                sensors=[],
-                startTimestamp=2000,
-                endTimestamp=1000  # Invalid: end < start
-            )
 
 
 # ===================================================================

@@ -15,6 +15,10 @@ from pathlib import Path
 from config.config_manager import ConfigManager
 from src.core.exceptions import ConfigurationError, InfrastructureError
 from src.utils.pod_logs_collector import PodLogsCollector
+from src.utils.realtime_pod_monitor import PodLogMonitor
+
+# Import logging plugin for automatic test log files
+pytest_plugins = ["pytest_logging_plugin"]
 
 # ===================================================================
 # PZ Development Repository Integration
@@ -43,8 +47,14 @@ def pytest_addoption(parser):
     parser.addoption(
         "--env",
         action="store",
-        default="new_production",
-        help="Specify the environment to run tests against (e.g., staging, production, local)"
+        default="staging",
+        help="Specify the environment to run tests against (e.g., staging, local)"
+    )
+    parser.addoption(
+        "--monitor-pods",
+        action="store_true",
+        default=False,
+        help="Enable real-time pod log monitoring with test association"
     )
     parser.addoption(
         "--collect-pod-logs",
@@ -148,8 +158,43 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
     managers = []
     
     try:
-        # Get SSH config
+        # Get SSH config - use SSHManager for proper jump host support
+        from src.infrastructure.ssh_manager import SSHManager
+        
+        ssh_manager = SSHManager(config_manager)
+        
+        # Try to connect to verify SSH works
+        try:
+            if ssh_manager.connect():
+                logger.info("SSH connection established successfully")
+                ssh_manager.disconnect()
+            else:
+                logger.warning("SSH connection failed - some services may not be available")
+        except Exception as e:
+            logger.warning(f"SSH connection test failed: {e}")
+        
+        # Get SSH config for managers that need it
         ssh_config = config_manager.get("ssh")
+        
+        # Extract host from SSH config (support both flat and nested structures)
+        if "target_host" in ssh_config:
+            # New nested structure (jump_host + target_host)
+            ssh_host = ssh_config["target_host"]["host"]
+            ssh_user = ssh_config["target_host"]["username"]
+            ssh_password = ssh_config["target_host"].get("password")
+            ssh_key_file = ssh_config["target_host"].get("key_file")
+        else:
+            # Legacy flat structure
+            ssh_host = ssh_config["host"]
+            ssh_user = ssh_config["username"]
+            ssh_password = ssh_config.get("password")
+            ssh_key_file = ssh_config.get("key_file")
+        
+        # Expand SSH key path if needed
+        if ssh_key_file and ssh_key_file.startswith('~'):
+            from pathlib import Path
+            home = str(Path.home())
+            ssh_key_file = ssh_key_file.replace('~', home, 1)
         
         # === Setup RabbitMQ ===
         try:
@@ -157,9 +202,10 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
             
             logger.info("Setting up RabbitMQ...")
             rabbitmq_mgr = RabbitMQConnectionManager(
-                k8s_host=ssh_config["host"],
-                ssh_user=ssh_config["username"],
-                ssh_password=ssh_config.get("password"),
+                k8s_host=ssh_host,
+                ssh_user=ssh_user,
+                ssh_password=ssh_password,
+                ssh_key_file=ssh_key_file,  # Pass key file
                 preferred_service="rabbitmq-panda"
             )
             
@@ -178,9 +224,10 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
             
             logger.info("Setting up Focus Server...")
             focus_mgr = FocusServerConnectionManager(
-                k8s_host=ssh_config["host"],
-                ssh_user=ssh_config["username"],
-                ssh_password=ssh_config.get("password"),
+                k8s_host=ssh_host,
+                ssh_user=ssh_user,
+                ssh_password=ssh_password,
+                ssh_key_file=ssh_key_file,  # Pass key file
                 service_name="focus-server"
             )
             
@@ -616,9 +663,16 @@ def sensors_list(focus_server_api):
 
 
 @pytest.fixture(scope="session")
+# Note: PZ-13985 - LiveMetadata Missing Required Fields
+# (Xray marker on fixture not recommended, documented here instead)
 def live_metadata(focus_server_api):
     """
     Fixture to provide live metadata.
+    
+    PZ-13985: LiveMetadata Missing Required Fields
+    
+    This fixture tests GET /metadata endpoint and may fail if backend
+    doesn't return required fields (num_samples_per_trace, dtype).
     
     Args:
         focus_server_api: FocusServerAPI client
@@ -661,7 +715,222 @@ def environment_validation(config_manager: ConfigManager) -> bool:
         raise InfrastructureError(f"Environment validation failed: {e}")
 
 
-# Pytest configuration
+# ===================================================================
+# Real-time Pod Monitoring for Tests
+# ===================================================================
+
+@pytest.fixture(scope="session")
+def pod_monitor(request, config_manager):
+    """
+    Real-time pod log monitor that tracks logs during test execution.
+    
+    Automatically:
+    - Starts monitoring Focus Server and other critical pods
+    - Associates logs with specific tests
+    - Detects and highlights errors
+    - Saves test-specific log files
+    
+    Usage:
+        pytest tests/ --monitor-pods  # Enable real-time monitoring
+    
+    Returns:
+        PodLogMonitor instance or None if disabled
+    """
+    # Check if monitoring is enabled
+    monitor_enabled = request.config.getoption("--monitor-pods", default=False)
+    
+    if not monitor_enabled:
+        yield None
+        return
+    
+    logger = logging.getLogger(__name__)
+    
+    # Get SSH credentials from config
+    try:
+        ssh_config = config_manager.get("ssh", {})
+        
+        # Extract host from SSH config (support both flat and nested structures)
+        if "target_host" in ssh_config:
+            # New nested structure (jump_host + target_host)
+            ssh_host = ssh_config["target_host"]["host"]
+            ssh_user = ssh_config["target_host"]["username"]
+            ssh_password = ssh_config["target_host"].get("password")
+        elif "host" in ssh_config:
+            # Legacy flat structure
+            ssh_host = ssh_config["host"]
+            ssh_user = ssh_config["username"]
+            ssh_password = ssh_config.get("password")
+        else:
+            ssh_host = None
+            ssh_user = None
+            ssh_password = None
+        
+        if not all([ssh_host, ssh_user, ssh_password]):
+            logger.warning("SSH credentials not configured - pod monitoring disabled")
+            yield None
+            return
+        
+        # Get namespace
+        k8s_config = config_manager.get("kubernetes", {})
+        namespace = k8s_config.get("namespace", "panda")
+        
+        logger.info("=" * 80)
+        logger.info("REAL-TIME POD MONITORING: Starting...")
+        logger.info("=" * 80)
+        
+        # Initialize monitor
+        monitor = PodLogMonitor(
+            ssh_host=ssh_host,
+            ssh_user=ssh_user,
+            ssh_password=ssh_password,
+            namespace=namespace
+        )
+        
+        # Connect
+        if not monitor.connect():
+            logger.error("Failed to connect pod monitor")
+            yield None
+            return
+        
+        # Start monitoring key services
+        services_to_monitor = [
+            ("panda-panda-focus-server", "app.kubernetes.io/name=panda-panda-focus-server"),
+            ("mongodb", "app.kubernetes.io/instance=mongodb"),
+            ("rabbitmq-panda", "app.kubernetes.io/instance=rabbitmq-panda"),
+            ("grpc-jobs", "app"),  # Monitor all gRPC jobs dynamically
+        ]
+        
+        logger.info(f"Starting monitoring for {len(services_to_monitor)} services...")
+        
+        for service_name, pod_selector in services_to_monitor:
+            try:
+                monitor.start_monitoring_service(service_name, pod_selector)
+            except Exception as e:
+                logger.warning(f"Could not start monitoring {service_name}: {e}")
+        
+        logger.info("Real-time pod monitoring active")
+        logger.info("=" * 80)
+        
+        yield monitor
+        
+        # Cleanup
+        logger.info("=" * 80)
+        logger.info("REAL-TIME POD MONITORING: Stopping...")
+        logger.info("=" * 80)
+        
+        # Get summary
+        summary = monitor.get_monitoring_summary()
+        
+        logger.info(f"Monitored {summary['total_tests_monitored']} tests")
+        logger.info(f"Detected {summary['total_errors_detected']} errors in pod logs")
+        
+        if summary['tests_with_errors']:
+            logger.warning(f"Tests with pod errors: {len(summary['tests_with_errors'])}")
+            for test_name in summary['tests_with_errors'][:10]:  # Show first 10
+                logger.warning(f"  - {test_name}")
+        
+        # Disconnect
+        monitor.disconnect()
+        
+        logger.info("=" * 80)
+        logger.info("REAL-TIME POD MONITORING: Complete")
+        logger.info("=" * 80)
+        
+    except Exception as e:
+        logger.error(f"Error in pod monitoring: {e}")
+        yield None
+
+
+@pytest.fixture(scope="function", autouse=True)
+def track_test_in_pod_monitor(request, pod_monitor):
+    """
+    Automatically track each test in the pod monitor.
+    
+    This fixture runs for EVERY test and:
+    - Sets the current test context in the monitor
+    - Associates pod logs with the test
+    - Clears the context after the test finishes
+    
+    Args:
+        request: Pytest request object
+        pod_monitor: PodLogMonitor instance
+    """
+    if pod_monitor is None:
+        yield
+        return
+    
+    # Get test name
+    test_name = request.node.name
+    if request.node.parent:
+        test_name = f"{request.node.parent.name}::{test_name}"
+    
+    # Set current test in monitor
+    pod_monitor.set_current_test(test_name)
+    
+    yield
+    
+    # Clear current test
+    pod_monitor.clear_current_test()
+
+
+@pytest.fixture(scope="function")
+def get_test_pod_logs(pod_monitor):
+    """
+    Fixture to get pod logs for the current test.
+    
+    Usage in test:
+        def test_something(get_test_pod_logs):
+            # ... test code ...
+            
+            # Get logs captured during this test
+            logs = get_test_pod_logs()
+            assert "error" not in logs.lower()
+    
+    Returns:
+        Function that returns list of log lines for current test
+    """
+    if pod_monitor is None:
+        return lambda: []
+    
+    def _get_logs() -> List[str]:
+        if pod_monitor.current_test:
+            return pod_monitor.get_test_logs(pod_monitor.current_test)
+        return []
+    
+    return _get_logs
+
+
+@pytest.fixture(scope="function")
+def assert_no_pod_errors(pod_monitor):
+    """
+    Fixture to assert that no errors occurred in pod logs during test.
+    
+    Usage in test:
+        def test_something(assert_no_pod_errors):
+            # ... test code ...
+            
+            # At the end, assert no pod errors
+            assert_no_pod_errors()
+    
+    Returns:
+        Function that asserts no errors in pod logs
+    """
+    if pod_monitor is None:
+        return lambda: None
+    
+    def _assert_no_errors():
+        if pod_monitor.current_test:
+            errors = pod_monitor.get_test_errors(pod_monitor.current_test)
+            if errors:
+                error_summary = "\n".join(errors[:5])  # Show first 5 errors
+                pytest.fail(
+                    f"Pod errors detected during test ({len(errors)} total):\n{error_summary}"
+                )
+    
+    return _assert_no_errors
+
+
+
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line(

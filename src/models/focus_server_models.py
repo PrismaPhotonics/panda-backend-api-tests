@@ -3,12 +3,40 @@ Focus Server Data Models
 ========================
 
 Pydantic models for Focus Server API requests and responses.
+
+Configuration Constraints (from New Production Client Config):
+    - MAX_CHANNELS: 2222 (SensorsRange from usersettings.new_production_client.json)
+    - MAX_FREQUENCY_HZ: 1000 (FrequencyMax from usersettings.new_production_client.json)
+    - MIN_FREQUENCY_HZ: 0
+    - MAX_NFFT: 2048 (for multi-channel view)
+    - MAX_NFFT_SINGLE_CHANNEL: 65536 (for single-channel view)
 """
 
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, ValidationInfo
 from typing import List, Dict, Tuple, Optional, Union, Any
 from datetime import datetime
+
+
+# ===================================================================
+# Configuration Constants (from Client Config)
+# ===================================================================
+
+# Client Configuration: usersettings.new_production_client.json
+# These values are enforced by the Panda client application
+
+MAX_CHANNELS = 2222  # Maximum channels (SensorsRange)
+MAX_FREQUENCY_HZ = 1000  # Maximum frequency in Hz (FrequencyMax)
+MIN_FREQUENCY_HZ = 0  # Minimum frequency in Hz (FrequencyMin)
+MIN_FREQUENCY_RANGE = 1  # Minimum frequency range size (FrequencyMinRange)
+
+# NFFT Constraints
+MAX_NFFT_MULTICHANNEL = 2048  # Maximum NFFT for multi-channel view
+MAX_NFFT_SINGLECHANNEL = 65536  # Maximum NFFT for single-channel view
+VALID_NFFT_POWER_OF_2 = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
+
+# View Constraints
+MAX_WINDOWS = 30  # Maximum concurrent windows
 
 
 class ViewType(str, Enum):
@@ -31,28 +59,73 @@ class DisplayInfo(BaseModel):
 
 
 class Channels(BaseModel):
-    """Channel range configuration."""
+    """
+    Channel range configuration.
+    
+    Constraints (from client config):
+        - min >= 1
+        - max >= min
+        - total channels (max - min + 1) <= 2222 (MAX_CHANNELS)
+    """
     min: int = Field(..., description="Minimum channel value", ge=1)
     max: int = Field(..., description="Maximum channel value", ge=1)
     
     @field_validator('max')
     @classmethod
     def validate_channel_range(cls, v: int, info: ValidationInfo) -> int:
-        if info.data.get('min') and v < info.data['min']:
-            raise ValueError('max channel must be >= min channel')
+        min_val = info.data.get('min')
+        if min_val and v < min_val:
+            raise ValueError(f'max channel ({v}) must be >= min channel ({min_val})')
+        
+        # Validate total channel count (from client config)
+        if min_val:
+            channel_count = v - min_val + 1
+            if channel_count > MAX_CHANNELS:
+                raise ValueError(
+                    f'Channel count ({channel_count}) exceeds maximum ({MAX_CHANNELS}). '
+                    f'Valid range: 1-{MAX_CHANNELS} channels'
+                )
+        
         return v
 
 
 class FrequencyRange(BaseModel):
-    """Frequency range configuration."""
-    min: int = Field(..., description="Minimum frequency required", ge=0)
-    max: int = Field(..., description="Maximum frequency required", ge=0)
+    """
+    Frequency range configuration.
+    
+    Constraints (from client config):
+        - min >= 0 (MIN_FREQUENCY_HZ)
+        - max <= 1000 (MAX_FREQUENCY_HZ)
+        - max > min (range must be positive)
+        - (max - min) >= 1 (MIN_FREQUENCY_RANGE)
+    """
+    min: int = Field(..., description="Minimum frequency required", ge=MIN_FREQUENCY_HZ)
+    max: int = Field(..., description="Maximum frequency required", ge=MIN_FREQUENCY_HZ)
     
     @field_validator('max')
     @classmethod
     def validate_frequency_range(cls, v: int, info: ValidationInfo) -> int:
-        if info.data.get('min') and v < info.data['min']:
-            raise ValueError('max frequency must be >= min frequency')
+        # Check max > min
+        min_val = info.data.get('min')
+        if min_val is not None and v < min_val:
+            raise ValueError(f'max frequency ({v}) must be >= min frequency ({min_val})')
+        
+        # Check max <= MAX_FREQUENCY_HZ (from client config)
+        if v > MAX_FREQUENCY_HZ:
+            raise ValueError(
+                f'Frequency max ({v} Hz) exceeds maximum ({MAX_FREQUENCY_HZ} Hz). '
+                f'Valid range: {MIN_FREQUENCY_HZ}-{MAX_FREQUENCY_HZ} Hz'
+            )
+        
+        # Check minimum range size
+        if min_val is not None:
+            range_size = v - min_val
+            if range_size < MIN_FREQUENCY_RANGE:
+                raise ValueError(
+                    f'Frequency range ({range_size} Hz) is too small. '
+                    f'Minimum range: {MIN_FREQUENCY_RANGE} Hz'
+                )
+        
         return v
 
 

@@ -35,8 +35,9 @@ class FocusServerConnectionManager:
         k8s_host: str,
         ssh_user: str,
         ssh_password: Optional[str] = None,
+        ssh_key_file: Optional[str] = None,
         service_name: str = "focus-server",
-        namespace: str = "default",
+        namespace: str = "panda",
         local_port: int = 5000,
         remote_port: int = 5000
     ):
@@ -47,6 +48,7 @@ class FocusServerConnectionManager:
             k8s_host: Kubernetes cluster host IP
             ssh_user: SSH username for remote host
             ssh_password: SSH password (optional, for automation)
+            ssh_key_file: SSH key file path (optional, for key authentication)
             service_name: Focus Server service name in K8s
             namespace: Kubernetes namespace
             local_port: Local port to bind
@@ -55,6 +57,7 @@ class FocusServerConnectionManager:
         self.k8s_host = k8s_host
         self.ssh_user = ssh_user
         self.ssh_password = ssh_password
+        self.ssh_key_file = ssh_key_file
         self.service_name = service_name
         self.namespace = namespace
         self.local_port = local_port
@@ -84,8 +87,13 @@ class FocusServerConnectionManager:
         Returns:
             Service name if found, None otherwise
         """
-        if not PARAMIKO_AVAILABLE or not self.ssh_password:
+        if not PARAMIKO_AVAILABLE:
             logger.warning("Paramiko not available, cannot discover service")
+            return None
+        
+        # Check if we have authentication method
+        if not self.ssh_password and not self.ssh_key_file:
+            logger.warning("No SSH authentication method configured for service discovery")
             return None
         
         try:
@@ -93,14 +101,26 @@ class FocusServerConnectionManager:
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
             logger.debug(f"Connecting to {self.ssh_user}@{self.k8s_host} for service discovery...")
-            client.connect(
-                hostname=self.k8s_host,
-                username=self.ssh_user,
-                password=self.ssh_password,
-                timeout=30,
-                look_for_keys=False,
-                allow_agent=False
-            )
+            
+            # Connect with key file or password
+            if self.ssh_key_file:
+                client.connect(
+                    hostname=self.k8s_host,
+                    username=self.ssh_user,
+                    key_filename=self.ssh_key_file,
+                    timeout=30,
+                    look_for_keys=True,
+                    allow_agent=True
+                )
+            else:
+                client.connect(
+                    hostname=self.k8s_host,
+                    username=self.ssh_user,
+                    password=self.ssh_password,
+                    timeout=30,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
             
             # List services
             cmd = f"kubectl get svc -n {self.namespace} -o name | grep {self.service_name}"
@@ -124,7 +144,11 @@ class FocusServerConnectionManager:
     
     def _kill_existing_port_forwards(self):
         """Kill any existing port-forwards on the specified port."""
-        if not PARAMIKO_AVAILABLE or not self.ssh_password:
+        if not PARAMIKO_AVAILABLE:
+            return
+
+        # Check if we have authentication method
+        if not self.ssh_password and not self.ssh_key_file:
             return
 
         try:
@@ -132,14 +156,26 @@ class FocusServerConnectionManager:
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
             logger.debug(f"Checking for existing port-forwards on port {self.local_port}...")
-            client.connect(
-                hostname=self.k8s_host,
-                username=self.ssh_user,
-                password=self.ssh_password,
-                timeout=30,
-                look_for_keys=False,
-                allow_agent=False
-            )
+            
+            # Connect with key file or password
+            if self.ssh_key_file:
+                client.connect(
+                    hostname=self.k8s_host,
+                    username=self.ssh_user,
+                    key_filename=self.ssh_key_file,
+                    timeout=30,
+                    look_for_keys=True,
+                    allow_agent=True
+                )
+            else:
+                client.connect(
+                    hostname=self.k8s_host,
+                    username=self.ssh_user,
+                    password=self.ssh_password,
+                    timeout=30,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
 
             # Kill processes listening on the port
             kill_cmd = f"fuser -k {self.local_port}/tcp 2>/dev/null || true"
@@ -164,8 +200,13 @@ class FocusServerConnectionManager:
         """
         logger.info(f"Starting port-forward for {self.service_name}...")
 
-        if not PARAMIKO_AVAILABLE or not self.ssh_password:
-            logger.error("Paramiko or SSH password not available for automation")
+        if not PARAMIKO_AVAILABLE:
+            logger.error("Paramiko not available for automation")
+            return False
+
+        # Check if we have authentication method
+        if not self.ssh_password and not self.ssh_key_file:
+            logger.error("No SSH authentication method configured for automation")
             return False
 
         # Kill any existing port-forwards on this port
@@ -180,14 +221,26 @@ class FocusServerConnectionManager:
                     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                     
                     logger.info(f"Connecting to {self.ssh_user}@{self.k8s_host} for port-forward...")
-                    client.connect(
-                        hostname=self.k8s_host,
-                        username=self.ssh_user,
-                        password=self.ssh_password,
-                        timeout=30,
-                        look_for_keys=False,
-                        allow_agent=False
-                    )
+                    
+                    # Connect with key file or password
+                    if self.ssh_key_file:
+                        client.connect(
+                            hostname=self.k8s_host,
+                            username=self.ssh_user,
+                            key_filename=self.ssh_key_file,
+                            timeout=30,
+                            look_for_keys=True,
+                            allow_agent=True
+                        )
+                    else:
+                        client.connect(
+                            hostname=self.k8s_host,
+                            username=self.ssh_user,
+                            password=self.ssh_password,
+                            timeout=30,
+                            look_for_keys=False,
+                            allow_agent=False
+                        )
                     
                     pf_cmd = (
                         f"kubectl port-forward --address 0.0.0.0 -n {self.namespace} "
