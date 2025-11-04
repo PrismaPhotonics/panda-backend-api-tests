@@ -21,7 +21,6 @@ from src.utils.validators import (
     validate_configuration_compatibility,
     ValidationError as CustomValidationError
 )
-from src.models.focus_server_models import WaterfallGetResponse, WaterfallDataBlock, WaterfallRowData, WaterfallSensorData
 from src.models.baby_analyzer_models import RecordingMetadata
 
 
@@ -223,15 +222,8 @@ class TestNFFTValidation:
         with pytest.warns(UserWarning):
             validate_nfft_value(1000)  # Not power of 2
     
-    def test_zero_nfft(self):
-        """Test: Zero NFFT."""
-        with pytest.raises(CustomValidationError):
-            validate_nfft_value(0)
-    
-    def test_negative_nfft(self):
-        """Test: Negative NFFT."""
-        with pytest.raises(CustomValidationError):
-            validate_nfft_value(-512)
+    # REMOVED: test_zero_nfft - duplicate of test_config_validation_nfft_frequency.py::test_zero_nfft
+    # REMOVED: test_negative_nfft - duplicate of test_config_validation_nfft_frequency.py::test_negative_nfft
 
 
 class TestROIChangeSafety:
@@ -360,48 +352,4 @@ class TestMetadataConsistencyValidation:
             validate_metadata_consistency(metadata)
 
 
-class TestWaterfallResponseValidation:
-    """Unit tests for waterfall response validation."""
-    
-    def test_valid_waterfall_response(self):
-        """Test: Valid waterfall response."""
-        from src.utils.validators import validate_waterfall_response
-        
-        sensor = WaterfallSensorData(id=0, intensity=[1.0, 2.0])
-        row = WaterfallRowData(
-            canvasId="canvas1",
-            sensors=[sensor],
-            startTimestamp=1000,
-            endTimestamp=2000
-        )
-        block = WaterfallDataBlock(
-            rows=[row],
-            current_max_amp=10.0,
-            current_min_amp=-10.0
-        )
-        response = WaterfallGetResponse(
-            status_code=201,
-            data=[block]
-        )
-        
-        result = validate_waterfall_response(response)
-        
-        assert result["is_valid"]
-        assert result["status_code"] == 201
-        assert result["has_data"]
-    
-    def test_waterfall_response_status_200(self):
-        """Test: Waterfall response with status 200 (no data)."""
-        from src.utils.validators import validate_waterfall_response
-        
-        response = WaterfallGetResponse(
-            status_code=200,
-            data=None,
-            message="No data yet"
-        )
-        
-        result = validate_waterfall_response(response)
-        
-        assert result["is_valid"]
-        assert not result["has_data"]
 

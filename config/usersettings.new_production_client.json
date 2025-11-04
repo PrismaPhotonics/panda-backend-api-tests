@@ -1,0 +1,84 @@
+{
+	"Communication": {
+		"Backend": "https://10.10.100.100/focus-server/",
+		"Frontend": "https://10.10.100.100/liveView",
+		"GrpcStreamMinTimeout_sec": 600,
+		"GrpcTimeout": 500,
+		"LogEndpoint": "log",
+		"NumGrpcRetries": 10,
+		"SiteId": "prisma-210-1000",
+		"FrontendApi": "https://10.10.100.100/prisma/api/internal/sites/prisma-210-1000"
+	},
+	
+	"SavedData": {
+	"Folder": "C:\\Panda\\SavedData",
+	"EnableSave": true,
+	"EnableLoad":  true
+	},
+	
+	"Constraints": {
+		"FrequencyMax": 1000,
+		"FrequencyMin": 0,
+		"FrequencyMinRange": 1,
+		"MaxWindows": 30,
+		"SensorsRange": 2222
+	},
+	"Defaults": {
+		"_TimeStatus": "Range",
+		"DisplayTimeAxisDuration": 30,
+		"EndChannel": 109,
+		"EndFrequency_hz": 1000,
+		"FixedThreshold": 0,
+		"Nfft": 1024,
+		"NumLinesToDisplay": 200,
+		"SpatialCenterSize": 3,
+		"SpatialWindowSize": 7,
+		"SpectralCenterSize": 5,
+		"SpectralWindowSize": 11,
+		"StartChannel": 11,
+		"StartFrequency_hz": 0,
+		"StartTime": "2025-10-21T08:35:00",
+		"TimeStatus": "Live",
+		"TimeWindow": "30s",
+		"ViewType": "MultiChannelSpectrogram"
+	},
+	"EnableDebugTools": false,
+	"EnableReconnection": true,
+	"FullScreen": false,
+	"Logger": {
+		"LogGrpcMessages": false,
+		"LogGrpcValidation": false,
+		"LogPaging": false,
+		"LogWorkingQueue": false
+	},
+	"NumLiveScreens": 30,
+	"NumTabs": 10,
+	"RefreshRate": 20,
+	"Serilog": {
+		"WriteTo": [
+			{
+				"Args": {
+					"outputTemplate": " [{Level:u3}] {Timestamp:HH:mm:ss.fff} {Message:lj}{NewLine}{Exception}"
+				},
+				"Name": "Console"
+			}
+		]
+	},
+	"SplitScreen": true,
+	"Options": {
+		"nfftSingleChannel": [
+		128,
+		256,
+		512,
+		1024,
+		2048,
+		4096,
+		8192,
+		16384,
+		32768,
+		65536
+		]
+	},
+	"TemplateTypes": [ "SD", "SC", ""]
+}
+

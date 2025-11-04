@@ -1,0 +1,80 @@
+name: Upload Test Results to Xray
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Run nightly at 2 AM Israel time (midnight UTC)
+    - cron: '0 0 * * *'
+
+jobs:
+  test-and-upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run tests
+        env:
+          ENVIRONMENT: new_production
+        run: |
+          pytest tests/ \
+            --xray \
+            --junitxml=reports/junit.xml \
+            --html=reports/report.html \
+            --self-contained-html
+      
+      - name: Upload to Xray
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+        run: |
+          python scripts/xray_upload.py --format auto
+      
+      - name: Upload test results as artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            reports/
+            logs/
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('reports/xray-exec.json', 'utf8');
+            const results = JSON.parse(report);
+            const passed = results.tests.filter(t => t.status === 'PASSED').length;
+            const total = results.tests.length;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🧪 Test Results
+            
+            ✅ **Passed:** ${passed} / ${total}
+            ❌ **Failed:** ${total - passed}
+            
+            [View details in Xray](https://yoursite.atlassian.net/)
+            `
+            });
+

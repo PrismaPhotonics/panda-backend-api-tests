@@ -7,6 +7,8 @@ Kubernetes infrastructure manager for cluster operations and monitoring.
 
 import logging
 import time
+import json
+import platform
 from typing import List, Dict, Any, Optional
 
 from kubernetes import client, config
@@ -27,6 +29,8 @@ class KubernetesManager:
     - Job management
     - Log retrieval
     - Resource monitoring
+    
+    Supports both direct Kubernetes API access and SSH-based kubectl fallback.
     """
     
     def __init__(self, config_manager: ConfigManager):
@@ -40,38 +44,132 @@ class KubernetesManager:
         self.k8s_config = config_manager.get_kubernetes_config()
         self.logger = logging.getLogger(__name__)
         
-        # Kubernetes clients
+        # Kubernetes clients (direct API access)
         self.k8s_apps_v1: Optional[client.AppsV1Api] = None
         self.k8s_core_v1: Optional[client.CoreV1Api] = None
         self.k8s_batch_v1: Optional[client.BatchV1Api] = None
+        
+        # SSH fallback for kubectl commands
+        self.ssh_manager: Optional[Any] = None  # Lazy import to avoid circular dependencies
+        self.use_ssh_fallback = False
         
         self._load_k8s_config()
         self.logger.info("Kubernetes manager initialized")
     
     def _load_k8s_config(self):
-        """Load Kubernetes configuration (optional - only if available)."""
+        """
+        Load Kubernetes configuration.
+        
+        Tries direct API access first, falls back to SSH-based kubectl if needed.
+        """
         try:
+            # Try to load kubeconfig and create API clients
             config.load_kube_config()
             self.k8s_apps_v1 = client.AppsV1Api()
             self.k8s_core_v1 = client.CoreV1Api()
             self.k8s_batch_v1 = client.BatchV1Api()
             self.logger.debug("Kubernetes configuration loaded successfully")
+            
+            # Test connection (quick check)
+            try:
+                self.k8s_core_v1.list_node(timeout_seconds=5)
+                self.logger.debug("Direct Kubernetes API connection verified")
+            except Exception as e:
+                # Connection failed - likely timeout or network issue
+                error_str = str(e).lower()
+                if "timeout" in error_str or "connection" in error_str:
+                    self.logger.warning("Kubernetes API not directly accessible, falling back to SSH-based kubectl")
+                    self._init_ssh_fallback()
+                else:
+                    raise
+                    
         except config.ConfigException as e:
-            # Kubernetes config not available - this is OK for local development
+            # No kubeconfig available - use SSH fallback
             self.logger.warning(f"Kubernetes config not available: {e}")
-            self.logger.info("Kubernetes operations will be disabled (OK for local dev)")
-            self.k8s_apps_v1 = None
-            self.k8s_core_v1 = None
-            self.k8s_batch_v1 = None
+            self.logger.info("Falling back to SSH-based kubectl commands")
+            self._init_ssh_fallback()
+        except Exception as e:
+            # Other errors - try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning(f"Kubernetes API connection failed: {e}")
+                self.logger.info("Falling back to SSH-based kubectl commands")
+                self._init_ssh_fallback()
+            else:
+                # Unknown error - still try SSH fallback as last resort
+                self.logger.warning(f"Unexpected error loading Kubernetes config: {e}")
+                self.logger.info("Attempting SSH-based kubectl fallback")
+                self._init_ssh_fallback()
+    
+    def _init_ssh_fallback(self) -> bool:
+        """
+        Initialize SSH-based kubectl fallback.
+        
+        Returns:
+            True if SSH fallback was successfully initialized
+        """
+        try:
+            from src.infrastructure.ssh_manager import SSHManager
+            
+            self.ssh_manager = SSHManager(self.config_manager)
+            if self.ssh_manager.connect():
+                self.use_ssh_fallback = True
+                self.logger.info("SSH-based kubectl fallback initialized successfully")
+                return True
+            else:
+                self.logger.warning("Failed to initialize SSH connection for kubectl fallback")
+                self.ssh_manager = None
+                return False
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize SSH fallback: {e}")
+            self.ssh_manager = None
+            return False
+    
+    def _execute_kubectl_via_ssh(self, command: str, timeout: int = 30) -> Dict[str, Any]:
+        """
+        Execute kubectl command via SSH.
+        
+        Args:
+            command: kubectl command to execute
+            timeout: Command timeout in seconds
+            
+        Returns:
+            Dictionary with command results (stdout, stderr, exit_code, success)
+        """
+        if not self.ssh_manager:
+            if not self._init_ssh_fallback():
+                raise InfrastructureError("SSH manager not available for kubectl execution")
+        
+        if not self.ssh_manager.connected:
+            if not self.ssh_manager.connect():
+                raise InfrastructureError("Failed to connect via SSH for kubectl execution")
+        
+        namespace = self.k8s_config.get("namespace", "panda")
+        full_command = f"kubectl -n {namespace} {command}"
+        
+        self.logger.debug(f"Executing kubectl via SSH: {full_command}")
+        result = self.ssh_manager.execute_command(full_command, timeout=timeout)
+        
+        if not result["success"]:
+            self.logger.warning(f"kubectl command failed: {result['stderr']}")
+        
+        return result
     
     def _ensure_k8s_available(self):
-        """Ensure Kubernetes is available, raise error if not."""
-        if self.k8s_apps_v1 is None or self.k8s_core_v1 is None:
-            raise InfrastructureError(
-                "Kubernetes is not available. "
-                "This operation requires a valid kubeconfig. "
-                "Are you running outside of a Kubernetes environment?"
-            )
+        """Ensure Kubernetes is available (either direct API or SSH fallback)."""
+        if self.use_ssh_fallback:
+            if not self.ssh_manager or not self.ssh_manager.connected:
+                raise InfrastructureError(
+                    "Kubernetes SSH fallback not available. "
+                    "SSH connection required for kubectl commands."
+                )
+        else:
+            if self.k8s_apps_v1 is None or self.k8s_core_v1 is None:
+                raise InfrastructureError(
+                    "Kubernetes is not available. "
+                    "This operation requires a valid kubeconfig or SSH access. "
+                    "Are you running outside of a Kubernetes environment?"
+                )
     
     def get_pods(self, namespace: Optional[str] = None, label_selector: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -87,7 +185,11 @@ class KubernetesManager:
         self._ensure_k8s_available()
         
         if not namespace:
-            namespace = self.k8s_config.get("namespace", "default")
+            namespace = self.k8s_config.get("namespace", "panda")
+        
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_pods_via_ssh(namespace, label_selector)
         
         try:
             pods = self.k8s_core_v1.list_namespaced_pod(
@@ -112,7 +214,64 @@ class KubernetesManager:
             return pod_list
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_pods_via_ssh(namespace, label_selector)
             raise InfrastructureError(f"Failed to get pods: {e}") from e
+    
+    def _get_pods_via_ssh(self, namespace: Optional[str], label_selector: Optional[str]) -> List[Dict[str, Any]]:
+        """Get pods via SSH kubectl command."""
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "panda")
+        
+        # Build kubectl command
+        cmd = f"get pods -o json"
+        if label_selector:
+            cmd += f" -l {label_selector}"
+        
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            raise InfrastructureError(f"Failed to get pods via SSH: {result['stderr']}")
+        
+        # Parse JSON output
+        try:
+            pods_data = json.loads(result["stdout"])
+            pod_list = []
+            
+            for pod_item in pods_data.get("items", []):
+                metadata = pod_item.get("metadata", {})
+                status = pod_item.get("status", {})
+                spec = pod_item.get("spec", {})
+                
+                conditions = status.get("conditions", [])
+                ready_condition = next(
+                    (c for c in conditions if c.get("type") == "Ready"),
+                    None
+                )
+                
+                container_statuses = status.get("containerStatuses", [])
+                restart_count = container_statuses[0].get("restartCount", 0) if container_statuses else 0
+                
+                pod_info = {
+                    "name": metadata.get("name"),
+                    "namespace": metadata.get("namespace"),
+                    "status": status.get("phase", "Unknown"),
+                    "ready": ready_condition.get("status", "Unknown") if ready_condition else "Unknown",
+                    "restart_count": restart_count,
+                    "node_name": spec.get("nodeName"),
+                    "labels": metadata.get("labels", {})
+                }
+                pod_list.append(pod_info)
+            
+            self.logger.debug(f"Retrieved {len(pod_list)} pods from namespace '{namespace}' via SSH")
+            return pod_list
+            
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse kubectl output as JSON: {e}")
     
     def get_deployments(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -401,6 +560,10 @@ class KubernetesManager:
         """
         self._ensure_k8s_available()
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_cluster_info_via_ssh()
+        
         try:
             # Get cluster version
             from kubernetes.client import VersionApi
@@ -429,7 +592,98 @@ class KubernetesManager:
             return cluster_info
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_cluster_info_via_ssh()
             raise InfrastructureError(f"Failed to get cluster info: {e}") from e
+        except Exception as e:
+            # Other errors - try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_cluster_info_via_ssh()
+            raise
+    
+    def _get_cluster_info_via_ssh(self) -> Dict[str, Any]:
+        """Get cluster info via SSH kubectl commands."""
+        cluster_info = {
+            "version": "unknown",
+            "node_count": 0,
+            "nodes": []
+        }
+        
+        try:
+            # Get cluster version (no namespace needed)
+            if not self.ssh_manager or not self.ssh_manager.connected:
+                if not self._init_ssh_fallback():
+                    return cluster_info
+            
+            version_cmd = f"kubectl version -o json --client"
+            result = self.ssh_manager.execute_command(version_cmd, timeout=30)
+            
+            if result["success"]:
+                try:
+                    version_data = json.loads(result["stdout"])
+                    cluster_info["version"] = version_data.get("clientVersion", {}).get("gitVersion", "unknown")
+                except json.JSONDecodeError:
+                    # Fallback: parse text output
+                    for line in result["stdout"].split("\n"):
+                        if "GitVersion" in line:
+                            cluster_info["version"] = line.split('"')[3] if '"' in line else "unknown"
+                            break
+        except Exception as e:
+            self.logger.warning(f"Failed to get cluster version via SSH: {e}")
+        
+        try:
+            # Get nodes (no namespace needed)
+            if not self.ssh_manager or not self.ssh_manager.connected:
+                if not self._init_ssh_fallback():
+                    return cluster_info
+            
+            nodes_cmd = f"kubectl get nodes -o json"
+            result = self.ssh_manager.execute_command(nodes_cmd, timeout=30)
+            
+            if result["success"]:
+                try:
+                    nodes_data = json.loads(result["stdout"])
+                    node_items = nodes_data.get("items", [])
+                    cluster_info["node_count"] = len(node_items)
+                    
+                    for node_item in node_items:
+                        metadata = node_item.get("metadata", {})
+                        status = node_item.get("status", {})
+                        labels = metadata.get("labels", {})
+                        
+                        conditions = status.get("conditions", [])
+                        ready_condition = next(
+                            (c for c in conditions if c.get("type") == "Ready"),
+                            None
+                        )
+                        
+                        roles = [
+                            label.split("/")[-1] 
+                            for label in labels.keys() 
+                            if label.startswith("node-role.kubernetes.io/")
+                        ]
+                        
+                        node_info = {
+                            "name": metadata.get("name"),
+                            "status": ready_condition.get("type", "Unknown") if ready_condition else "Unknown",
+                            "roles": roles,
+                            "kubelet_version": status.get("nodeInfo", {}).get("kubeletVersion", "unknown")
+                        }
+                        cluster_info["nodes"].append(node_info)
+                except json.JSONDecodeError as e:
+                    self.logger.warning(f"Failed to parse nodes output as JSON: {e}")
+        except Exception as e:
+            self.logger.warning(f"Failed to get nodes via SSH: {e}")
+        
+        self.logger.debug(f"Retrieved cluster info via SSH: {cluster_info['node_count']} nodes")
+        return cluster_info
     
     def check_resource_exists(self, resource_type: str, resource_name: str, 
                             namespace: Optional[str] = None) -> bool:

@@ -65,7 +65,8 @@ class RabbitMQConnectionManager:
         k8s_host: str,
         ssh_user: str = "prisma",
         ssh_password: Optional[str] = None,
-        namespace: str = "default",
+        ssh_key_file: Optional[str] = None,
+        namespace: str = "panda",
         preferred_service: str = "rabbitmq-panda",
         local_port: int = 5672,
         local_mgmt_port: int = 15672
@@ -77,6 +78,7 @@ class RabbitMQConnectionManager:
             k8s_host: Kubernetes cluster host IP
             ssh_user: SSH username for K8s host
             ssh_password: SSH password (optional, uses SSH keys if None)
+            ssh_key_file: SSH key file path (optional, for key authentication)
             namespace: K8s namespace
             preferred_service: Preferred RabbitMQ service name
             local_port: Local port for AMQP
@@ -85,6 +87,7 @@ class RabbitMQConnectionManager:
         self.k8s_host = k8s_host
         self.ssh_user = ssh_user
         self.ssh_password = ssh_password
+        self.ssh_key_file = ssh_key_file
         self.namespace = namespace
         self.preferred_service = preferred_service
         self.local_port = local_port
@@ -108,11 +111,11 @@ class RabbitMQConnectionManager:
                 ["kubectl", "get", "svc", "-n", self.namespace, "-o", "json"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=30  # Increased from 10 to 30 seconds (matching SSH timeout)
             )
             
             if result.returncode != 0:
-                logger.warning("kubectl not available locally, will use SSH")
+                logger.warning("kubectl not available locally or failed, will use SSH")
                 return self._discover_via_ssh()
             
             import json
@@ -127,9 +130,18 @@ class RabbitMQConnectionManager:
             logger.info(f"Found RabbitMQ services: {list(rabbitmq_services.keys())}")
             return rabbitmq_services
             
+        except subprocess.TimeoutExpired:
+            # kubectl timed out - fallback to SSH
+            logger.warning("kubectl command timed out, falling back to SSH discovery")
+            return self._discover_via_ssh()
+        except FileNotFoundError:
+            # kubectl not installed - fallback to SSH
+            logger.warning("kubectl not found, falling back to SSH discovery")
+            return self._discover_via_ssh()
         except Exception as e:
-            logger.error(f"Failed to discover services: {e}")
-            return {}
+            # Any other error - try SSH as fallback
+            logger.warning(f"kubectl discovery failed ({e}), falling back to SSH")
+            return self._discover_via_ssh()
     
     def _discover_via_ssh(self) -> Dict[str, str]:
         """Discover services via SSH when kubectl is not available locally."""
@@ -209,14 +221,19 @@ class RabbitMQConnectionManager:
         
         Args:
             command: Command to run
-            
+        
         Returns:
             Command output or None if failed
         """
-        if not PARAMIKO_AVAILABLE or not self.ssh_password:
+        if not PARAMIKO_AVAILABLE:
             # Fallback to subprocess (will prompt for password)
             logger.warning("Using fallback SSH (may prompt for password)")
             return self._run_ssh_command_fallback(command)
+        
+        # Check if we have authentication method
+        if not self.ssh_password and not self.ssh_key_file:
+            logger.warning("No SSH authentication method configured")
+            return None
         
         try:
             # Create SSH client with paramiko (no password prompt!)
@@ -224,14 +241,26 @@ class RabbitMQConnectionManager:
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
             logger.debug(f"Connecting to {self.ssh_user}@{self.k8s_host}...")
-            client.connect(
-                hostname=self.k8s_host,
-                username=self.ssh_user,
-                password=self.ssh_password,
-                timeout=30,
-                look_for_keys=False,  # Don't use SSH keys
-                allow_agent=False     # Don't use SSH agent
-            )
+            
+            # Connect with key file or password
+            if self.ssh_key_file:
+                client.connect(
+                    hostname=self.k8s_host,
+                    username=self.ssh_user,
+                    key_filename=self.ssh_key_file,
+                    timeout=30,
+                    look_for_keys=True,
+                    allow_agent=True
+                )
+            else:
+                client.connect(
+                    hostname=self.k8s_host,
+                    username=self.ssh_user,
+                    password=self.ssh_password,
+                    timeout=30,
+                    look_for_keys=False,  # Don't use SSH keys
+                    allow_agent=False     # Don't use SSH agent
+                )
             
             # Execute command
             logger.debug(f"Executing: {command}")

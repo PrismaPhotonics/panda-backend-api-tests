@@ -117,7 +117,7 @@ class BaseAPIClient:
         
         # Log detailed request information
         self.logger.info(f"{'='*80}")
-        self.logger.info(f"→ {method} {url}")
+        self.logger.info(f">> {method} {url}")
         
         # Log request headers
         if 'headers' in kwargs:
@@ -147,7 +147,7 @@ class BaseAPIClient:
             elapsed = (time.time() - start_time) * 1000  # Convert to milliseconds
             
             # Log response details
-            self.logger.info(f"← {response.status_code} {response.reason} ({elapsed:.2f}ms)")
+            self.logger.info(f"<< {response.status_code} {response.reason} ({elapsed:.2f}ms)")
             
             # Log response headers (only important ones)
             self.logger.debug("Response Headers:")
@@ -185,19 +185,19 @@ class BaseAPIClient:
             
         except requests.exceptions.Timeout as e:
             elapsed = (time.time() - start_time) * 1000
-            self.logger.error(f"✗ Request timeout after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"[TIMEOUT] Request timeout after {elapsed:.2f}ms for {method} {url}: {e}")
             self.logger.error(f"{'='*80}")
             raise TimeoutError(f"Request timed out after {self.timeout} seconds", self.timeout) from e
             
         except requests.exceptions.ConnectionError as e:
             elapsed = (time.time() - start_time) * 1000
-            self.logger.error(f"✗ Connection error after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"[CONNECTION_ERROR] Connection error after {elapsed:.2f}ms for {method} {url}: {e}")
             self.logger.error(f"{'='*80}")
             raise NetworkError(f"Connection failed: {e}") from e
             
         except requests.exceptions.RequestException as e:
             elapsed = (time.time() - start_time) * 1000
-            self.logger.error(f"✗ Request error after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"[REQUEST_ERROR] Request error after {elapsed:.2f}ms for {method} {url}: {e}")
             self.logger.error(f"{'='*80}")
             raise APIError(f"Request failed: {e}") from e
     

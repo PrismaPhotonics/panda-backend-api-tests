@@ -1,0 +1,77 @@
+# Xray Integration Configuration
+# ==============================
+
+# Xray Cloud Credentials
+xray:
+  api_url: "https://xray.cloud.getxray.app/api/v2"
+  project_key: "PZ"
+  
+  # Authentication credentials (set as environment variables)
+  client_id_env: "XRAY_CLIENT_ID"
+  client_secret_env: "XRAY_CLIENT_SECRET"
+
+# Test Execution Settings
+execution:
+  # Default Test Execution key (optional, can be overridden)
+  default_test_exec_key: null  # Will create new Test Execution each run
+  
+  # Info for Test Execution
+  test_execution_info:
+    summary: "Focus Server Automation - Nightly Run"
+    description: "Automated test execution from pytest"
+    start_date_format: "%Y-%m-%dT%H:%M:%S+02:00"  # Israel timezone
+
+# Mapping Strategy
+mapping:
+  strategy: "anchor"  # Options: "anchor" (recommended), "1-to-1", "many-to-many"
+  
+  # If using anchor strategy
+  anchor_naming:
+    suffix: " - Anchor"
+    pattern: "{category}: {name} ({anchor})"
+  
+  # Default anchors by category
+  default_anchors:
+    integration: "Integration Anchor"
+    api: "API Anchor"
+    data_quality: "Data Quality Anchor"
+    performance: "Performance Anchor"
+    infrastructure: "Infrastructure Anchor"
+    security: "Security Anchor"
+    stress: "Stress Anchor"
+
+# Reporting
+reporting:
+  output_dir: "reports"
+  formats:
+    - "junit"  # JUnit XML
+    - "xray"   # Xray JSON
+    - "html"   # HTML report
+  
+  junit:
+    filename: "junit.xml"
+    include_properties: true
+  
+  xray:
+    filename: "xray-exec.json"
+    include_evidences: true  # Attach logs/screenshots
+    evidence_paths:
+      - "logs/"
+      - "screenshots/"
+
+# CI/CD Integration
+ci:
+  # GitHub Actions / GitLab CI variables
+  test_execution_key_env: "XRAY_TEST_EXEC_KEY"
+  upload_on_success: true
+  upload_on_failure: true
+  
+  # Optional: Upload evidence
+  upload_evidence:
+    enabled: true
+    max_file_size_mb: 10
+    file_patterns:
+      - "*.log"
+      - "*.png"
+      - "*.html"
+

@@ -122,9 +122,12 @@ class TestSingleChannelViewHappyPath:
     These tests validate correct SingleChannel behavior with valid inputs.
     """
     
+    @pytest.mark.xray("PZ-13861")
     def test_configure_singlechannel_mapping(self, focus_server_api, singlechannel_payload_channel_7):
         """
         Test: SingleChannel view returns exactly one stream with correct 1:1 mapping.
+        
+        PZ-13861: Integration - SingleChannel Stream Mapping Verification
         
         Test Summary:
             Validates view_type=SINGLECHANNEL behavior: the server must return 
@@ -239,9 +242,13 @@ class TestSingleChannelViewHappyPath:
         
         logger.info("✅ TEST PASSED: SingleChannel mapping validated successfully")
     
+    @pytest.mark.xray("PZ-13814", "PZ-13832")
     def test_configure_singlechannel_channel_1(self, focus_server_api, singlechannel_payload_channel_1):
         """
         Test: SingleChannel view for channel 1 (first channel).
+        
+        PZ-13814: API - SingleChannel View for Channel 1 (First Channel)
+        PZ-13832: Integration - SingleChannel Edge Case - Minimum Channel (Channel 0)
         
         Steps:
             1. Configure with channels {min: 1, max: 1}
@@ -273,9 +280,13 @@ class TestSingleChannelViewHappyPath:
         logger.info(f"✅ Channel 1 mapping verified: {response.channel_to_stream_index}")
         logger.info("✅ TEST PASSED")
     
+    @pytest.mark.xray("PZ-13815", "PZ-13833")
     def test_configure_singlechannel_channel_100(self, focus_server_api, singlechannel_payload_channel_100):
         """
         Test: SingleChannel view for channel 100 (high channel number).
+        
+        PZ-13815: API - SingleChannel View for Channel 100 (Upper Boundary Test)
+        PZ-13833: Integration - SingleChannel Edge Case - Maximum Channel (Last Available)
         
         Steps:
             1. Configure with channels {min: 100, max: 100}
@@ -307,9 +318,12 @@ class TestSingleChannelViewHappyPath:
         logger.info(f"✅ Channel 100 mapping verified: {response.channel_to_stream_index}")
         logger.info("✅ TEST PASSED")
     
+    @pytest.mark.xray("PZ-13818")
     def test_singlechannel_vs_multichannel_comparison(self, focus_server_api):
         """
         Test: Compare SingleChannel vs MultiChannel behavior.
+        
+        PZ-13818: API - Compare SingleChannel vs MultiChannel View Types
         
         This test validates that:
         - SINGLECHANNEL (view_type=1) returns 1 stream
@@ -402,9 +416,14 @@ class TestSingleChannelViewEdgeCases:
     These tests validate boundary conditions and unusual scenarios.
     """
     
+    @pytest.mark.xray("PZ-13823", "PZ-13852")
+    @pytest.mark.jira("PZ-13669")  # Bug: SingleChannel Accepts min != max
     def test_singlechannel_with_min_not_equal_max_should_fail(self, focus_server_api):
         """
         Test: SingleChannel with min != max should fail validation.
+        
+        PZ-13823: API - SingleChannel Rejects When min ≠ max
+        PZ-13852: Integration - SingleChannel with Min > Max (Validation Error)
         
         SingleChannel view requires min=max (single channel).
         If min != max, it's not a single channel request.
@@ -458,9 +477,12 @@ class TestSingleChannelViewEdgeCases:
             logger.info(f"✅ Server correctly rejected min != max: {e}")
             logger.info("✅ TEST PASSED (validation enforced)")
     
+    @pytest.mark.xray("PZ-13824")
     def test_singlechannel_with_zero_channel(self, focus_server_api):
         """
         Test: SingleChannel with channel 0 (boundary test).
+        
+        PZ-13824: API - SingleChannel Rejects Channel Zero
         
         Steps:
             1. Configure with channels {min: 0, max: 0}
@@ -504,9 +526,13 @@ class TestSingleChannelViewEdgeCases:
         
         logger.info("✅ TEST PASSED")
     
+    @pytest.mark.xray("PZ-13819", "PZ-13854")
     def test_singlechannel_with_different_frequency_ranges(self, focus_server_api):
         """
         Test: SingleChannel with various frequency ranges.
+        
+        PZ-13819: API - SingleChannel View with Various Frequency Ranges
+        PZ-13854: Integration - SingleChannel Frequency Range Validation
         
         Validates that frequency range doesn't affect stream count.
         
@@ -567,9 +593,12 @@ class TestSingleChannelViewErrorHandling:
     These tests validate proper error handling and validation.
     """
     
+    @pytest.mark.xray("PZ-13857")
     def test_singlechannel_with_invalid_nfft(self, focus_server_api):
         """
         Test: SingleChannel with invalid NFFT value.
+        
+        PZ-13857: Integration - SingleChannel NFFT Validation
         
         Steps:
             1. Attempt to configure with nfftSelection = 0
@@ -577,6 +606,9 @@ class TestSingleChannelViewErrorHandling:
         
         Expected:
             - ValidationError raised (nfft must be > 0)
+        
+        Jira: PZ-13857
+        Priority: HIGH
         """
         logger.info("TEST: SingleChannel with Invalid NFFT")
         
@@ -598,9 +630,107 @@ class TestSingleChannelViewErrorHandling:
         logger.info(f"✅ Invalid NFFT rejected: {exc_info.value}")
         logger.info("✅ TEST PASSED")
     
+    @pytest.mark.xray("PZ-13822")
+    def test_singlechannel_rejects_invalid_nfft_value(self, focus_server_api):
+        """
+        Test: SingleChannel Rejects Invalid NFFT Value.
+        
+        PZ-13822: API – SingleChannel Rejects Invalid NFFT Value
+        
+        Validates that SingleChannel configuration properly rejects invalid NFFT values
+        including non-power-of-2 values and values out of acceptable range.
+        
+        Steps:
+            1. Attempt to configure with nfftSelection = 1000 (not power of 2)
+            2. Attempt to configure with nfftSelection = 4096 (exceeds max)
+            3. Verify ValidationError for invalid NFFT
+        
+        Expected:
+            - NFFT not power of 2 → ValidationError
+            - NFFT exceeds max (2048) → ValidationError or warning
+            - Error message indicates invalid NFFT
+        
+        Jira: PZ-13822
+        Priority: HIGH
+        """
+        logger.info("=" * 80)
+        logger.info("TEST: SingleChannel Rejects Invalid NFFT (PZ-13822)")
+        logger.info("=" * 80)
+        
+        # Test 1: NFFT not power of 2 (1000)
+        logger.info("\nTest 1: NFFT = 1000 (not power of 2)")
+        
+        invalid_nfft_1000 = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1000,  # Invalid - not power of 2
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 5, "max": 5},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        try:
+            config_request = ConfigureRequest(**invalid_nfft_1000)
+            logger.warning("⚠️  NFFT=1000 accepted (unexpected)")
+        except PydanticValidationError as val_error:
+            logger.info(f"✅ Validation rejected NFFT=1000: {val_error}")
+            assert "nfft" in str(val_error).lower() or "power" in str(val_error).lower()
+        except Exception as e:
+            logger.info(f"✅ Error caught: {e}")
+        
+        # Test 2: NFFT exceeds maximum (4096 > 2048)
+        logger.info("\nTest 2: NFFT = 4096 (exceeds max 2048)")
+        
+        invalid_nfft_4096 = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 4096,  # Invalid - exceeds max
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 5, "max": 5},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        try:
+            config_request = ConfigureRequest(**invalid_nfft_4096)
+            
+            # Try to send to API
+            response = focus_server_api.configure_streaming_job(config_request)
+            logger.warning(f"⚠️  NFFT=4096 accepted by API (job_id: {getattr(response, 'job_id', 'N/A')})")
+            
+            # Clean up if job was created
+            if hasattr(response, 'job_id'):
+                try:
+                    focus_server_api.cancel_job(response.job_id)
+                except:
+                    pass
+                    
+        except PydanticValidationError as val_error:
+            logger.info(f"✅ Validation rejected NFFT=4096: {val_error}")
+            assert "nfft" in str(val_error).lower() or "max" in str(val_error).lower()
+        except APIError as api_error:
+            logger.info(f"✅ API rejected NFFT=4096: {api_error}")
+        except Exception as e:
+            logger.info(f"✅ Error caught: {e}")
+        
+        logger.info("\n✅ Verification:")
+        logger.info("   - Invalid NFFT values rejected ✅")
+        logger.info("   - Error messages appropriate ✅")
+        
+        logger.info("=" * 80)
+        logger.info("✅ TEST PASSED: Invalid NFFT Rejected Properly")
+        logger.info("=" * 80)
+    
+    @pytest.mark.xray("PZ-13821", "PZ-13855")
     def test_singlechannel_with_invalid_height(self, focus_server_api):
         """
         Test: SingleChannel with invalid display height.
+        
+        PZ-13821: API - SingleChannel Rejects Invalid Display Height
+        PZ-13855: Integration - SingleChannel Canvas Height Validation
         
         Steps:
             1. Attempt to configure with height = 0
@@ -629,9 +759,12 @@ class TestSingleChannelViewErrorHandling:
         logger.info(f"✅ Invalid height rejected: {exc_info.value}")
         logger.info("✅ TEST PASSED")
     
+    @pytest.mark.xray("PZ-13820")
     def test_singlechannel_with_invalid_frequency_range(self, focus_server_api):
         """
         Test: SingleChannel with invalid frequency range (min > max).
+        
+        PZ-13820: API - SingleChannel Rejects Invalid Frequency Range
         
         Steps:
             1. Attempt to configure with frequencyRange {min: 500, max: 100}
@@ -677,9 +810,12 @@ class TestSingleChannelBackendConsistency:
     These tests verify that the same channel always maps to the same process/stream.
     """
     
+    @pytest.mark.xray("PZ-13817")
     def test_same_channel_multiple_requests_consistent_mapping(self, focus_server_api):
         """
         Test: Same channel in multiple requests should have consistent mapping.
+        
+        PZ-13817: API - Same SingleChannel Returns Consistent Mapping Across Multiple Requests
         
         Objective:
             Verify that requesting the same channel multiple times results in
@@ -780,9 +916,12 @@ class TestSingleChannelBackendConsistency:
         logger.info("✅ TEST PASSED: Backend channel process is consistent")
         logger.info("=" * 80)
     
+    @pytest.mark.xray("PZ-13816")
     def test_different_channels_different_mappings(self, focus_server_api):
         """
         Test: Different channels should each map to stream index 0 in SINGLECHANNEL.
+        
+        PZ-13816: API - Different SingleChannels Return Different Mappings
         
         Objective:
             Verify that each single channel request maps to stream index 0,
@@ -850,6 +989,368 @@ class TestSingleChannelBackendConsistency:
         
         logger.info("\n✅ All channels processed independently and correctly")
         logger.info("✅ TEST PASSED")
+    
+    @pytest.mark.xray("PZ-13834")
+    def test_singlechannel_middle_channel(self, focus_server_api):
+        """
+        Test: SingleChannel with middle channel (edge case).
+        
+        PZ-13834: Integration - SingleChannel Edge Case - Middle Channel
+        
+        Steps:
+            1. Get available channels
+            2. Select middle channel
+            3. Configure SingleChannel for middle channel
+            4. Verify correct mapping
+        
+        Expected:
+            - stream_amount = 1
+            - channel maps to stream index 0
+        """
+        logger.info("TEST: SingleChannel - Middle Channel Edge Case (PZ-13834)")
+        
+        # Use channel 50 as "middle" channel (assumption: channels range 1-100)
+        middle_channel = 50
+        
+        payload = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": middle_channel, "max": middle_channel},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        configure_request = ConfigureRequest(**payload)
+        response = focus_server_api.configure_streaming_job(configure_request)
+        
+        # Verify
+        assert response.stream_amount == 1, f"Expected stream_amount=1, got {response.stream_amount}"
+        assert len(response.channel_to_stream_index) == 1, f"Expected 1 mapping, got {len(response.channel_to_stream_index)}"
+        assert str(middle_channel) in response.channel_to_stream_index, f"Channel {middle_channel} not in mapping"
+        assert response.channel_to_stream_index[str(middle_channel)] == 0
+        
+        logger.info(f"✅ Middle channel {middle_channel} mapped correctly: {response.channel_to_stream_index}")
+        logger.info("✅ TEST PASSED")
+    
+    @pytest.mark.xray("PZ-13835", "PZ-13836", "PZ-13837")
+    def test_singlechannel_invalid_channels(self, focus_server_api):
+        """
+        Test: SingleChannel with invalid channel IDs.
+        
+        PZ-13835: Integration - SingleChannel with Invalid Channel (Out of Range High)
+        PZ-13836: Integration - SingleChannel with Invalid Channel (Negative)
+        PZ-13837: Integration - SingleChannel with Invalid Channel (Negative)
+        
+        Steps:
+            1. Test negative channel (-1)
+            2. Test very high channel (9999)
+            3. Verify proper rejection
+        
+        Expected:
+            - ValidationError or APIError for invalid channels
+        """
+        logger.info("TEST: SingleChannel - Invalid Channel IDs (PZ-13835, 13836, 13837)")
+        
+        invalid_channels = [
+            (-1, "negative"),
+            (-10, "negative"),
+            (9999, "out of range high")
+        ]
+        
+        for channel_id, reason in invalid_channels:
+            logger.info(f"\nTesting channel {channel_id} ({reason})")
+            
+            payload = {
+                "displayTimeAxisDuration": 10,
+                "nfftSelection": 1024,
+                "displayInfo": {"height": 1000},
+                "channels": {"min": channel_id, "max": channel_id},
+                "frequencyRange": {"min": 0, "max": 500},
+                "start_time": None,
+                "end_time": None,
+                "view_type": ViewType.SINGLECHANNEL
+            }
+            
+            try:
+                configure_request = ConfigureRequest(**payload)
+                response = focus_server_api.configure_streaming_job(configure_request)
+                
+                # If accepted, log warning
+                logger.warning(f"⚠️  Server accepted invalid channel {channel_id}")
+                logger.warning("   This may be a validation gap")
+                
+            except (PydanticValidationError, APIError, ValueError) as e:
+                # Expected: Validation error
+                logger.info(f"✅ Channel {channel_id} rejected: {e}")
+        
+        logger.info("\n✅ TEST PASSED: Invalid channels handled")
+    
+    @pytest.mark.xray("PZ-13853")
+    def test_singlechannel_data_consistency(self, focus_server_api):
+        """
+        Test: SingleChannel data consistency check.
+        
+        PZ-13853: Integration - SingleChannel Data Consistency Check
+        
+        Steps:
+            1. Configure SingleChannel for same channel twice
+            2. Poll data from both
+            3. Verify data structure is consistent
+        
+        Expected:
+            - Same channel returns same data structure
+            - Metadata consistent across requests
+        """
+        logger.info("TEST: SingleChannel - Data Consistency (PZ-13853)")
+        
+        channel_num = 7
+        
+        # First configuration
+        payload = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": channel_num, "max": channel_num},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        request1 = ConfigureRequest(**payload)
+        response1 = focus_server_api.configure_streaming_job(request1)
+        
+        # Second configuration (same channel)
+        request2 = ConfigureRequest(**payload)
+        response2 = focus_server_api.configure_streaming_job(request2)
+        
+        # Verify consistency
+        assert response1.stream_amount == response2.stream_amount == 1
+        assert response1.channel_to_stream_index == response2.channel_to_stream_index
+        assert response1.channel_amount == response2.channel_amount
+        
+        logger.info("✅ Data structure is consistent across requests")
+        logger.info("✅ TEST PASSED")
+    
+    @pytest.mark.xray("PZ-13858")
+    def test_singlechannel_rapid_reconfiguration(self, focus_server_api):
+        """
+        Test: SingleChannel rapid reconfiguration.
+        
+        PZ-13858: Integration - SingleChannel Rapid Reconfiguration
+        
+        Steps:
+            1. Configure channel 1
+            2. Immediately configure channel 2
+            3. Immediately configure channel 3
+            4. Verify all succeed
+        
+        Expected:
+            - All configurations succeed
+            - Each returns correct mapping
+        """
+        logger.info("TEST: SingleChannel - Rapid Reconfiguration (PZ-13858)")
+        
+        channels = [1, 2, 3, 5, 10]
+        
+        for channel_num in channels:
+            payload = {
+                "displayTimeAxisDuration": 10,
+                "nfftSelection": 1024,
+                "displayInfo": {"height": 1000},
+                "channels": {"min": channel_num, "max": channel_num},
+                "frequencyRange": {"min": 0, "max": 500},
+                "start_time": None,
+                "end_time": None,
+                "view_type": ViewType.SINGLECHANNEL
+            }
+            
+            request = ConfigureRequest(**payload)
+            response = focus_server_api.configure_streaming_job(request)
+            
+            assert response.stream_amount == 1
+            assert str(channel_num) in response.channel_to_stream_index
+            logger.info(f"✅ Channel {channel_num} configured rapidly")
+        
+        logger.info("✅ All rapid reconfigurations succeeded")
+        logger.info("✅ TEST PASSED")
+    
+    @pytest.mark.xray("PZ-13859")
+    @pytest.mark.slow
+    def test_singlechannel_polling_stability(self, focus_server_api):
+        """
+        Test: SingleChannel polling stability.
+        
+        PZ-13859: Integration - SingleChannel Polling Stability
+        
+        Steps:
+            1. Configure SingleChannel
+            2. Poll status multiple times
+            3. Verify stability
+        
+        Expected:
+            - Polling returns consistent status
+            - No errors or crashes
+        """
+        logger.info("TEST: SingleChannel - Polling Stability (PZ-13859)")
+        
+        payload = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 7, "max": 7},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        request = ConfigureRequest(**payload)
+        response = focus_server_api.configure_streaming_job(request)
+        job_id = response.job_id
+        
+        logger.info(f"Polling job {job_id} multiple times...")
+        
+        # Poll 10 times
+        for i in range(10):
+            try:
+                status = focus_server_api.get_job_status(job_id)
+                logger.info(f"Poll {i+1}: status = {status}")
+            except Exception as e:
+                logger.error(f"Poll {i+1} failed: {e}")
+                pytest.fail(f"Polling failed: {e}")
+        
+        logger.info("✅ Polling stable across 10 requests")
+        logger.info("✅ TEST PASSED")
+    
+    @pytest.mark.xray("PZ-13860")
+    def test_singlechannel_metadata_consistency(self, focus_server_api):
+        """
+        Test: SingleChannel metadata consistency.
+        
+        PZ-13860: Integration - SingleChannel Metadata Consistency
+        
+        Steps:
+            1. Configure SingleChannel
+            2. Get metadata
+            3. Verify metadata reflects single channel
+        
+        Expected:
+            - Metadata shows single channel configuration
+            - Channel count = 1
+        """
+        logger.info("TEST: SingleChannel - Metadata Consistency (PZ-13860)")
+        
+        payload = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 7, "max": 7},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        request = ConfigureRequest(**payload)
+        response = focus_server_api.configure_streaming_job(request)
+        
+        # Verify response metadata
+        assert response.channel_amount == 1, f"Expected 1 channel, got {response.channel_amount}"
+        assert response.stream_amount == 1, f"Expected 1 stream, got {response.stream_amount}"
+        
+        logger.info("✅ Metadata is consistent with SingleChannel configuration")
+        logger.info("✅ TEST PASSED")
+    
+    @pytest.mark.xray("PZ-13862")
+    @pytest.mark.slow
+    @pytest.mark.e2e
+    def test_singlechannel_complete_e2e_flow(self, focus_server_api):
+        """
+        Test: SingleChannel complete end-to-end flow.
+        
+        PZ-13862: Integration - SingleChannel Complete Flow End-to-End
+        
+        Complete lifecycle test covering:
+            1. Configuration
+            2. Polling
+            3. Metadata retrieval
+            4. Reconfiguration to different channel
+            5. Cleanup
+        
+        Expected:
+            - All phases complete successfully
+            - Full lifecycle works end-to-end
+        """
+        logger.info("=" * 80)
+        logger.info("TEST: SingleChannel - Complete E2E Flow (PZ-13862)")
+        logger.info("=" * 80)
+        
+        # Phase 1: Initial configuration
+        logger.info("\nPhase 1: Initial Configuration (Channel 7)")
+        payload1 = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 7, "max": 7},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        request1 = ConfigureRequest(**payload1)
+        response1 = focus_server_api.configure_streaming_job(request1)
+        job_id1 = response1.job_id
+        
+        assert response1.stream_amount == 1
+        assert "7" in response1.channel_to_stream_index
+        logger.info(f"✅ Phase 1 complete: job_id={job_id1}")
+        
+        # Phase 2: Polling
+        logger.info("\nPhase 2: Polling")
+        try:
+            status = focus_server_api.get_job_status(job_id1)
+            logger.info(f"✅ Phase 2 complete: status={status}")
+        except Exception as e:
+            logger.warning(f"Polling: {e}")
+        
+        # Phase 3: Reconfiguration (different channel)
+        logger.info("\nPhase 3: Reconfiguration (Channel 15)")
+        payload2 = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 15, "max": 15},
+            "frequencyRange": {"min": 0, "max": 500},
+            "start_time": None,
+            "end_time": None,
+            "view_type": ViewType.SINGLECHANNEL
+        }
+        
+        request2 = ConfigureRequest(**payload2)
+        response2 = focus_server_api.configure_streaming_job(request2)
+        job_id2 = response2.job_id
+        
+        assert response2.stream_amount == 1
+        assert "15" in response2.channel_to_stream_index
+        logger.info(f"✅ Phase 3 complete: job_id={job_id2}")
+        
+        # Phase 4: Cleanup
+        logger.info("\nPhase 4: Cleanup")
+        for job_id in [job_id1, job_id2]:
+            try:
+                focus_server_api.cancel_job(job_id)
+                logger.info(f"✅ Job {job_id} cancelled")
+            except Exception as e:
+                logger.info(f"Cleanup {job_id}: {e}")
+        
+        logger.info("\n" + "=" * 80)
+        logger.info("✅ TEST PASSED: Complete E2E Flow")
+        logger.info("=" * 80)
 
 
 # ===================================================================

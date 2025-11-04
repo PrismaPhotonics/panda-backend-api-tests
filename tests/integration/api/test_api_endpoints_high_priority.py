@@ -37,9 +37,14 @@ class TestChannelsEndpoint:
     This is a critical smoke test for basic API functionality.
     """
     
+    @pytest.mark.xray("PZ-13895", "PZ-13762", "PZ-13560")
     def test_get_channels_endpoint_success(self, focus_server_api):
         """
         Test PZ-13419.1: GET /channels returns enabled channels list.
+        
+        PZ-13895: Integration - GET /channels - Enabled Channels List
+        PZ-13762: API - GET /channels - Returns System Channel Bounds
+        PZ-13560: API - GET /channels (baseline availability)
         
         Steps:
             1. Send GET /channels request
@@ -63,24 +68,31 @@ class TestChannelsEndpoint:
         
         # Assertions - basic response
         assert response is not None, "Response should not be None"
-        assert hasattr(response, 'status_code') or hasattr(response, 'channels'), \
-            "Response should have status_code or channels"
+        
+        # Response is ChannelRange object with lowest_channel and highest_channel
+        assert hasattr(response, 'lowest_channel') or hasattr(response, 'highest_channel') or \
+               hasattr(response, 'status_code') or hasattr(response, 'channels'), \
+            f"Response should have channel fields. Got: {response}"
         
         # Get status code
         if hasattr(response, 'status_code'):
             assert response.status_code == 200, \
                 f"Expected status code 200, got {response.status_code}"
         
-        # Get channels list
+        # Get channels - response may be ChannelRange object
         channels = None
-        if hasattr(response, 'channels'):
+        if hasattr(response, 'lowest_channel') and hasattr(response, 'highest_channel'):
+            # ChannelRange object - generate list from range
+            channels = list(range(response.lowest_channel, response.highest_channel + 1))
+            logger.info(f"✅ ChannelRange: {response.lowest_channel} - {response.highest_channel}")
+        elif hasattr(response, 'channels'):
             channels = response.channels
         elif hasattr(response, 'data'):
             channels = response.data
         elif isinstance(response, list):
             channels = response
         
-        assert channels is not None, "Channels list should not be None"
+        assert channels is not None, f"Could not extract channels from response: {response}"
         assert isinstance(channels, list), \
             f"Channels should be a list, got {type(channels)}"
         
@@ -110,9 +122,12 @@ class TestChannelsEndpoint:
         
         logger.info("✅ All channels have valid structure")
     
+    @pytest.mark.xray("PZ-13896")
     def test_get_channels_endpoint_response_time(self, focus_server_api):
         """
         Test PZ-13419.2: GET /channels response time.
+        
+        PZ-13896: API - GET /channels - Response Time < 1 Second
         
         Steps:
             1. Measure response time for GET /channels
@@ -146,9 +161,12 @@ class TestChannelsEndpoint:
         
         logger.info(f"✅ Response time {response_time_ms:.2f}ms is acceptable")
     
+    @pytest.mark.xray("PZ-13897")
     def test_get_channels_endpoint_multiple_calls_consistency(self, focus_server_api):
         """
         Test PZ-13419.3: GET /channels returns consistent results.
+        
+        PZ-13897: API - GET /channels - Multiple Calls Consistency
         
         Steps:
             1. Call GET /channels multiple times
@@ -168,8 +186,10 @@ class TestChannelsEndpoint:
         for i in range(3):
             response = focus_server_api.get_channels()
             
-            # Extract channels list
-            if hasattr(response, 'channels'):
+            # Extract channels list - may be ChannelRange object
+            if hasattr(response, 'lowest_channel') and hasattr(response, 'highest_channel'):
+                channels = list(range(response.lowest_channel, response.highest_channel + 1))
+            elif hasattr(response, 'channels'):
                 channels = response.channels
             elif hasattr(response, 'data'):
                 channels = response.data
@@ -194,9 +214,12 @@ class TestChannelsEndpoint:
         else:
             logger.info("ℹ️ Channel order varies between calls (may be expected)")
     
+    @pytest.mark.xray("PZ-13898")
     def test_get_channels_endpoint_channel_ids_sequential(self, focus_server_api):
         """
         Test PZ-13419.4: Verify channel IDs are reasonable.
+        
+        PZ-13898: API - GET /channels - Channel IDs Validation
         
         Steps:
             1. Get channels list
@@ -262,9 +285,12 @@ class TestChannelsEndpoint:
         
         logger.info(f"✅ All {len(channel_ids)} channel IDs are valid (non-negative, < {MAX_CHANNEL_ID})")
     
+    @pytest.mark.xray("PZ-13899")
     def test_get_channels_endpoint_enabled_status(self, focus_server_api):
         """
         Test PZ-13419.5: Verify enabled/disabled status if present.
+        
+        PZ-13899: API - GET /channels - Enabled Status Verification
         
         Steps:
             1. Get channels list
