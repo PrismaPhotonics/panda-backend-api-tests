@@ -43,6 +43,7 @@ class TestMongoDBRecovery:
     """
     
     @pytest.mark.xray("PZ-13687")
+    @pytest.mark.xray("PZ-13810")
     def test_mongodb_recovery_recordings_indexed_after_outage(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13687: MongoDB Recovery - Recordings Indexed After Outage.

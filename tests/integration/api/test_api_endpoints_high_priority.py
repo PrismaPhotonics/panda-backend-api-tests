@@ -123,6 +123,7 @@ class TestChannelsEndpoint:
         logger.info("✅ All channels have valid structure")
     
     @pytest.mark.xray("PZ-13896")
+    @pytest.mark.xray("PZ-14790")
     def test_get_channels_endpoint_response_time(self, focus_server_api):
         """
         Test PZ-13419.2: GET /channels response time.
@@ -162,6 +163,7 @@ class TestChannelsEndpoint:
         logger.info(f"✅ Response time {response_time_ms:.2f}ms is acceptable")
     
     @pytest.mark.xray("PZ-13897")
+    @pytest.mark.xray("PZ-14809")
     def test_get_channels_endpoint_multiple_calls_consistency(self, focus_server_api):
         """
         Test PZ-13419.3: GET /channels returns consistent results.
@@ -215,6 +217,7 @@ class TestChannelsEndpoint:
             logger.info("ℹ️ Channel order varies between calls (may be expected)")
     
     @pytest.mark.xray("PZ-13898")
+    @pytest.mark.xray("PZ-13762")
     def test_get_channels_endpoint_channel_ids_sequential(self, focus_server_api):
         """
         Test PZ-13419.4: Verify channel IDs are reasonable.
@@ -286,6 +289,7 @@ class TestChannelsEndpoint:
         logger.info(f"✅ All {len(channel_ids)} channel IDs are valid (non-negative, < {MAX_CHANNEL_ID})")
     
     @pytest.mark.xray("PZ-13899")
+    @pytest.mark.xray("PZ-13895")
     def test_get_channels_endpoint_enabled_status(self, focus_server_api):
         """
         Test PZ-13419.5: Verify enabled/disabled status if present.

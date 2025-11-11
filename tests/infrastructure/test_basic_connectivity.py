@@ -50,9 +50,12 @@ logger = logging.getLogger(__name__)
 @pytest.mark.connectivity
 @pytest.mark.mongodb
 @pytest.mark.skipif(not PYMONGO_AVAILABLE, reason="pymongo not installed")
+@pytest.mark.xray("PZ-13898")
 def test_mongodb_direct_connection(current_env):
     """
     Test direct MongoDB connection without Kubernetes dependency.
+    
+    PZ-13898: Infrastructure - MongoDB Direct Connection and Health Check
     
     Args:
         current_env: Current test environment
@@ -128,9 +131,12 @@ def test_mongodb_direct_connection(current_env):
 @pytest.mark.connectivity
 @pytest.mark.kubernetes
 @pytest.mark.skipif(not K8S_AVAILABLE, reason="kubernetes client not installed")
+@pytest.mark.xray("PZ-13899")
 def test_kubernetes_direct_connection():
     """
     Test direct Kubernetes connection.
+    
+    PZ-13899: Infrastructure - Kubernetes Cluster Connection and Pod Health Check
     
     Verification:
     - Kubernetes API accessibility
@@ -230,9 +236,12 @@ def test_kubernetes_direct_connection():
 @pytest.mark.connectivity
 @pytest.mark.ssh
 @pytest.mark.skipif(not SSH_AVAILABLE, reason="paramiko not installed")
+@pytest.mark.xray("PZ-13900")
 def test_ssh_direct_connection(current_env):
     """
     Test direct SSH connection to k9s environment.
+    
+    PZ-13900: Infrastructure - SSH Access to Production Servers
     
     Args:
         current_env: Current test environment

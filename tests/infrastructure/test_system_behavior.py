@@ -47,6 +47,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.infrastructure
 @pytest.mark.startup
 @pytest.mark.critical
+@pytest.mark.xray("PZ-13873")
 class TestFocusServerCleanStartup:
     """
     Test Suite: Focus Server Clean Startup
@@ -63,7 +64,8 @@ class TestFocusServerCleanStartup:
     
     def test_focus_server_clean_startup(
         self,
-        focus_server_api: FocusServerAPI
+        focus_server_api: FocusServerAPI,
+        skip_if_waiting_for_fiber
     ):
         """
         Test: Focus Server Clean Startup
@@ -211,6 +213,7 @@ class TestFocusServerCleanStartup:
 @pytest.mark.stability
 @pytest.mark.slow
 @pytest.mark.skip(reason="Very long test (1 hour) - run manually")
+    @pytest.mark.xray("PZ-13873")
 class TestFocusServerStability:
     """
     Test Suite: Focus Server Stability Over Time
@@ -433,6 +436,7 @@ class TestFocusServerStability:
 @pytest.mark.infrastructure
 @pytest.mark.error_handling
 @pytest.mark.critical
+    @pytest.mark.xray("PZ-13873")
 class TestPredictableErrorNoData:
     """
     Test Suite: Predictable Error Handling - No Data
@@ -542,6 +546,7 @@ class TestPredictableErrorNoData:
 
 @pytest.mark.infrastructure
 @pytest.mark.error_handling
+    @pytest.mark.xray("PZ-13873")
 class TestPredictableErrorPortInUse:
     """
     Test Suite: Predictable Error Handling - Port in Use
@@ -553,7 +558,8 @@ class TestPredictableErrorPortInUse:
     
     def test_predictable_error_port_in_use(
         self,
-        focus_server_api: FocusServerAPI
+        focus_server_api: FocusServerAPI,
+        skip_if_waiting_for_fiber
     ):
         """
         Test: Predictable Error Handling - Port in Use
@@ -635,6 +641,7 @@ class TestPredictableErrorPortInUse:
 @pytest.mark.infrastructure
 @pytest.mark.rollback
 @pytest.mark.critical
+    @pytest.mark.xray("PZ-13873")
 class TestProperRollback:
     """
     Test Suite: Proper Rollback on Job Creation Failure
@@ -646,7 +653,8 @@ class TestProperRollback:
     
     def test_proper_rollback_on_job_creation_failure(
         self,
-        focus_server_api: FocusServerAPI
+        focus_server_api: FocusServerAPI,
+        skip_if_waiting_for_fiber
     ):
         """
         Test: Proper Rollback on Failure

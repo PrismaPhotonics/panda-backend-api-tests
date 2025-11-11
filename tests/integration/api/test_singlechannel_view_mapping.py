@@ -123,6 +123,7 @@ class TestSingleChannelViewHappyPath:
     """
     
     @pytest.mark.xray("PZ-13861")
+    @pytest.mark.xray("PZ-13862")
     def test_configure_singlechannel_mapping(self, focus_server_api, singlechannel_payload_channel_7):
         """
         Test: SingleChannel view returns exactly one stream with correct 1:1 mapping.
@@ -243,6 +244,7 @@ class TestSingleChannelViewHappyPath:
         logger.info("✅ TEST PASSED: SingleChannel mapping validated successfully")
     
     @pytest.mark.xray("PZ-13814", "PZ-13832")
+    @pytest.mark.xray("PZ-13814")
     def test_configure_singlechannel_channel_1(self, focus_server_api, singlechannel_payload_channel_1):
         """
         Test: SingleChannel view for channel 1 (first channel).
@@ -478,6 +480,7 @@ class TestSingleChannelViewEdgeCases:
             logger.info("✅ TEST PASSED (validation enforced)")
     
     @pytest.mark.xray("PZ-13824")
+    @pytest.mark.xray("PZ-13836")
     def test_singlechannel_with_zero_channel(self, focus_server_api):
         """
         Test: SingleChannel with channel 0 (boundary test).
@@ -991,6 +994,7 @@ class TestSingleChannelBackendConsistency:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13834")
+    @pytest.mark.xray("PZ-13819")
     def test_singlechannel_middle_channel(self, focus_server_api):
         """
         Test: SingleChannel with middle channel (edge case).
@@ -1268,6 +1272,7 @@ class TestSingleChannelBackendConsistency:
     @pytest.mark.xray("PZ-13862")
     @pytest.mark.slow
     @pytest.mark.e2e
+    @pytest.mark.xray("PZ-13873")
     def test_singlechannel_complete_e2e_flow(self, focus_server_api):
         """
         Test: SingleChannel complete end-to-end flow.

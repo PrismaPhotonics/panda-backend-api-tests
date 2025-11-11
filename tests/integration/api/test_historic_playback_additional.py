@@ -51,6 +51,7 @@ class TestHistoricPlaybackEdgeCases:
     """
     
     @pytest.mark.xray("PZ-14101", "PZ-13865")
+    @pytest.mark.xray("PZ-14101")
     def test_historic_playback_short_duration_1_minute(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13864, PZ-13865: Historic playback with short duration (1 minute).
@@ -390,6 +391,7 @@ class TestHistoricPlaybackDataQuality:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13870")
+    @pytest.mark.xray("PZ-13984")
     def test_historic_playback_future_timestamps_rejection(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13870: Historic playback with future timestamps should be rejected.

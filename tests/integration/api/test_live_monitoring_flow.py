@@ -114,6 +114,7 @@ class TestLiveMonitoringCore:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-13785")
+    @pytest.mark.xray("PZ-13786")
     def test_live_monitoring_sensor_data_availability(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13785: Live Monitoring - Sensor Data Availability.
@@ -172,6 +173,7 @@ class TestLiveMonitoringCore:
     
     @pytest.mark.xray("PZ-13786")
     @pytest.mark.jira("PZ-13985")  # Bug: Live Metadata Missing Required Fields
+    @pytest.mark.xray("PZ-13561")
     def test_live_monitoring_get_metadata(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13786: Live Monitoring - GET /metadata.

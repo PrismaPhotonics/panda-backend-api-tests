@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.integration
 @pytest.mark.infrastructure
 @pytest.mark.pz
+@pytest.mark.xray("PZ-13873")
 def test_pz_repository_available(pz_integration):
     """
     Test that PZ repository is available and accessible.
@@ -59,6 +60,7 @@ def test_pz_repository_available(pz_integration):
 @pytest.mark.integration
 @pytest.mark.infrastructure
 @pytest.mark.pz
+@pytest.mark.xray("PZ-13873")
 def test_pz_microservices_listing(pz_integration):
     """
     Test that we can list all available microservices in PZ.
@@ -128,6 +130,7 @@ def test_pz_microservices_listing(pz_integration):
 @pytest.mark.integration
 @pytest.mark.infrastructure
 @pytest.mark.pz
+@pytest.mark.xray("PZ-13873")
 def test_pz_focus_server_access(pz_integration):
     """
     Test that we can access Focus Server microservice specifically.
@@ -182,6 +185,7 @@ def test_pz_focus_server_access(pz_integration):
 @pytest.mark.integration
 @pytest.mark.infrastructure
 @pytest.mark.pz
+@pytest.mark.xray("PZ-13873")
 def test_pz_version_info(pz_integration):
     """
     Test that we can retrieve PZ repository version information.
@@ -223,6 +227,7 @@ def test_pz_version_info(pz_integration):
 @pytest.mark.infrastructure
 @pytest.mark.pz
 @pytest.mark.slow
+@pytest.mark.xray("PZ-13873")
 def test_pz_import_capability(pz_integration):
     """
     Test that we can dynamically import modules from PZ repository.

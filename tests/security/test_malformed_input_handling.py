@@ -42,6 +42,7 @@ class TestMalformedInputHandling:
     """
     
     @pytest.mark.xray("PZ-13572", "PZ-13769")
+    @pytest.mark.xray("PZ-13572")
     def test_robustness_to_malformed_inputs(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13572, PZ-13769: Security - Robustness to Malformed Inputs.

@@ -617,9 +617,12 @@ class TestInvalidRanges:
             logger.info(f"✅ Pydantic validation rejects min==max: {e}")
             assert ">" in str(e).lower() or "frequency" in str(e).lower() or "max" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13878")
     def test_channel_range_equal_min_max(self, focus_server_api, valid_config_payload):
         """
-        Test PZ-13876.2: channels where min == max (edge case).
+        Test PZ-13878: channels where min == max (edge case).
+        
+        PZ-13878: Integration – Invalid View Type - Out of Range
         
         Steps:
             1. Create config with channels.min == channels.max
@@ -1128,9 +1131,12 @@ class TestHistoricModeValidation:
     Priority: HIGH
     """
     
+    @pytest.mark.xray("PZ-13548")
     def test_historic_mode_valid_configuration(self, focus_server_api, valid_historic_config_payload):
         """
         Test: Valid Historic Mode configuration.
+        
+        PZ-13548: API – Historical configure (happy path)
         
         Steps:
             1. Create config with start_time and end_time (both epochs)
@@ -1171,9 +1177,12 @@ class TestHistoricModeValidation:
                 # Other errors are unexpected
                 raise
     
+    @pytest.mark.xray("PZ-13552")
     def test_historic_mode_with_equal_times(self, focus_server_api, valid_historic_config_payload):
         """
         Test: Historic Mode with start_time == end_time.
+        
+        PZ-13552: API – Invalid time range (negative)
         
         Steps:
             1. Create config with start_time == end_time
@@ -1210,9 +1219,12 @@ class TestHistoricModeValidation:
     
     # REMOVED: test_historic_mode_with_inverted_range - duplicate of test_prelaunch_validations.py::test_time_range_validation_reversed_range
     
+    @pytest.mark.xray("PZ-13552")
     def test_historic_mode_with_negative_time(self, focus_server_api, valid_historic_config_payload):
         """
         Test: Historic Mode with negative timestamp.
+        
+        PZ-13552: API – Invalid time range (negative)
         
         Steps:
             1. Create config with start_time < 0
@@ -1266,6 +1278,7 @@ class TestInvalidCanvasInfo_Requirements:
     """
     
     @pytest.mark.xfail(reason="Server does not validate negative height (BUG)", strict=False)
+    @pytest.mark.xray("PZ-13878")
     def test_requirement_negative_height_must_be_rejected(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject negative height with 400 Bad Request.
@@ -1304,6 +1317,7 @@ class TestInvalidCanvasInfo_Requirements:
         logger.info("✅ REQUIREMENT: Negative height properly rejected")
     
     @pytest.mark.xfail(reason="Server does not validate zero height (BUG)", strict=False)
+    @pytest.mark.xray("PZ-13878")
     def test_requirement_zero_height_must_be_rejected(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject zero height with 400 Bad Request.
@@ -1359,6 +1373,7 @@ class TestNFFT_Requirements:
     """
     
     @pytest.mark.xfail(reason="Server does not validate NFFT power of 2 (BUG)", strict=False)
+    @pytest.mark.xray("PZ-13873")
     def test_requirement_nfft_must_be_power_of_2(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject NFFT values that are not power of 2.
@@ -1399,6 +1414,7 @@ class TestNFFT_Requirements:
         logger.info("✅ REQUIREMENT: NFFT not power of 2 properly rejected")
     
     @pytest.mark.xfail(reason="Server does not enforce NFFT max=2048 (BUG)", strict=False)
+    @pytest.mark.xray("PZ-13873")
     def test_requirement_nfft_max_2048(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject NFFT > 2048.
@@ -1455,6 +1471,7 @@ class TestModeValidation_Requirements:
     """
     
     @pytest.mark.xfail(reason="Server does not validate ambiguous mode (only start_time)", strict=False)
+    @pytest.mark.xray("PZ-13552")
     def test_requirement_reject_only_start_time(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject configs with only start_time.
@@ -1493,6 +1510,7 @@ class TestModeValidation_Requirements:
         logger.info("✅ REQUIREMENT: Ambiguous mode (only start) properly rejected")
     
     @pytest.mark.xfail(reason="Server does not validate ambiguous mode (only end_time)", strict=False)
+    @pytest.mark.xray("PZ-13552")
     def test_requirement_reject_only_end_time(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject configs with only end_time.
@@ -1549,6 +1567,7 @@ class TestFrequencyValidation_Requirements:
     """
     
     @pytest.mark.xfail(reason="Server does not validate frequency vs Nyquist limit (BUG)", strict=False)
+    @pytest.mark.xray("PZ-13555")
     def test_requirement_frequency_must_not_exceed_nyquist(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject frequencies exceeding Nyquist limit.

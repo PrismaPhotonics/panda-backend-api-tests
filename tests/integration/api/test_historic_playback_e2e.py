@@ -48,6 +48,7 @@ class TestHistoricPlaybackCompleteE2E:
     
     @pytest.mark.xray("PZ-13872")
     @pytest.mark.slow
+    @pytest.mark.xray("PZ-14101")
     def test_historic_playback_complete_e2e_flow(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13872: Historic Playback Complete End-to-End Flow.

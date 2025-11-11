@@ -148,6 +148,7 @@ class TestOrchestrationValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14019")
+    @pytest.mark.xray("PZ-13552")
     def test_history_with_empty_window_returns_400_no_side_effects(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14019: History with Empty Time Window Returns 400 and No Side Effects.

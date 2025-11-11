@@ -69,7 +69,7 @@ class TestExtremeConfigurationValues:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 8192,  # Very high NFFT
             "displayInfo": {"height": 5000},  # Very tall canvas
-            "channels": {"min": 0, "max": 200},  # Many channels
+            "channels": {"min": 1, "max": 200},  # Many channels (min must be >= 1 per Pydantic validation)
             "frequencyRange": {"min": 0, "max": 1000},  # Wide frequency
             "start_time": None,
             "end_time": None,

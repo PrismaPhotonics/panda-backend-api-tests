@@ -44,6 +44,7 @@ class TestLiveStreamingStability:
     """
     
     @pytest.mark.xray("PZ-13800")
+    @pytest.mark.xray("PZ-13570")
     def test_live_streaming_stability(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13800: Live Streaming Stability.

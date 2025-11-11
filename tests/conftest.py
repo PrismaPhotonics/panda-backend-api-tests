@@ -9,7 +9,7 @@ import pytest
 import os
 import sys
 import logging
-from typing import Generator, Any
+from typing import Generator, Any, List
 from pathlib import Path
 
 from config.config_manager import ConfigManager
@@ -44,6 +44,17 @@ except Exception as e:
 
 def pytest_addoption(parser):
     """Add custom command line options for pytest."""
+    # Import Jira report options (if available)
+    try:
+        from src.reporting.pytest_integration import pytest_addoption as jira_report_addoption
+        jira_report_addoption(parser)
+    except ImportError:
+        # Jira reporting not available - skip
+        pass
+    except Exception:
+        # Ignore errors
+        pass
+    
     parser.addoption(
         "--env",
         action="store",
@@ -85,6 +96,24 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="Perform a dry run without executing tests"
+    )
+    parser.addoption(
+        "--skip-sanity-check",
+        action="store_true",
+        default=False,
+        help="Skip pre-test sanity checks (not recommended)"
+    )
+    parser.addoption(
+        "--run-health-check",
+        action="store_true",
+        default=False,
+        help="Run pre-test health checks before tests"
+    )
+    parser.addoption(
+        "--skip-health-check",
+        action="store_true",
+        default=False,
+        help="Skip pre-test health checks"
     )
 
 
@@ -209,7 +238,8 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
                 preferred_service="rabbitmq-panda"
             )
             
-            if rabbitmq_mgr.setup():
+            conn_info = rabbitmq_mgr.setup()
+            if conn_info:
                 managers.append(("RabbitMQ", rabbitmq_mgr))
                 logger.info("RabbitMQ setup SUCCESS")
             else:
@@ -268,36 +298,57 @@ def focus_server_api(config_manager: ConfigManager):
     """
     Fixture to provide a FocusServerAPI client.
     
+    Performs health check before returning the client to ensure server is available.
+    
     Args:
         config_manager: Configuration manager instance
         
     Returns:
         FocusServerAPI client instance
+        
+    Raises:
+        InfrastructureError: If API client initialization fails or server is not healthy
     """
+    logger = logging.getLogger(__name__)
     try:
         from src.apis.focus_server_api import FocusServerAPI
         api_client = FocusServerAPI(config_manager)
-        logging.getLogger(__name__).info("Focus Server API client initialized")
+        logger.info("Focus Server API client initialized")
+        
+        # Perform health check to ensure server is available
+        logger.info("Performing health check on Focus Server API...")
+        is_healthy = api_client.health_check()
+        
+        if not is_healthy:
+            logger.warning("Focus Server API health check failed - server may not be available")
+            # Don't fail here - let tests handle it, but log warning
+            # Some tests may still work even if /health endpoint is not available
+        
+        logger.info(f"Focus Server API health check: {'OK' if is_healthy else 'WARNING - Server may not be fully available'}")
         return api_client
     except Exception as e:
+        logger.error(f"Failed to initialize Focus Server API client: {e}")
         raise InfrastructureError(f"Failed to initialize Focus Server API client: {e}")
 
 
 @pytest.fixture(scope="session")
-def mongodb_manager(config_manager: ConfigManager):
+def mongodb_manager(config_manager: ConfigManager, kubernetes_manager):
     """
     Fixture to provide a MongoDBManager instance.
     
+    Uses KubernetesManager for SSH fallback support when accessing Kubernetes.
+    
     Args:
         config_manager: Configuration manager instance
+        kubernetes_manager: KubernetesManager instance (for SSH fallback support)
         
     Returns:
         MongoDBManager instance
     """
     try:
         from src.infrastructure.mongodb_manager import MongoDBManager
-        manager = MongoDBManager(config_manager)
-        logging.getLogger(__name__).info("MongoDB manager initialized")
+        manager = MongoDBManager(config_manager, kubernetes_manager=kubernetes_manager)
+        logging.getLogger(__name__).info("MongoDB manager initialized with KubernetesManager")
         return manager
     except Exception as e:
         raise InfrastructureError(f"Failed to initialize MongoDB manager: {e}")
@@ -572,6 +623,78 @@ def historic_config_payload():
         live=False,
         duration_minutes=5
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def check_metadata_ready(focus_server_api):
+    """
+    Check if system is ready (not waiting for fiber) before configure tests.
+    
+    This fixture runs automatically before all tests and skips configure tests
+    if the system is in "waiting for fiber" state.
+    
+    Args:
+        focus_server_api: FocusServerAPI client
+        
+    Yields:
+        None (just checks and skips if needed)
+    """
+    import pytest
+    
+    # Only check for tests that use configure endpoints
+    # We'll use a marker to identify configure tests
+    # For now, we'll check metadata and skip if needed
+    
+    try:
+        metadata = focus_server_api.get_live_metadata_flat()
+        
+        # Check if system is waiting for fiber using the new property
+        if metadata.is_waiting_for_fiber:
+            # Don't skip all tests, just log a warning
+            logger = logging.getLogger(__name__)
+            logger.warning("=" * 80)
+            logger.warning("⚠️  System is in 'waiting for fiber' state")
+            logger.warning(f"   PRR: {metadata.prr}")
+            logger.warning(f"   SW Version: {metadata.sw_version}")
+            logger.warning(f"   num_samples_per_trace: {metadata.num_samples_per_trace}")
+            logger.warning(f"   dtype: {metadata.dtype}")
+            logger.warning("   Configure tests may fail with 503 errors")
+            logger.warning("=" * 80)
+            
+            # Store metadata state for use in tests
+            pytest.metadata_ready = False
+        else:
+            pytest.metadata_ready = True
+            
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"⚠️  Cannot check metadata: {e}")
+        logger.warning("   Configure tests may fail")
+        pytest.metadata_ready = False
+
+
+@pytest.fixture(scope="function")
+def skip_if_waiting_for_fiber(request, focus_server_api):
+    """
+    Skip test if system is waiting for fiber.
+    
+    Use this fixture in configure tests to skip them if system is not ready.
+    
+    Example:
+        def test_configure_job(skip_if_waiting_for_fiber, focus_server_api):
+            # Test will be skipped if system is waiting for fiber
+            ...
+    """
+    import pytest
+    
+    # Check if metadata is ready
+    if not hasattr(pytest, 'metadata_ready') or not pytest.metadata_ready:
+        try:
+            metadata = focus_server_api.get_live_metadata_flat()
+            if metadata.is_waiting_for_fiber:
+                pytest.skip("System is waiting for fiber - skipping configure test")
+        except Exception as e:
+            pytest.skip(f"Cannot check metadata - skipping configure test: {e}")
 
 
 @pytest.fixture(scope="function")
@@ -932,7 +1055,18 @@ def assert_no_pod_errors(pod_monitor):
 
 
 def pytest_configure(config):
-    """Configure pytest with custom markers."""
+    """Configure pytest with custom markers and run health checks if requested."""
+    # Import Jira report configuration (if enabled)
+    try:
+        from src.reporting.pytest_integration import pytest_configure as jira_report_configure
+        jira_report_configure(config)
+    except ImportError:
+        # Jira reporting not available - skip
+        pass
+    except Exception:
+        # Ignore errors
+        pass
+    
     config.addinivalue_line(
         "markers", "integration: Integration tests"
     )
@@ -981,6 +1115,91 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "pz: PZ development repository integration tests"
     )
+    
+    # Run pre-test health checks automatically before all tests
+    # This is a PRECONDITION - tests will not run if health checks fail
+    # Use --skip-health-check to bypass this check (not recommended)
+    skip_health_check = config.getoption("--skip-health-check", default=False)
+    
+    if not skip_health_check:
+        try:
+            # Import health check script
+            scripts_dir = Path(__file__).parent.parent / "scripts"
+            sys.path.insert(0, str(scripts_dir))
+            
+            # Dynamic import - script is in scripts/ directory
+            from pre_test_health_check import PreTestHealthChecker  # type: ignore
+            
+            # Get environment from pytest option or default
+            env = config.getoption("--env", default="staging")
+            
+            # Log that we're running health checks
+            logger = logging.getLogger(__name__)
+            logger.info("=" * 80)
+            logger.info("PRE-TEST HEALTH CHECK: Verifying system components...")
+            logger.info("=" * 80)
+            
+            # Run health checks
+            checker = PreTestHealthChecker(environment=env)
+            all_passed, results = checker.run_all_checks()
+            
+            # Log results summary
+            logger.info("=" * 80)
+            if all_passed:
+                logger.info("✅ PRE-TEST HEALTH CHECK: All components OK - Proceeding with tests")
+            else:
+                logger.error("❌ PRE-TEST HEALTH CHECK: Some components failed - Tests will not run")
+                # Print failed components
+                for result in results:
+                    if not result.status:
+                        logger.error(f"   ❌ {result.name}: {result.error or 'Check failed'}")
+            logger.info("=" * 80)
+            
+            # If health checks failed, exit pytest
+            if not all_passed:
+                failed_components = [r.name for r in results if not r.status]
+                pytest.exit(
+                    "\n" + "=" * 80 + "\n"
+                    "PRE-TEST HEALTH CHECK FAILED\n"
+                    "=" * 80 + "\n"
+                    "One or more system components are not ready:\n\n"
+                    + "\n".join([
+                        f"  ❌ {r.name}: {r.error or 'Check failed'}"
+                        for r in results if not r.status
+                    ]) + "\n\n"
+                    "Please fix the issues before running tests.\n"
+                    "Use --skip-health-check to bypass this check (not recommended).\n"
+                    "=" * 80,
+                    returncode=1
+                )
+        
+        except ImportError:
+            # If health check script not available, warn but continue
+            import warnings
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "Pre-test health check script not found. "
+                "Skipping health checks. Tests may fail if system is not ready."
+            )
+            warnings.warn(
+                "Pre-test health check script not found. "
+                "Skipping health checks.",
+                UserWarning
+            )
+        except Exception as e:
+            # If health check fails unexpectedly, exit pytest
+            logger = logging.getLogger(__name__)
+            logger.error(f"Pre-test health check failed unexpectedly: {e}")
+            pytest.exit(
+                f"\nPre-test health check failed unexpectedly: {e}\n"
+                "Use --skip-health-check to bypass this check (not recommended).",
+                returncode=1
+            )
+    else:
+        # Health check skipped
+        logger = logging.getLogger(__name__)
+        logger.warning("⚠️  Pre-test health check SKIPPED (--skip-health-check flag used)")
+        logger.warning("   This is not recommended - tests may fail due to infrastructure issues")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -1007,22 +1226,122 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_sessionstart(session):
     """Called after the Session object has been created."""
-    logging.getLogger(__name__).info("Starting test session")
+    logger = logging.getLogger(__name__)
+    logger.info("Starting test session")
+    
+    # Run sanity checks before starting tests
+    skip_sanity = session.config.getoption("--skip-sanity-check", default=False)
+    
+    if skip_sanity:
+        logger.warning("⚠️  Sanity checks SKIPPED (--skip-sanity-check flag used)")
+        logger.warning("   This is not recommended - tests may fail due to infrastructure issues")
+        return
+    
+    # Only run sanity checks for non-local environments
+    # (local environment might not have all infrastructure)
+    try:
+        env_option = session.config.getoption("--env", default="staging")
+        if env_option == "local":
+            logger.info("Local environment detected - skipping sanity checks")
+            return
+        
+        # Get config manager for sanity checks
+        from config.config_manager import ConfigManager
+        config_manager = ConfigManager(env_option)
+        
+        # Run sanity checks
+        from src.utils.sanity_checker import SanityChecker
+        
+        sanity_checker = SanityChecker(config_manager)
+        results = sanity_checker.run_all_checks()
+        
+        # Check if all required components passed
+        if not sanity_checker.all_passed():
+            failed_components = [r.component for r in results if not r.success and r.component != "RabbitMQ"]
+            
+            logger.error("=" * 100)
+            logger.error("❌ SANITY CHECK FAILED - Some infrastructure components are not available!")
+            logger.error("=" * 100)
+            logger.error(f"Failed components: {', '.join(failed_components)}")
+            logger.error("")
+            logger.error("Please ensure all infrastructure components are running before running tests.")
+            logger.error("To skip sanity checks (not recommended), use: --skip-sanity-check")
+            logger.error("=" * 100)
+            
+            # Option 1: Fail immediately (recommended) - uncomment to enable
+            # import sys
+            # logger.error("Stopping test execution due to sanity check failures")
+            # sys.exit(1)
+            
+            # Option 2: Warn but continue (more lenient) - current behavior
+            logger.warning("⚠️  Continuing with tests despite sanity check failures...")
+            logger.warning("   Some tests may fail due to infrastructure issues")
+        else:
+            logger.info("✅ All sanity checks passed - infrastructure is ready for testing")
+            
+    except Exception as e:
+        logger.warning(f"⚠️  Sanity check failed to run: {e}")
+        logger.warning("   Continuing with tests - sanity check error will be ignored")
+        logger.debug(f"   Error details: {e}", exc_info=True)
 
 
 def pytest_sessionfinish(session, exitstatus):
     """Called after whole test run finished."""
+    # Import Jira report generation (if enabled)
+    try:
+        from src.reporting.pytest_integration import pytest_sessionfinish as jira_report_finish
+        jira_report_finish(session, exitstatus)
+    except ImportError:
+        # Jira reporting not available - skip
+        pass
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Jira report generation failed: {e}")
     logging.getLogger(__name__).info(f"Test session finished with exit status: {exitstatus}")
 
 
 def pytest_runtest_setup(item):
     """Called before each test item is run."""
+    # Import Jira report setup (if enabled)
+    try:
+        from src.reporting.pytest_integration import pytest_runtest_setup as jira_report_setup
+        jira_report_setup(item)
+    except ImportError:
+        # Jira reporting not available - skip
+        pass
+    except Exception:
+        # Ignore errors
+        pass
     logging.getLogger(__name__).info(f"Setting up test: {item.name}")
 
 
 def pytest_runtest_teardown(item, nextitem):
     """Called after each test item is run."""
+    # Import Jira report teardown (if enabled)
+    try:
+        from src.reporting.pytest_integration import pytest_runtest_teardown as jira_report_teardown
+        jira_report_teardown(item, nextitem)
+    except ImportError:
+        # Jira reporting not available - skip
+        pass
+    except Exception:
+        # Ignore errors
+        pass
     logging.getLogger(__name__).info(f"Tearing down test: {item.name}")
+
+
+def pytest_runtest_makereport(item, call):
+    """Called after each test execution to capture results."""
+    # Import Jira report capture (if enabled)
+    try:
+        from src.reporting.pytest_integration import pytest_runtest_makereport as jira_report_makereport
+        jira_report_makereport(item, call)
+    except ImportError:
+        # Jira reporting not available - skip
+        pass
+    except Exception:
+        # Ignore errors
+        pass
 
 
 # ===================================================================

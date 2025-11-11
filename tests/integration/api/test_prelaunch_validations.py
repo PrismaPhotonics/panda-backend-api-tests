@@ -99,6 +99,7 @@ class TestPortAvailabilityValidation:
     Related: Meeting decision - Pre-launch validations (IN SCOPE)
     """
     
+    @pytest.mark.xray("PZ-14018")
     def test_port_availability_before_job_creation(
         self,
         focus_server_api: FocusServerAPI,
@@ -106,6 +107,8 @@ class TestPortAvailabilityValidation:
     ):
         """
         Test: Port Availability Pre-Launch Validation
+        
+        PZ-14018: Invalid Configuration Does Not Launch Orchestration
         
         Validates that:
         1. First job creation succeeds (port available)
@@ -219,7 +222,7 @@ class TestDataAvailabilityValidation:
     Related: Meeting decision - Pre-launch validations (IN SCOPE)
     """
     
-    @pytest.mark.xray("PZ-13547", "PZ-13873")
+    @pytest.mark.xray("PZ-13547", "PZ-13873", "PZ-13561")
     def test_data_availability_live_mode(
         self,
         focus_server_api: FocusServerAPI,
@@ -516,6 +519,7 @@ class TestConfigurationValidation:
     Related: Meeting decision - Config validation (IN SCOPE)
     """
     
+    @pytest.mark.xray("PZ-13876", "PZ-13554")
     @pytest.mark.xray("PZ-13876")
     def test_config_validation_channels_out_of_range(
         self,
@@ -583,7 +587,8 @@ class TestConfigurationValidation:
         logger.info(f"✅ TEST PASSED: Channel Validation")
         logger.info(f"{'='*80}\n")
     
-    @pytest.mark.xray("PZ-13877", "PZ-13903")
+    @pytest.mark.xray("PZ-13877", "PZ-13903", "PZ-13555")
+    @pytest.mark.xray("PZ-13877")
     def test_config_validation_frequency_exceeds_nyquist(
         self,
         focus_server_api: FocusServerAPI
@@ -792,12 +797,15 @@ class TestErrorMessageClarity:
     Related: Meeting decision - Predictable error handling (IN SCOPE)
     """
     
+    @pytest.mark.xray("PZ-13878")
     def test_prelaunch_validation_error_messages_clarity(
         self,
         focus_server_api: FocusServerAPI
     ):
         """
         Test: Pre-Launch Validation Error Messages Clarity
+        
+        PZ-13878: Integration – Invalid View Type - Out of Range
         
         Validates that validation errors have:
         1. Clear indication of what failed

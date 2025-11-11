@@ -201,9 +201,12 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.infrastructure
     @pytest.mark.mongodb
     @pytest.mark.data_quality
+    @pytest.mark.xray("PZ-13809")
     def test_required_collections_exist(self):
         """
         Verify that all required MongoDB collections exist.
+        
+        PZ-13809: Verify Required Collections Exist
         
         Test Flow:
         1. Connect to MongoDB database
@@ -312,9 +315,12 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.mongodb
     @pytest.mark.data_quality
     @pytest.mark.schema
+    @pytest.mark.xray("PZ-13811")
     def test_recording_schema_validation(self):
         """
         Verify recording collection documents have required fields and correct types.
+        
+        PZ-13811: Validate Recordings Document Schema
         
         Test Flow:
         1. Discover recording collection name (GUID-based)
@@ -449,9 +455,13 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.mongodb
     @pytest.mark.data_quality
     @pytest.mark.data_integrity
+    @pytest.mark.xray("PZ-13812", "PZ-13685")
     def test_recordings_have_all_required_metadata(self):
         """
         Scan all recordings and verify none have missing metadata.
+        
+        PZ-13812: Verify Recordings Have Complete Metadata
+        PZ-13685: Recordings Metadata Completeness
         
         Test Flow:
         1. Discover and access recording collection
@@ -687,6 +697,7 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.data_quality
     @pytest.mark.performance
     @pytest.mark.jira("PZ-13983")  # Bug: MongoDB Indexes Missing
+    @pytest.mark.xray("PZ-13686")
     def test_mongodb_indexes_exist_and_optimal(self):
         """
         Verify MongoDB indexes exist on critical fields and are optimal.
@@ -828,6 +839,7 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.mongodb
     @pytest.mark.data_quality
     @pytest.mark.soft_delete
+    @pytest.mark.xray("PZ-13812")
     def test_deleted_recordings_marked_properly(self):
         """
         T-DATA-001: Verify deleted recordings are marked with deleted=True.
@@ -971,9 +983,12 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.data_quality
     @pytest.mark.data_integrity
     @pytest.mark.data_lifecycle
+    @pytest.mark.xray("PZ-13705")
     def test_historical_vs_live_recordings(self):
         """
         T-DATA-002: Verify distinction between Historical and Live recordings.
+        
+        PZ-13705: Data Lifecycle – Historical vs Live Recordings Classification
         
         Test Flow:
         1. Access recording collection

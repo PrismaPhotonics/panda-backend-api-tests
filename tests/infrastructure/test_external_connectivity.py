@@ -69,6 +69,7 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.mongodb
+    @pytest.mark.xray("PZ-13807")
     def test_mongodb_connection(self, mongodb_manager: MongoDBManager, test_results: Dict[str, Any]):
         """
         Test MongoDB connection and basic operations.
@@ -128,6 +129,7 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.mongodb
+    @pytest.mark.xray("PZ-13899")
     def test_mongodb_status_via_kubernetes(self, mongodb_manager: MongoDBManager):
         """
         Test MongoDB status via Kubernetes API.
@@ -223,9 +225,12 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.kubernetes
+    @pytest.mark.xray("PZ-13899")
     def test_kubernetes_list_deployments(self, kubernetes_manager: KubernetesManager):
         """
         Test Kubernetes deployment listing.
+        
+        PZ-13899: Infrastructure - Kubernetes Cluster Connection and Pod Health Check
         
         Verification:
         - Can list deployments
@@ -263,6 +268,7 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.kubernetes
+    @pytest.mark.xray("PZ-13899")
     def test_kubernetes_list_pods(self, kubernetes_manager: KubernetesManager):
         """
         Test Kubernetes pod listing.
@@ -381,9 +387,12 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.ssh
+    @pytest.mark.xray("PZ-13900")
     def test_ssh_network_operations(self, ssh_manager: SSHManager):
         """
         Test SSH network operations.
+        
+        PZ-13900: Infrastructure - SSH Access to Production Servers
         
         Verification:
         - Port status checking
@@ -434,6 +443,7 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.summary
+    @pytest.mark.xray("PZ-13898")
     def test_all_services_summary(self, test_results: Dict[str, Any]):
         """
         Summary test for all external service connectivity.
@@ -501,9 +511,12 @@ class TestExternalServicesConnectivity(InfrastructureTest):
 # Standalone Connectivity Test Functions
 # =================================================================
 
+@pytest.mark.xray("PZ-13898")
 def test_quick_mongodb_ping(mongodb_manager: MongoDBManager):
     """
     Quick MongoDB ping test (standalone, can run independently).
+    
+    PZ-13898: Infrastructure - MongoDB Direct Connection and Health Check
     
     Args:
         mongodb_manager: MongoDB manager fixture
@@ -520,9 +533,12 @@ def test_quick_mongodb_ping(mongodb_manager: MongoDBManager):
         raise
 
 
+@pytest.mark.xray("PZ-13899")
 def test_quick_kubernetes_ping(kubernetes_manager: KubernetesManager):
     """
     Quick Kubernetes ping test (standalone, can run independently).
+    
+    PZ-13899: Infrastructure - Kubernetes Cluster Connection and Pod Health Check
     
     Args:
         kubernetes_manager: Kubernetes manager fixture
@@ -539,9 +555,12 @@ def test_quick_kubernetes_ping(kubernetes_manager: KubernetesManager):
         raise
 
 
+@pytest.mark.xray("PZ-13900")
 def test_quick_ssh_ping(ssh_manager: SSHManager):
     """
     Quick SSH ping test (standalone, can run independently).
+    
+    PZ-13900: Infrastructure - SSH Access to Production Servers
     
     Args:
         ssh_manager: SSH manager fixture

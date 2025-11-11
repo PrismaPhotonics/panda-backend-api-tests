@@ -169,6 +169,7 @@ class TestViewTypeValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-13878")
+    @pytest.mark.xray("PZ-13873")
     def test_valid_view_types(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13878: Valid view_type values should be accepted.

@@ -51,6 +51,7 @@ class TestConfigureMetadataGRPCFlow:
     """
     
     @pytest.mark.xray("PZ-13570")
+    @pytest.mark.xray("PZ-13873")
     def test_e2e_configure_metadata_grpc_flow(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13570: E2E - Configure → Metadata → gRPC (mock).

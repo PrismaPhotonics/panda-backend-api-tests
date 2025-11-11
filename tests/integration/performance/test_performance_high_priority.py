@@ -80,6 +80,7 @@ def performance_config_payload() -> Dict[str, Any]:
 @pytest.mark.performance
 @pytest.mark.critical
 @pytest.mark.slow
+@pytest.mark.xray("PZ-14090")
 class TestAPILatencyP95:
     """
     Test suite for PZ-13770: Performance – /config Latency P95
@@ -88,6 +89,7 @@ class TestAPILatencyP95:
     Measures and validates P95 and P99 latency for critical API endpoints.
     """
     
+    @pytest.mark.xray("PZ-13770")
     def test_config_endpoint_latency_p95_p99(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13770.1: Measure P95/P99 latency for POST /config.
@@ -207,6 +209,7 @@ class TestConcurrentTaskLimit:
     maximum supported concurrent tasks.
     """
     
+    @pytest.mark.xray("PZ-13771")
     def test_concurrent_task_creation(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13771.1: Create multiple concurrent tasks.
@@ -308,6 +311,7 @@ class TestConcurrentTaskLimit:
         
         logger.info(f"✅ Concurrent task creation: {success_rate:.1%} success rate")
     
+    @pytest.mark.xray("PZ-13771")
     def test_concurrent_task_polling(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13771.2: Poll multiple tasks concurrently.
@@ -351,6 +355,7 @@ class TestConcurrentTaskLimit:
         logger.info("=" * 60)
         logger.info(f"✅ Concurrent task creation completed")
     
+    @pytest.mark.xray("PZ-13771")
     def test_concurrent_task_max_limit(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13771.3: Find maximum concurrent task limit.

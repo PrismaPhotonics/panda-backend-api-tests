@@ -301,6 +301,7 @@ class TestMongoDBSchemaValidation:
     """
     
     @pytest.mark.xray("PZ-13811", "PZ-13684")
+    @pytest.mark.xray("PZ-13811")
     def test_recordings_document_schema_validation(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13811, PZ-13684: Validate Recordings Document Schema.
@@ -346,6 +347,7 @@ class TestMongoDBSchemaValidation:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13812", "PZ-13685")
+    @pytest.mark.xray("PZ-13685")
     def test_recordings_metadata_completeness(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13812, PZ-13685: Verify Recordings Have Complete Metadata.

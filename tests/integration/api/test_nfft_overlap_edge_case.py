@@ -41,6 +41,7 @@ class TestNFFTOverlapEdgeCase:
     """
     
     @pytest.mark.xray("PZ-13558")
+    @pytest.mark.xray("PZ-13873")
     def test_overlap_nfft_escalation_edge_case(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13558: API - Overlap/NFFT Escalation Edge Case.

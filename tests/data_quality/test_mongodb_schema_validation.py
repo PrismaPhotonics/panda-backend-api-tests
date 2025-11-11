@@ -171,6 +171,7 @@ class TestMongoDBDataQuality:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-13686")
+    @pytest.mark.xray("PZ-14812")
     def test_metadata_collection_schema_validation(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13686: Metadata Collection Schema Validation.

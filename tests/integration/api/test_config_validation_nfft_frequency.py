@@ -48,8 +48,11 @@ logger = logging.getLogger(__name__)
 class TestNFFTConfiguration:
     """Test suite for NFFT parameter validation and configuration."""
     
+    @pytest.mark.xray("PZ-13873")
     def test_valid_nfft_power_of_2(self, focus_server_api):
-        """Test: Configure with valid NFFT (power of 2)."""
+        """Test: Configure with valid NFFT (power of 2).
+        
+        PZ-13873: integration - Valid Configuration - All Parameters"""
         logger.info(f"Test: NFFT=256 configuration")
         
         # Validate NFFT
@@ -178,10 +181,11 @@ class TestFrequencyRangeConfiguration:
         assert hasattr(response, 'job_id') and response.job_id
         logger.info(f"✅ Frequency range [0, {freq_max}] configured successfully")
     
-    @pytest.mark.xray("PZ-13904")
+    @pytest.mark.xray("PZ-13819", "PZ-13904")
     def test_frequency_range_variations(self, focus_server_api):
         """Test: Various frequency ranges.
         
+        PZ-13819: API – SingleChannel View with Various Frequency Ranges
         PZ-13904: Integration - Frequency Range Variations"""
         frequency_ranges = [
             (0, 100),
@@ -342,6 +346,7 @@ class TestSpectrogramPipelineErrors:
         logger.info(f"✅ NFFT=0 rejected: {exc_info.value}")
     
     @pytest.mark.xray("PZ-13875")
+    @pytest.mark.xray("PZ-13555")
     def test_negative_nfft(self, focus_server_api):
         """Test: Configure with negative NFFT."""
         logger.info("Test: Negative NFFT")
