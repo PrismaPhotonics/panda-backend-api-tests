@@ -23,22 +23,21 @@ jobs:
           cache: 'pip'
       
       - name: Install dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
       - name: Run tests
         id: run-tests
+        shell: pwsh
         run: |
-          mkdir -p reports logs screenshots
-          pytest tests/ -v \
-            --junitxml=reports/junit.xml \
-            --html=reports/report.html \
-            --self-contained-html \
-            --tb=short \
-            || TEST_EXIT_CODE=$?
+          New-Item -ItemType Directory -Force -Path reports, logs, screenshots | Out-Null
+          $testExitCode = 0
+          pytest tests/ -v --junitxml=reports/junit.xml --html=reports/report.html --self-contained-html --tb=short
+          if ($LASTEXITCODE -ne 0) { $testExitCode = $LASTEXITCODE }
           # Always continue (we'll upload results even if tests failed)
-          exit ${TEST_EXIT_CODE:-0}
+          exit $testExitCode
       
       - name: Upload test results
         if: always()
@@ -90,7 +89,8 @@ jobs:
       
       - name: Fail job if tests failed
         if: steps.run-tests.outcome == 'failure'
+        shell: pwsh
         run: |
-          echo "❌ Tests failed - check artifacts for details"
+          Write-Host "❌ Tests failed - check artifacts for details"
           exit 1
 
