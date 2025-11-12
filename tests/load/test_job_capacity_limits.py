@@ -438,8 +438,8 @@ class TestBaselinePerformance:
 @pytest.mark.load
 @pytest.mark.linear
 @pytest.mark.jira("PZ-13986", "PZ-13268")  # Bugs: 200 Jobs Capacity Issue, CNI IP Exhaustion
-    @pytest.mark.xray("PZ-13986")
-    @pytest.mark.xray("PZ-14088")
+@pytest.mark.xray("PZ-13986")
+@pytest.mark.xray("PZ-14088")
 class TestLinearLoad:
     """Linear load test - finding breaking point."""
     

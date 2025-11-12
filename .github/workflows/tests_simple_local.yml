@@ -31,9 +31,12 @@ jobs:
       - name: Run tests
         id: run-tests
         shell: powershell
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           New-Item -ItemType Directory -Force -Path reports, logs, screenshots | Out-Null
           $testExitCode = 0
+          $env:PYTHONPATH = "$PWD"
           pytest tests/ -v --junitxml=reports/junit.xml --html=reports/report.html --self-contained-html --tb=short
           if ($LASTEXITCODE -ne 0) { $testExitCode = $LASTEXITCODE }
           # Always continue (we'll upload results even if tests failed)

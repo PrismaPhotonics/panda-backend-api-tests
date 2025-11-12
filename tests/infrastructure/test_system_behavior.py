@@ -213,7 +213,7 @@ class TestFocusServerCleanStartup:
 @pytest.mark.stability
 @pytest.mark.slow
 @pytest.mark.skip(reason="Very long test (1 hour) - run manually")
-    @pytest.mark.xray("PZ-13873")
+@pytest.mark.xray("PZ-13873")
 class TestFocusServerStability:
     """
     Test Suite: Focus Server Stability Over Time

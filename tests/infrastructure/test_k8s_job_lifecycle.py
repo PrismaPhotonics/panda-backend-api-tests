@@ -239,7 +239,7 @@ class TestK8sJobCreation:
 @pytest.mark.infrastructure
 @pytest.mark.kubernetes
 @pytest.mark.resources
-    @pytest.mark.xray("PZ-13899")
+@pytest.mark.xray("PZ-13899")
 class TestK8sResourceAllocation:
     """
     Test Suite: Kubernetes Resource Allocation
