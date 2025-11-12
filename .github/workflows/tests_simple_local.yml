@@ -31,13 +31,17 @@ jobs:
       - name: Run tests
         id: run-tests
         shell: powershell
+        working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           New-Item -ItemType Directory -Force -Path reports, logs, screenshots | Out-Null
           $testExitCode = 0
           $env:PYTHONPATH = "$(Get-Location)"
+          Write-Host "Current directory: $(Get-Location)"
           Write-Host "PYTHONPATH: $env:PYTHONPATH"
+          Write-Host "Checking if mongodb_monitoring_agent exists:"
+          Test-Path src\infrastructure\mongodb_monitoring_agent.py
           pytest tests/ -v --junitxml=reports/junit.xml --html=reports/report.html --self-contained-html --tb=short
           if ($LASTEXITCODE -ne 0) { $testExitCode = $LASTEXITCODE }
           # Always continue (we'll upload results even if tests failed)
