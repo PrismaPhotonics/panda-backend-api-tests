@@ -354,7 +354,7 @@ class TestK8sResourceAllocation:
 @pytest.mark.infrastructure
 @pytest.mark.kubernetes
 @pytest.mark.networking
-    @pytest.mark.xray("PZ-13899")
+@pytest.mark.xray("PZ-13899")
 class TestK8sPortExposure:
     """
     Test Suite: Kubernetes Port Exposure
@@ -464,7 +464,7 @@ class TestK8sPortExposure:
 @pytest.mark.kubernetes
 @pytest.mark.cleanup
 @pytest.mark.critical
-    @pytest.mark.xray("PZ-13899")
+@pytest.mark.xray("PZ-13899")
 class TestK8sJobCancellation:
     """
     Test Suite: Kubernetes Job Cancellation and Cleanup
@@ -596,7 +596,7 @@ class TestK8sJobCancellation:
 @pytest.mark.infrastructure
 @pytest.mark.kubernetes
 @pytest.mark.observability
-    @pytest.mark.xray("PZ-13899")
+@pytest.mark.xray("PZ-13899")
 class TestK8sJobObservability:
     """
     Test Suite: Kubernetes Job Observability

@@ -436,7 +436,7 @@ class TestFocusServerStability:
 @pytest.mark.infrastructure
 @pytest.mark.error_handling
 @pytest.mark.critical
-    @pytest.mark.xray("PZ-13873")
+@pytest.mark.xray("PZ-13873")
 class TestPredictableErrorNoData:
     """
     Test Suite: Predictable Error Handling - No Data
@@ -546,7 +546,7 @@ class TestPredictableErrorNoData:
 
 @pytest.mark.infrastructure
 @pytest.mark.error_handling
-    @pytest.mark.xray("PZ-13873")
+@pytest.mark.xray("PZ-13873")
 class TestPredictableErrorPortInUse:
     """
     Test Suite: Predictable Error Handling - Port in Use
@@ -641,7 +641,7 @@ class TestPredictableErrorPortInUse:
 @pytest.mark.infrastructure
 @pytest.mark.rollback
 @pytest.mark.critical
-    @pytest.mark.xray("PZ-13873")
+@pytest.mark.xray("PZ-13873")
 class TestProperRollback:
     """
     Test Suite: Proper Rollback on Job Creation Failure

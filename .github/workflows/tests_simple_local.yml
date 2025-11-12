@@ -36,7 +36,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path reports, logs, screenshots | Out-Null
           $testExitCode = 0
-          $env:PYTHONPATH = "$PWD"
+          $env:PYTHONPATH = "$(Get-Location)"
+          Write-Host "PYTHONPATH: $env:PYTHONPATH"
           pytest tests/ -v --junitxml=reports/junit.xml --html=reports/report.html --self-contained-html --tb=short
           if ($LASTEXITCODE -ne 0) { $testExitCode = $LASTEXITCODE }
           # Always continue (we'll upload results even if tests failed)
