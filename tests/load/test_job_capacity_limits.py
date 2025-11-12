@@ -643,7 +643,7 @@ class TestHeavyConfigurationStress:
 @pytest.mark.load
 @pytest.mark.recovery
 @pytest.mark.jira("PZ-13986")  # Bug: 200 Jobs Capacity Issue
-    @pytest.mark.xray("PZ-14088")
+@pytest.mark.xray("PZ-14088")
 class TestSystemRecovery:
     """System recovery test after load."""
     
