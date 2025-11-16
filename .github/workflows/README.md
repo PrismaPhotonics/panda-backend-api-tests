@@ -19,15 +19,9 @@ This workflow runs all tests except those that create load on the system.
 #### What Tests Are Run
 
 ✅ **Included Test Categories:**
-- Unit tests (`tests/unit/`)
-- Integration tests (non-load, non-infrastructure) (`tests/integration/`)
-- Data quality tests (`tests/data_quality/` - if they don't require infrastructure)
-- Security tests (`tests/security/`)
-- Performance tests (non-load) (`tests/performance/`)
-- UI tests (`tests/ui/`)
-- Frontend tests (`fe_panda_tests/tests/`)
+- **Unit tests only** (`tests/unit/`)
 
-**Note:** Infrastructure tests are skipped in CI as they require SSH/K8s/RabbitMQ access that is not available in GitHub Actions runners.
+**Note:** Only unit tests are run in CI as they don't require external infrastructure. All other tests (Integration, Infrastructure, API, Data Quality) require access to internal services (Focus Server API, MongoDB, RabbitMQ, Kubernetes, SSH) that are not available in GitHub Actions runners. These tests should be run locally or in dedicated test environments.
 
 ❌ **Excluded Test Categories:**
 - Load tests (`tests/load/`)
@@ -77,6 +71,10 @@ Artifacts are retained for 30 days.
 To run the same set of tests locally that the CI runs:
 
 ```bash
+# Run only unit tests (same as CI)
+pytest tests/unit/ -m "unit" -v
+
+# Or run all tests excluding load/stress/infrastructure (requires local infrastructure access)
 pytest tests/ \
   --ignore=tests/load \
   --ignore=tests/stress \
