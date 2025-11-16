@@ -20,22 +20,25 @@ This workflow runs all tests except those that create load on the system.
 
 ✅ **Included Test Categories:**
 - Unit tests (`tests/unit/`)
-- Integration tests (non-load) (`tests/integration/`)
-- Infrastructure tests (`tests/infrastructure/`)
-- Data quality tests (`tests/data_quality/`)
+- Integration tests (non-load, non-infrastructure) (`tests/integration/`)
+- Data quality tests (`tests/data_quality/` - if they don't require infrastructure)
 - Security tests (`tests/security/`)
 - Performance tests (non-load) (`tests/performance/`)
 - UI tests (`tests/ui/`)
 - Frontend tests (`fe_panda_tests/tests/`)
 
+**Note:** Infrastructure tests are skipped in CI as they require SSH/K8s/RabbitMQ access that is not available in GitHub Actions runners.
+
 ❌ **Excluded Test Categories:**
 - Load tests (`tests/load/`)
 - Stress tests (`tests/stress/`)
+- Infrastructure tests (`tests/infrastructure/` - require SSH/K8s/RabbitMQ access)
 - Integration load tests (`tests/integration/load/`)
 - Alert load tests (`test_alert_generation_load.py`)
 - Alert performance tests (`test_alert_generation_performance.py`)
 - gRPC stream tests (marked with `@pytest.mark.grpc`)
 - API load tests (`focus_server_api_load_tests/`)
+- Tests requiring infrastructure (MongoDB, RabbitMQ, Kubernetes, SSH)
 
 #### Test Execution Strategy
 
@@ -77,10 +80,11 @@ To run the same set of tests locally that the CI runs:
 pytest tests/ \
   --ignore=tests/load \
   --ignore=tests/stress \
+  --ignore=tests/infrastructure \
   --ignore-glob=**/integration/load \
   --ignore-glob=**/test_alert_generation_load.py \
   --ignore-glob=**/test_alert_generation_performance.py \
-  -m "not load and not stress and not grpc" \
+  -m "not load and not stress and not grpc and not infrastructure and not mongodb and not rabbitmq and not kubernetes and not ssh" \
   -v
 ```
 
