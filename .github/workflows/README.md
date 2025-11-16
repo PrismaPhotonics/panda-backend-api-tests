@@ -19,19 +19,19 @@ This workflow runs all tests except those that create load on the system.
 #### What Tests Are Run
 
 ✅ **Included Test Categories:**
-- Unit tests (`be_focus_server_tests/unit/`)
-- Integration tests (non-load) (`be_focus_server_tests/integration/`)
-- Infrastructure tests (`be_focus_server_tests/infrastructure/`)
-- Data quality tests (`be_focus_server_tests/data_quality/`)
-- Security tests (`be_focus_server_tests/security/`)
-- Performance tests (non-load) (`be_focus_server_tests/performance/`)
-- UI tests (`be_focus_server_tests/ui/`)
+- Unit tests (`tests/unit/`)
+- Integration tests (non-load) (`tests/integration/`)
+- Infrastructure tests (`tests/infrastructure/`)
+- Data quality tests (`tests/data_quality/`)
+- Security tests (`tests/security/`)
+- Performance tests (non-load) (`tests/performance/`)
+- UI tests (`tests/ui/`)
 - Frontend tests (`fe_panda_tests/tests/`)
 
 ❌ **Excluded Test Categories:**
-- Load tests (`be_focus_server_tests/load/`)
-- Stress tests (`be_focus_server_tests/stress/`)
-- Integration load tests (`be_focus_server_tests/integration/load/`)
+- Load tests (`tests/load/`)
+- Stress tests (`tests/stress/`)
+- Integration load tests (`tests/integration/load/`)
 - Alert load tests (`test_alert_generation_load.py`)
 - Alert performance tests (`test_alert_generation_performance.py`)
 - gRPC stream tests (marked with `@pytest.mark.grpc`)
@@ -74,10 +74,10 @@ Artifacts are retained for 30 days.
 To run the same set of tests locally that the CI runs:
 
 ```bash
-pytest be_focus_server_tests/ \
-  --ignore=be_focus_server_tests/load \
-  --ignore=be_focus_server_tests/stress \
-  --ignore=be_focus_server_tests/integration/load \
+pytest tests/ \
+  --ignore=tests/load \
+  --ignore=tests/stress \
+  --ignore-glob=**/integration/load \
   --ignore-glob=**/test_alert_generation_load.py \
   --ignore-glob=**/test_alert_generation_performance.py \
   -m "not load and not stress and not grpc" \
