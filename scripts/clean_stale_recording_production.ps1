@@ -256,7 +256,7 @@ Write-Host "   mongosh `"$MONGODB_URI`"" -ForegroundColor Cyan
 Write-Host "   db.getCollection(`"$GUID`").findOne({uuid: `"$STALE_UUID`"})" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "2. Run the test to verify:" -ForegroundColor White
-Write-Host "   pytest tests/data_quality/test_mongodb_data_quality.py::TestMongoDBDataQuality::test_recordings_have_all_required_metadata -v --env=production" -ForegroundColor Cyan
+Write-Host "   pytest be_focus_server_tests/data_quality/test_mongodb_data_quality.py::TestMongoDBDataQuality::test_recordings_have_all_required_metadata -v --env=production" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
 

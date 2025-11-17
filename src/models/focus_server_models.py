@@ -463,16 +463,63 @@ class LiveMetadataFlat(BaseModel):
     Response model for GET /live_metadata endpoint.
     
     Returns flat dictionary of RecordingMetadata fields.
+    
+    Supports "waiting for fiber" state where prr=0.0 and some fields may be missing.
     """
-    prr: float = Field(..., description="Pulse repetition rate", gt=0)
-    num_samples_per_trace: int = Field(..., description="Samples per trace", gt=0)
-    dtype: str = Field(..., description="Data type")
+    prr: float = Field(0.0, description="Pulse repetition rate", ge=0)
+    num_samples_per_trace: Optional[int] = Field(None, description="Samples per trace", gt=0)
+    dtype: Optional[str] = Field(None, description="Data type")
     dx: Optional[float] = Field(None, description="Distance between sensors (meters)", gt=0)
     fiber_start_meters: Optional[int] = Field(None, description="Fiber start offset", ge=0)
     fiber_length_meters: Optional[int] = Field(None, description="Fiber length", gt=0)
     sw_version: Optional[str] = Field(None, description="Software version")
     number_of_channels: Optional[int] = Field(None, description="Number of channels", gt=0)
     fiber_description: Optional[str] = Field(None, description="Fiber description")
+    
+    @field_validator('prr')
+    @classmethod
+    def validate_prr(cls, v: float) -> float:
+        """Validate PRR: must be > 0 if system is ready (not waiting for fiber)."""
+        # Allow 0.0 for "waiting for fiber" state
+        if v < 0:
+            raise ValueError('prr must be >= 0')
+        return v
+    
+    @field_validator('dx', mode='before')
+    @classmethod
+    def validate_dx(cls, v: Optional[float], info: ValidationInfo) -> Optional[float]:
+        """
+        Validate dx: must be > 0 if provided (not None).
+        
+        Special handling: If dx=0.0, convert to None to allow "waiting for fiber" state.
+        The model_validator will check if this is valid based on sw_version.
+        """
+        # Convert 0.0 to None to allow "waiting for fiber" state
+        if v == 0.0:
+            return None
+        # Validate that if provided, it must be > 0
+        if v is not None and v <= 0:
+            raise ValueError('dx must be > 0 if provided')
+        return v
+    
+    @field_validator('num_samples_per_trace')
+    @classmethod
+    def validate_num_samples(cls, v: Optional[int]) -> Optional[int]:
+        """Validate num_samples_per_trace: must be > 0 if provided (not None)."""
+        if v is not None and v <= 0:
+            raise ValueError('num_samples_per_trace must be > 0 if provided')
+        return v
+    
+    @property
+    def is_waiting_for_fiber(self) -> bool:
+        """Check if system is in 'waiting for fiber' state."""
+        return (
+            self.prr <= 0.0 or
+            self.sw_version == "waiting for fiber" or
+            self.fiber_description == "waiting for fiber" or
+            self.num_samples_per_trace is None or
+            self.dtype is None
+        )
     
     model_config = ConfigDict(validate_assignment=True)
 

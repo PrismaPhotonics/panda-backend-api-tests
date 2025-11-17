@@ -1,0 +1,11 @@
+Priority,Component,Summary,Affected Tests,Description,Status
+P1,Focus Server API,Too Many 500 Internal Server Errors,"PZ-14090, PZ-14091, PZ-14092, PZ-14072, PZ-13570","Server returns consecutive 500 errors on /configure endpoint, affecting performance tests and E2E flows",NEW
+P1,Infrastructure - MongoDB,MongoDB Manager Client Initialization Failure,"PZ-13683, PZ-13684, PZ-13685, PZ-13598, PZ-13604 (+6 more)","MongoDBManager.client is None and missing get_database() method, all Data Quality tests fail",NEW
+P2,Infrastructure - K8s/SSH,SSL Certificate Verification Failed,"PZ-13773, PZ-13774","Cannot connect to K8s API or SSH due to self-signed certificate issues",NEW
+P2,Live Streaming,Too Many Polling Errors,PZ-13881,"Polling fails multiple times consecutively during live streaming, affecting stability",NEW
+P2,SingleChannel View,Polling Returns Unknown API Error,PZ-13877,"Polling fails with 'Unknown error' in SingleChannel mode",NEW
+P3,Calculations,Frequency Resolution Mismatch,PZ-14060,"Actual frequency resolution (15.595 Hz) differs from expected (1.953 Hz), possible decimation or undocumented behavior",INVESTIGATE
+P3,Calculations,Frequency Bins Count Mismatch,PZ-14061,"Actual bins (16) differs from expected (129), possible range-based decimation",INVESTIGATE
+P3,Calculations,lines_dt Calculation Mismatch,PZ-14066,"Actual lines_dt (0.039 sec) differs from expected (0.256 sec), 6.55x ratio",INVESTIGATE
+P4,Channel Mapping,Channel Grouping Undocumented Behavior,"PZ-14070, PZ-14071","Channels grouped into streams unexpectedly (8 channels -> 3 streams), may be intentional optimization",INVESTIGATE
+

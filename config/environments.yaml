@@ -123,15 +123,15 @@ environments:
       enable_save: true                 # EnableSave
       enable_load: true                 # EnableLoad
     
-    # MongoDB (Assumed same as production - UPDATE if different)
+    # MongoDB (Staging Environment - Different IP from production)
     mongodb:
-      host: "10.10.100.108"              # External LoadBalancer IP
+      host: "10.10.10.108"                # Staging LoadBalancer IP (NOT same as production!)
       port: 27017
       username: "prisma"
       password: "prisma"
       database: "prisma"
       auth_source: "prisma"
-      connection_string: "mongodb://prisma:prisma@10.10.100.108:27017/?authSource=prisma"
+      connection_string: "mongodb://prisma:prisma@10.10.10.108:27017/?authSource=prisma"
       ssl: false
       replica_set: null
     
@@ -184,7 +184,7 @@ environments:
           type: "LoadBalancer"
           cluster_ip: "10.43.74.248"
           internal_endpoint: "mongodb.panda:27017"
-          external_ip: "10.10.100.108:27017"
+          external_ip: "10.10.10.108:27017"  # Staging LoadBalancer IP
           pod_selector: "app.kubernetes.io/instance=mongodb"
         rabbitmq:
           name: "rabbitmq-panda"

@@ -1,0 +1,152 @@
+﻿PZ-14080,Historic – Spectrogram Dimensions Calculation
+PZ-14079,Performance – Memory Usage Estimation (Informational)
+PZ-14078,Performance – Data Rate Calculation (Informational)
+PZ-14073,Integration – Validation – Overlap Percentage Validation
+PZ-14072,Integration – Validation – FFT Window Size (Power of 2) Validation
+PZ-14071,Integration – Calculation Validation – Stream Amount Calculation
+PZ-14070,Integration – Calculation Validation – MultiChannel Mapping Validation
+PZ-14069,Integration – Calculation Validation – Channel Count Calculation
+PZ-14068,Integration – Calculation Validation – Time Window Duration Calculation
+PZ-14067,Integration – Calculation Validation – Output Rate Calculation
+PZ-14066,Integration – Calculation Validation – Time Resolution (lines_dt) Calculation
+PZ-14062,Integration – Calculation Validation – Nyquist Frequency Limit Validation
+PZ-14061,Integration – Calculation Validation – Frequency Bins Count Calculation
+PZ-14060,Integration – Calculation Validation – Frequency Resolution Calculation
+PZ-14033,API - Health Check Load Testing
+PZ-14032,API - Health Check with SSL/TLS
+PZ-14031,API - Health Check Response Structure Validation
+PZ-14030,API - Health Check Security Headers Validation
+PZ-14029,API - Health Check with Various Headers
+PZ-14028,API - Health Check Handles Concurrent Requests
+PZ-14027,API - Health Check Rejects Invalid HTTP Methods
+PZ-14026,API - Health Check Returns Valid Response (200 OK)
+PZ-14019,Integration - History with Empty Time Window Returns 400
+PZ-14018,Integration - Invalid Configuration Does Not Launch Orchestration
+PZ-14088,Load - 200 Jobs Capacity Stress Test
+PZ-14089,Integration - Time Range Validation - Future Timestamps Rejection
+PZ-14090,Performance - Job Creation Time < 2 Seconds
+PZ-14091,Performance - Configuration Endpoint P99 Latency
+PZ-14092,Performance - Configuration Endpoint P95 Latency
+PZ-14093,Integration - Invalid View Type - Out of Range
+PZ-14094,Integration - Invalid View Type - String Value
+PZ-14095,Integration - Configuration Missing displayTimeAxisDuration Field
+PZ-14097,Integration - Configuration Missing nfftSelection Field
+PZ-14098,Integration - Configuration Missing frequencyRange Field
+PZ-13909,Integration - Historic Configuration Missing end_time Field
+PZ-14099,Integration - Configuration Missing channels Field
+PZ-13907,Integration - Historic Configuration Missing start_time Field
+PZ-13906,Integration - Low Throughput Configuration Edge Case
+PZ-13905,Performance - High Throughput Configuration Stress Test
+PZ-13904,Integration - Configuration Resource Usage Estimation
+PZ-13903,Integration - Frequency Range Nyquist Limit Enforcement
+PZ-14100,Integration - Frequency Range Within Nyquist Limit
+PZ-13901,Integration - NFFT Values Validation - All Supported Values
+PZ-13900,Infrastructure - SSH Access to Production Servers
+PZ-13899,Infrastructure - Kubernetes Cluster Connection and Pod Health Check
+PZ-13898,Infrastructure - MongoDB Direct Connection and Health Check
+PZ-13897,Integration - GET /sensors - Retrieve Available Sensors List
+PZ-13896,Performance – Concurrent Task Limit
+PZ-13895,Integration – GET /channels - Enabled Channels List
+PZ-13880,Stress - Configuration with Extreme Values 
+PZ-13879,Integration – Missing Required Fields
+PZ-13878,Integration – Invalid View Type - Out of Range
+PZ-13877,Integration – Invalid Frequency Range - Min > Max
+PZ-13876,Integration – Invalid Channel Range - Min > Max
+PZ-13875,Integration – Invalid NFFT - Negative Value
+PZ-13874,Integration – Invalid NFFT - Zero Value
+PZ-13873,integration - Valid Configuration - All Parameters
+PZ-13872,Integration – Historic Playback Complete End-to-End Flow
+PZ-13871,Integration – Historic Playback - Timestamp Ordering Validation
+PZ-13870,Integration – Historic Playback - Future Timestamps
+PZ-13869,Integration – Historic Playback - Invalid Time Range (End Before Start)
+PZ-13868,Integration – Historic Playback - Status 208 Completion
+PZ-13867,Data Quality – Historic Playback - Data Integrity Validation
+PZ-13866,Integration – Historic Playback - Very Old Timestamps (No Data)
+PZ-13865,Integration – Historic Playback - Short Duration (1 Minute)
+PZ-14101,Integration – Historic Playback - Short Duration (Rapid Window)
+PZ-13863,Integration – Historic Playback - Standard 5-Minute Range
+PZ-13862,Integration - SingleChannel Complete Flow End-to-End
+PZ-13861,Integration - SingleChannel Stream Mapping Verification
+PZ-13860,Integration - SingleChannel Metadata Consistency
+PZ-13859,Integration - SingleChannel Polling Stability
+PZ-13858,Integration - SingleChannel Rapid Reconfiguration
+PZ-13857,Integration - SingleChannel NFFT Validation
+PZ-13855,Integration - SingleChannel Canvas Height Validation
+PZ-13854,Integration - SingleChannel Frequency Range Validation
+PZ-13853,Integration - SingleChannel Data Consistency Check
+PZ-13852,Integration - SingleChannel with Min > Max (Validation Error)
+PZ-13837,Integration - SingleChannel with Invalid Channel (Negative)
+PZ-13836,Integration - SingleChannel with Invalid Channel (Negative)
+PZ-13835,Integration - SingleChannel with Invalid Channel (Out of Range High)
+PZ-13834, Integration - SingleChannel Edge Case - Middle Channel
+PZ-13833,Integration - SingleChannel Edge Case - Maximum Channel (Last Available)
+PZ-13832,Integration - SingleChannel Edge Case - Minimum Channel (Channel 0)
+PZ-13824,API – SingleChannel Rejects Channel Zero
+PZ-13823,API – SingleChannel Rejects When min ≠ max
+PZ-13822,API – SingleChannel Rejects Invalid NFFT Value
+PZ-13821,API – SingleChannel Rejects Invalid Display Height
+PZ-13820,API – SingleChannel Rejects Invalid Frequency Range
+PZ-13819,API – SingleChannel View with Various Frequency Ranges
+PZ-13818,API – Compare SingleChannel vs MultiChannel View Types
+PZ-13817,API – Same SingleChannel Returns Consistent Mapping Across Multiple Requests
+PZ-13816,API – Different SingleChannels Return Different Mappings
+PZ-13815,API – SingleChannel View for Channel 100 (Upper Boundary Test)
+PZ-13814,API – SingleChannel View for Channel 1 (First Channel)
+PZ-13812,Data Quality – Verify Recordings Have Complete Metadata
+PZ-13811,Data Quality – Validate Recordings Document Schema
+PZ-13810,Data Quality – Verify Critical MongoDB Indexes Exist
+PZ-13809,Data Quality – Verify Required MongoDB Collections Exist
+PZ-13808,Infrastructure – MongoDB Quick Response Time Test (Performance)
+PZ-13807,Infrastructure – MongoDB Connection Using Focus Server Config
+PZ-13806,Infrastructure – MongoDB Direct TCP Connection and Authentication
+PZ-13800,Integration – Safe ROI Change (Within Limits)
+PZ-13799,Integration – Unsafe ROI Shift (Large Position Change)
+PZ-13798,Integration - Unsafe ROI Range Change (Size Change > 50%)
+PZ-13797,Integration - Unsafe ROI Change (Large Jump)
+PZ-13796,Integration - ROI Starting at Zero
+PZ-13795,Integration - ROI with Large Range (Edge Case)
+PZ-13794,Integration - ROI with Small Range (Edge Case)
+PZ-13793,Integration - Dynamic ROI – Reject ROI with Negative End Value
+PZ-13792,Integration - ROI with Negative Start
+PZ-13791,Integration - ROI with Reversed Range (Start > End)
+PZ-13790,Integration - ROI with Equal Start and End (Zero Size)
+PZ-13789,Integration - ROI Shift (Move Range)
+PZ-13788,Integration - ROI Shrinking (Decrease Range)
+PZ-13787,Integration -  ROI Expansion (Increase Range)
+PZ-13786,Integration - Multiple ROI Changes in Sequence
+PZ-13785,Integration - ROI Change with Safety Validation
+PZ-13784,Integration - Send ROI Change Command via RabbitMQ
+PZ-13769,Security – Malformed Input Handling
+PZ-13767,Integration – MongoDB Outage Handling
+PZ-13766, API – POST /recordings_in_time_range – Returns Recording Windows
+PZ-13765,API – GET /live_metadata – Returns 404 When Unavailable
+PZ-13764, API – GET /live_metadata – Returns Metadata When Available
+PZ-13762,API – GET /channels – Returns System Channel Bounds
+PZ-13761,API – POST /config/{task_id} – Invalid Frequency Range Rejection
+PZ-13760,API – POST /config/{task_id} – Invalid Channel Range Rejection
+PZ-13759,API – POST /config/{task_id} – Invalid Time Range Rejection
+PZ-13705,Data Lifecycle – Historical vs Live Recordings Classification
+PZ-13687,MongoDB Recovery – Recordings Indexed After Outage
+PZ-13686,Data Quality – MongoDB Indexes Validation
+PZ-13685,Data Quality – Recordings Metadata Completeness
+PZ-13684,Data Quality – node4 Schema Validation
+PZ-13683,Data Quality – MongoDB Collections Exist
+PZ-13604,Integration – Orchestrator error triggers rollback
+PZ-13603,Integration – Mongo outage on History configure
+PZ-13602,Integration – RabbitMQ outage on Live configure
+PZ-13598,Data Quality – Mongo collections and schema
+PZ-13768,Integration – RabbitMQ Outage Handling
+PZ-13572,Security – Robustness to malformed inputs
+PZ-13570,E2E – Configure → Metadata → gRPC (mock)
+PZ-13564,API – POST /recordings_in_time_range
+PZ-13563,API - GET /metadata/{job_id} - Valid and Invalid Job ID
+PZ-13562,API – GET /live_metadata missing
+PZ-13561,API – GET /live_metadata present
+PZ-13560,API – GET /channels
+PZ-13558,API - Overlap/NFFT Escalation Edge Case
+PZ-13557,API – Waterfall view handling
+PZ-13555,API – Invalid frequency range (negative)
+PZ-13554,API – Invalid channels (negative)
+PZ-13552,API – Invalid time range (negative)
+PZ-13548,API – Historical configure (happy path)
+PZ-13547,API – POST /config/{task_id} – Live Mode Configuration (Happy Path)

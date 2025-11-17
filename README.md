@@ -22,14 +22,14 @@ pytest --version
 
 ```bash
 # Run all tests
-pytest tests/ -v
+pytest be_focus_server_tests/ -v
 
 # Run with real-time pod monitoring
-pytest tests/ --monitor-pods -v
+pytest be_focus_server_tests/ --monitor-pods -v
 
 # Run specific test category
-pytest tests/integration/api/ -v
-pytest tests/infrastructure/ -v
+pytest be_focus_server_tests/integration/api/ -v
+pytest be_focus_server_tests/infrastructure/ -v
 ```
 
 ---
@@ -64,7 +64,7 @@ focus_server_automation/
 │       ├── pod_logs_collector.py    # Pod log collection
 │       └── helpers.py               # Helper functions
 │
-├── tests/                           # Test suites
+├── be_focus_server_tests/            # Test suites
 │   ├── conftest.py                  # Pytest fixtures & configuration
 │   ├── integration/                 # Integration tests
 │   │   ├── api/                     # API tests
@@ -106,7 +106,7 @@ focus_server_automation/
 Monitor Kubernetes pod logs in real-time during test execution with automatic test association.
 
 ```bash
-pytest tests/ --monitor-pods -v
+pytest be_focus_server_tests/ --monitor-pods -v
 ```
 
 **Features:**
@@ -164,16 +164,16 @@ Constraints:
 
 ```bash
 # API Tests
-pytest tests/integration/api/ -v
+pytest be_focus_server_tests/integration/api/ -v
 
 # Infrastructure Tests
-pytest tests/infrastructure/ -v
+pytest be_focus_server_tests/infrastructure/ -v
 
 # Performance Tests
-pytest tests/integration/performance/ -v
+pytest be_focus_server_tests/integration/performance/ -v
 
 # High Priority Tests
-pytest tests/integration/api/test_config_validation_high_priority.py -v
+pytest be_focus_server_tests/integration/api/test_config_validation_high_priority.py -v
 ```
 
 ### Test Markers
@@ -197,7 +197,7 @@ pytest -m infrastructure
 
 ```bash
 # Enable real-time monitoring
-pytest tests/ --monitor-pods -v
+pytest be_focus_server_tests/ --monitor-pods -v
 ```
 
 ### Log Files
@@ -253,7 +253,7 @@ logs/pod_logs/
 
 1. Create test file in appropriate directory:
    ```python
-   # tests/integration/api/test_new_feature.py
+   # be_focus_server_tests/integration/api/test_new_feature.py
    import pytest
    from src.apis.focus_server_api import FocusServerAPI
    
@@ -264,7 +264,7 @@ logs/pod_logs/
 
 2. Run with monitoring:
    ```bash
-   pytest tests/integration/api/test_new_feature.py --monitor-pods -v
+   pytest be_focus_server_tests/integration/api/test_new_feature.py --monitor-pods -v
    ```
 
 ### Using Pod Monitoring in Tests
@@ -300,7 +300,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run tests with monitoring
-        run: pytest tests/ --monitor-pods -v
+        run: pytest be_focus_server_tests/ --monitor-pods -v
 ```
 
 ---

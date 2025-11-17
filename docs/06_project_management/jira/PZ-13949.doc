@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>[#PZ-13949]  gRPC Stream Validation Framework </title>
+    <meta http-equiv="Content-Type" Content="application/vnd.ms-word; charset=UTF-8">
+        <style type="text/css">
+
+.tableBorder, .grid
+{
+    background-color: #fff;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableBorder td, .grid td
+{
+    vertical-align: top;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+.noPadding
+{
+    padding: 0 !important;
+}
+
+h3 .subText
+{
+    font-size: 60%;
+    font-weight: normal;
+}
+
+.tabLabel
+{
+    font-weight: bold;
+    border: 1px solid #ccc;
+    border-bottom:none;
+    padding: 2px;
+    display: inline;
+}
+
+td.blank
+{
+    padding: 0;
+    margin: 0;
+}
+
+.blank td
+{
+    border: none;
+}
+
+#descriptionArea
+{
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+hr
+{
+    border-top:1px solid #aaa;
+}
+
+hr.fullcontent
+{
+  height: 15px;
+  padding: 10px 0;
+  background: #fff url('https://prismaphotonics.atlassian.net/images/icons/hr.gif') no-repeat scroll center;
+}
+
+</style>
+
+</head>
+<body>
+
+<table class="tableBorder" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" width="100%" colspan="2" valign="top">
+                            <h3 class="formtitle">
+                        [PZ-13949]&nbsp;<a href="https://prismaphotonics.atlassian.net/browse/PZ-13949"> gRPC Stream Validation Framework </a>
+            <span class="subText">
+               Created: 26/Oct/25                   &nbsp;Updated: 27/Oct/25
+
+                                            </span>
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Status:</b></td>
+        <td width="80%">TO DO</td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Project:</b></td>
+        <td width="80%"><a href="https://prismaphotonics.atlassian.net/secure/BrowseProject.jspa?id=10000">Prisma</a></td>
+    </tr>
+
+        <tr>
+            <td><b>Components:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+    
+
+        <tr>
+            <td><b>Fix versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+    
+    </table>
+
+<br />
+<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" valign="top" width="20%">
+            <b>Type:</b>
+        </td>
+        <td bgcolor="#ffffff" valign="top"  width="30%" >
+            Task
+        </td>
+
+                    <td bgcolor="#f0f0f0">
+                <b>Priority:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap>
+                Medium
+            </td>
+            </tr>
+    <tr>
+                        <td bgcolor="#f0f0f0" valign="top" width="20%">
+                <b>Reporter:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top"  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_reporter_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+        
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Assignee:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_assignee_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+            </tr>
+    	<tr>
+		<td bgcolor="#f0f0f0" width="20%">
+			<b>Resolution:</b>
+		</td>
+		<td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+            				Unresolved
+                    </td>
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Votes:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+                0
+            </td>
+        
+    </tr>
+    
+        <tr>
+        <td bgcolor="#f0f0f0" width="20%">
+            <b>Labels:</b>
+        </td>
+        <td id="labels-43595-value" class="value" bgcolor="#ffffff" valign="top" colspan="3" nowrap>
+                            None
+                    </td>
+    </tr>
+    
+    	<tr>
+        		<td bgcolor="#f0f0f0" width="20%"><b>Remaining Estimate:</b></td>
+        <td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Time Spent:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+	</tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Original estimate:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    
+    </table>
+
+
+
+    <br />
+
+    	<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+            
+
+        
+    
+
+
+    
+                        <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Sprint:</b></td>
+                <td id="customfield_10020-43595-value" class="value" bgcolor="#ffffff" width="80%"></td>
+            </tr>
+            </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Description</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td id="descriptionArea">
+            <h3><a name="Task1.1%3ASetupgRPCtestinginfrastructure"></a><b>Task 1.1: Setup gRPC testing infrastructure</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<ul>
+	<li>Create <tt>tests/integration/grpc/</tt> directory structure</li>
+</ul>
+
+
+<ul>
+	<li>Add gRPC dependencies to <tt>requirements.txt</tt> (<tt>grpcio==1.60.0</tt>, <tt>grpcio-tools==1.60.0</tt>)</li>
+</ul>
+
+
+<ul>
+	<li>Create <tt>conftest.py</tt> with gRPC fixtures</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Directory <tt>tests/integration/grpc/</tt> exists</li>
+</ul>
+
+
+<ul>
+	<li>[ ] <tt>requirements.txt</tt> updated with gRPC packages</li>
+</ul>
+
+
+<ul>
+	<li>[ ] <tt>conftest.py</tt> created with basic fixtures</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task1.2%3AImplementGrpcStreamClientwrapper"></a><b>Task 1.2: Implement GrpcStreamClient wrapper</b></h3>
+
+<p><b>Estimate:</b> 4 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<ul>
+	<li>Create <tt>tests/integration/grpc/helpers/grpc_client.py</tt></li>
+</ul>
+
+
+<ul>
+	<li>Implement <tt>connect()</tt> and <tt>disconnect()</tt> methods</li>
+</ul>
+
+
+<ul>
+	<li>Implement <tt>stream_spectrogram(job_id)</tt> method</li>
+</ul>
+
+
+<ul>
+	<li>Add error handling and retry logic</li>
+</ul>
+
+
+<ul>
+	<li>Write docstrings and type hints for all methods</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] GrpcStreamClient class implemented</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Can connect to gRPC server at <tt>10.10.100.100:50051</tt></li>
+</ul>
+
+
+<ul>
+	<li>[ ] Can stream data with valid job_id</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Proper error handling for connection failures</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Type hints and docstrings complete</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task1.3%3AWritestreamconnectivitytests"></a><b>Task 1.3: Write stream connectivity tests</b></h3>
+
+<p><b>Estimate:</b> 3 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<p>Write the following test cases:</p>
+
+<ul>
+	<li><tt>test_grpc_stream_connects_successfully</tt> - Verify connection to gRPC server</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_delivers_first_frame</tt> - Verify first frame received within timeout</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_handles_invalid_job_id</tt> - Verify error handling for bad job_id</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_stops_on_job_completion</tt> - Verify stream ends properly</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] All 4 connectivity tests implemented</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Tests pass consistently</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Tests properly cleanup connections</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task1.4%3AWritedatavaliditytests"></a><b>Task 1.4: Write data validity tests</b></h3>
+
+<p><b>Estimate:</b> 4 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<p>Write the following test cases:</p>
+
+<ul>
+	<li><tt>test_grpc_stream_frame_structure_valid</tt> - Verify frame has required fields (job_id, timestamp, data)</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_data_dimensions_correct</tt> - Verify data dimensions match configuration</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_frequency_range_correct</tt> - Verify frequency metadata is correct</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_data_not_all_zeros</tt> - Verify actual data is present (not empty)</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] All 4 data validity tests implemented</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Tests validate frame structure</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Tests validate data content</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task1.5%3AWriteperformancetests"></a><b>Task 1.5: Write performance tests</b></h3>
+
+<p><b>Estimate:</b> 3 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<p>Write the following test cases:</p>
+
+<ul>
+	<li><tt>test_grpc_stream_continuous_delivery</tt> - Verify stream delivers multiple frames</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_grpc_stream_performance_metrics</tt> - Measure and verify frame rate (&gt;10 fps)</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Performance tests implemented</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Frame rate measurement working</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Tests verify minimum performance thresholds</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task1.6%3ADocumentationforgRPCtests"></a><b>Task 1.6: Documentation for gRPC tests</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<ul>
+	<li>Create <tt>tests/integration/grpc/README.md</tt></li>
+</ul>
+
+
+<ul>
+	<li>Document GrpcStreamClient usage with examples</li>
+</ul>
+
+
+<ul>
+	<li>Add troubleshooting section to documentation</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] README.md created with clear examples</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Usage patterns documented</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Common issues and solutions documented</li>
+</ul>
+
+            <br/>
+        </td>
+    </tr>
+    </table>
+
+Generated at Tue Nov 04 08:43:23 UTC 2025 by Roy Avrahami using Jira 1001.0.0-SNAPSHOT#100290-rev:c7faf2d76294a838eccb8baf436ee325c9a178b7.
+
+</body>
+</html>

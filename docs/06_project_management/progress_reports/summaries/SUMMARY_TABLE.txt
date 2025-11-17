@@ -1,0 +1,144 @@
+===================================================================
+📊 סיכום חקירה: איפה הטסטים מ-JIRA?
+===================================================================
+
+✅ החקירה הושלמה! מצאתי את כל התשובות.
+
+📁 נוצרו 6 מסמכי ניתוח מפורטים:
+
+  1. JIRA_TESTS_STATUS_REPORT.md               (English - Technical)
+  2. סיכום_סטטוס_טסטים_JIRA.md                (Hebrew - Executive)
+  3. CRITICAL_MISSING_TESTS_DISCOVERY.md       (English - Discovery)
+  4. WHAT_HAPPENED_TO_HIGH_PRIORITY_TESTS.md   (English - Investigation)
+  5. סיכום_חקירת_טסטים_חסרים.md              (Hebrew - Complete Summary)
+  6. RECOVERY_COMMANDS.md                      (Commands to restore)
+
+===================================================================
+
+🎯 הממצא המרכזי:
+
+  67% מהטסטים ב-JIRA (4 מתוך 6) נמחקו ב-21 אוקטובר 2025!
+  תאריך מחיקה: 21 אוקטובר 2025
+  Commit: da81742 "Backup before project cleanup and reorganization"
+  סטטוס: ✅ אפשר לשחזר מ-git!
+
+===================================================================
+
+📋 פירוט לפי JIRA ticket:
+
+  ✅ PZ-13905 (High Throughput)     → קיים! (test_spectrogram_pipeline.py)
+  ⚠️  PZ-13858 (Rapid Reconfig)      → חלקי (קובץ קיים, פונקציה חסרה)
+  ❌ PZ-13896 (Concurrent Tasks)    → נמחק! (test_performance_high_priority.py)
+  ❌ PZ-13770 (P95/P99 Latency)     → נמחק! (test_performance_high_priority.py)
+  ❌ PZ-13880 (Extreme Values)      → נמחק! (test_config_validation_high_priority.py)
+  ❌ PZ-13572 (Security)            → לא קיים! (test_input_security.py)
+
+===================================================================
+
+🔢 סטטיסטיקות:
+
+  קבצים שנמחקו:      5
+  Test functions:     37
+  Xray test cases:    10
+  שורות קוד:         ~2,500
+  תיקיות תיעוד:      7 (מתארות קוד שלא קיים!)
+
+===================================================================
+
+📊 טבלת השוואה מפורטת:
+
++-----------+-------------------+----------------+-----------------------------+
+| JIRA ID   | סטטוס ב-JIRA     | סטטוס בפועל   | שם קובץ                     |
++-----------+-------------------+----------------+-----------------------------+
+| PZ-13905  | ✅ Automated      | ✅ קיים!       | test_spectrogram_pipeline.py |
+| PZ-13858  | ✅ Automated      | ⚠️ חלקי        | test_singlechannel_*.py      |
+| PZ-13896  | ✅ Automated      | ❌ נמחק!       | test_performance_*.py        |
+| PZ-13770  | ✅ Automated      | ❌ נמחק!       | test_performance_*.py        |
+| PZ-13880  | ✅ Automated      | ❌ נמחק!       | test_config_validation_*.py  |
+| PZ-13572  | Automated         | ❌ לא קיים!    | test_input_security.py       |
++-----------+-------------------+----------------+-----------------------------+
+
+  סה"כ: 1/6 קיימים (17%), 1/6 חלקיים (17%), 4/6 חסרים (66%)
+
+===================================================================
+
+💥 הקבצים שנמחקו (5 קבצים):
+
+  1. test_config_validation_high_priority.py      (15 tests, 5 Xray cases)
+  2. test_api_endpoints_high_priority.py          (5 tests, PZ-13419)
+  3. test_historic_high_priority.py               (5 tests, PZ-13868, PZ-13871)
+  4. test_singlechannel_high_priority.py          (7 tests, PZ-13853, PZ-13852)
+  5. test_performance_high_priority.py            (5 tests, PZ-13770, PZ-13896)
+
+  סה"כ נמחקו: 37 test functions, 10 Xray test cases, ~2,500 lines
+
+===================================================================
+
+🔍 מה קרה? (Timeline)
+
+  21 אוקטובר 2025, 09:00:
+    └─ Commit da81742: "Backup before project cleanup and reorganization"
+    └─ Branch: backup/before-cleanup-20251021
+
+  21 אוקטובר 2025, 10:00:
+    ├─ התחיל תהליך reorganization
+    ├─ נמחקו 5 קבצי *_high_priority.py
+    ├─ תיעוד הועבר ל-documentation/xray/
+    └─ JIRA לא עודכן
+
+  עכשיו (22 אוקטובר 2025):
+    ├─ הקבצים עדיין ב-git history (da81742)
+    ├─ אפשר לשחזר אותם
+    └─ JIRA לא מתאים למציאות (67% פער!)
+
+===================================================================
+
+💡 המלצה מהירה (5 דקות):
+
+  # 1. שחזר את הטסט הכי חסר (performance)
+  git checkout da81742 -- tests/integration/performance/test_performance_high_priority.py
+
+  # 2. בדוק שהוא קיים
+  ls tests/integration/performance/test_performance_high_priority.py
+
+  # 3. בדוק כמה טסטים יש
+  pytest tests/integration/performance/test_performance_high_priority.py --collect-only
+
+  תוצאה צפויה: 5 tests (P95/P99 latency, concurrent tasks)
+
+===================================================================
+
+🎯 תכנית פעולה מומלצת:
+
+  □ עדכן JIRA - שנה PZ-13896, PZ-13770, PZ-13880 ל-"TO BE AUTOMATED" (5 min)
+  □ שחזר test_performance_high_priority.py (2 min)
+  □ שחזר test_api_endpoints_high_priority.py (2 min)
+  □ הרץ טסטים ווודא שעובדים (10 min)
+  □ Commit ו-push (2 min)
+  
+  סה"כ זמן: ~20 דקות
+
+===================================================================
+
+📖 קרא את המסמכים המפורטים:
+
+  עברית:
+    - סיכום_חקירת_טסטים_חסרים.md    (המסמך המלא בעברית)
+    - סיכום_סטטוס_טסטים_JIRA.md      (סיכום מנהלים)
+
+  English:
+    - WHAT_HAPPENED_TO_HIGH_PRIORITY_TESTS.md    (Full investigation)
+    - JIRA_TESTS_STATUS_REPORT.md                (Technical report)
+    - CRITICAL_MISSING_TESTS_DISCOVERY.md        (Discovery)
+    - RECOVERY_COMMANDS.md                        (How to restore)
+
+===================================================================
+
+🚀 רוצה לשחזר עכשיו? פשוט העתק-הדבק:
+
+  git checkout da81742 -- tests/integration/performance/test_performance_high_priority.py
+
+===================================================================
+
+סוף הדוח - החקירה הושלמה בהצלחה! ✅
+

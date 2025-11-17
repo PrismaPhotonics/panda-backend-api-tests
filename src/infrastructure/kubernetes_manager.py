@@ -60,8 +60,17 @@ class KubernetesManager:
         """
         Load Kubernetes configuration.
         
-        Tries direct API access first, falls back to SSH-based kubectl if needed.
+        Tries SSH-based kubectl first (faster and more reliable), 
+        falls back to direct API access if SSH is not available.
         """
+        # Try SSH fallback first (preferred method - faster and more reliable)
+        self.logger.info("Attempting SSH-based kubectl connection first...")
+        if self._init_ssh_fallback():
+            self.logger.info("Using SSH-based kubectl for Kubernetes operations")
+            return
+        
+        # SSH fallback failed - try direct API access as fallback
+        self.logger.info("SSH fallback not available, trying direct Kubernetes API access...")
         try:
             # Try to load kubeconfig and create API clients
             config.load_kube_config()
@@ -70,36 +79,54 @@ class KubernetesManager:
             self.k8s_batch_v1 = client.BatchV1Api()
             self.logger.debug("Kubernetes configuration loaded successfully")
             
-            # Test connection (quick check)
+            # Test connection (quick check with very short timeout)
             try:
-                self.k8s_core_v1.list_node(timeout_seconds=5)
+                # Use very short timeout to fail fast
+                self.k8s_core_v1.list_node(timeout_seconds=2)
                 self.logger.debug("Direct Kubernetes API connection verified")
+                self.logger.info("Using direct Kubernetes API access")
             except Exception as e:
                 # Connection failed - likely timeout or network issue
                 error_str = str(e).lower()
-                if "timeout" in error_str or "connection" in error_str:
-                    self.logger.warning("Kubernetes API not directly accessible, falling back to SSH-based kubectl")
-                    self._init_ssh_fallback()
+                if "timeout" in error_str or "connection" in error_str or "timed out" in error_str:
+                    self.logger.warning("Direct Kubernetes API not accessible (timeout)")
+                    # Clear the API clients since they won't work
+                    self.k8s_apps_v1 = None
+                    self.k8s_core_v1 = None
+                    self.k8s_batch_v1 = None
+                    raise InfrastructureError(
+                        "Neither SSH fallback nor direct Kubernetes API access is available. "
+                        "Please ensure SSH access or kubeconfig is configured."
+                    )
                 else:
                     raise
                     
         except config.ConfigException as e:
-            # No kubeconfig available - use SSH fallback
+            # No kubeconfig available
             self.logger.warning(f"Kubernetes config not available: {e}")
-            self.logger.info("Falling back to SSH-based kubectl commands")
-            self._init_ssh_fallback()
+            raise InfrastructureError(
+                "Neither SSH fallback nor direct Kubernetes API access is available. "
+                "Please ensure SSH access or kubeconfig is configured."
+            )
+        except InfrastructureError:
+            # Re-raise infrastructure errors
+            raise
         except Exception as e:
-            # Other errors - try SSH fallback
+            # Other errors
             error_str = str(e).lower()
-            if "timeout" in error_str or "connection" in error_str:
-                self.logger.warning(f"Kubernetes API connection failed: {e}")
-                self.logger.info("Falling back to SSH-based kubectl commands")
-                self._init_ssh_fallback()
+            if "timeout" in error_str or "connection" in error_str or "timed out" in error_str:
+                self.logger.warning(f"Direct Kubernetes API connection failed: {e}")
+                raise InfrastructureError(
+                    "Neither SSH fallback nor direct Kubernetes API access is available. "
+                    "Please ensure SSH access or kubeconfig is configured."
+                )
             else:
-                # Unknown error - still try SSH fallback as last resort
+                # Unknown error
                 self.logger.warning(f"Unexpected error loading Kubernetes config: {e}")
-                self.logger.info("Attempting SSH-based kubectl fallback")
-                self._init_ssh_fallback()
+                raise InfrastructureError(
+                    f"Failed to initialize Kubernetes connection: {e}. "
+                    "Please ensure SSH access or kubeconfig is configured."
+                )
     
     def _init_ssh_fallback(self) -> bool:
         """
@@ -288,6 +315,10 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_deployments_via_ssh(namespace)
+        
         try:
             deployments = self.k8s_apps_v1.list_namespaced_deployment(namespace=namespace)
             
@@ -307,7 +338,60 @@ class KubernetesManager:
             return deployment_list
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_deployments_via_ssh(namespace)
             raise InfrastructureError(f"Failed to get deployments: {e}") from e
+        except Exception as e:
+            # Other errors - try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_deployments_via_ssh(namespace)
+            raise InfrastructureError(f"Failed to get deployments: {e}") from e
+    
+    def _get_deployments_via_ssh(self, namespace: Optional[str]) -> List[Dict[str, Any]]:
+        """Get deployments via SSH kubectl command."""
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "default")
+        
+        # Build kubectl command
+        cmd = f"get deployments -o json"
+        
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            raise InfrastructureError(f"Failed to get deployments via SSH: {result['stderr']}")
+        
+        # Parse JSON output
+        try:
+            deployments_data = json.loads(result["stdout"])
+            deployment_list = []
+            
+            for deployment_item in deployments_data.get("items", []):
+                metadata = deployment_item.get("metadata", {})
+                spec = deployment_item.get("spec", {})
+                status = deployment_item.get("status", {})
+                
+                deployment_info = {
+                    "name": metadata.get("name"),
+                    "namespace": metadata.get("namespace"),
+                    "replicas": spec.get("replicas", 0),
+                    "ready_replicas": status.get("readyReplicas", 0),
+                    "available_replicas": status.get("availableReplicas", 0),
+                    "labels": metadata.get("labels", {})
+                }
+                deployment_list.append(deployment_info)
+            
+            self.logger.debug(f"Retrieved {len(deployment_list)} deployments from namespace '{namespace}' via SSH")
+            return deployment_list
+            
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse kubectl output as JSON: {e}")
     
     def get_jobs(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -323,6 +407,10 @@ class KubernetesManager:
         
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
+        
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_jobs_via_ssh(namespace)
         
         try:
             jobs = self.k8s_batch_v1.list_namespaced_job(namespace=namespace)
@@ -344,7 +432,56 @@ class KubernetesManager:
             return job_list
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_jobs_via_ssh(namespace)
             raise InfrastructureError(f"Failed to get jobs: {e}") from e
+    
+    def _get_jobs_via_ssh(self, namespace: Optional[str]) -> List[Dict[str, Any]]:
+        """Get jobs via SSH kubectl command."""
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "default")
+        
+        # Build kubectl command
+        cmd = f"get jobs -o json"
+        
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            raise InfrastructureError(f"Failed to get jobs via SSH: {result['stderr']}")
+        
+        # Parse JSON output
+        try:
+            jobs_data = json.loads(result["stdout"])
+            job_list = []
+            
+            for job_item in jobs_data.get("items", []):
+                metadata = job_item.get("metadata", {})
+                spec = job_item.get("spec", {})
+                status = job_item.get("status", {})
+                
+                conditions = status.get("conditions", [])
+                status_type = conditions[0].get("type", "Unknown") if conditions else "Unknown"
+                
+                job_info = {
+                    "name": metadata.get("name"),
+                    "namespace": metadata.get("namespace"),
+                    "status": status_type,
+                    "completions": spec.get("completions", 1),
+                    "succeeded": status.get("succeeded", 0),
+                    "failed": status.get("failed", 0),
+                    "labels": metadata.get("labels", {})
+                }
+                job_list.append(job_info)
+            
+            self.logger.debug(f"Retrieved {len(job_list)} jobs from namespace '{namespace}' via SSH")
+            return job_list
+            
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse kubectl output as JSON: {e}") from e
     
     def get_pod_logs(self, pod_name: str, namespace: Optional[str] = None, 
                     container: Optional[str] = None, tail_lines: int = 100) -> str:
@@ -360,11 +497,27 @@ class KubernetesManager:
         Returns:
             Pod logs as string
         """
-        self._ensure_k8s_available()
-        
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback or self.k8s_core_v1 is None:
+            if not self.ssh_manager:
+                self._init_ssh_fallback()
+            
+            if self.ssh_manager:
+                # Use kubectl via SSH
+                container_arg = f" -c {container}" if container else ""
+                cmd = f"kubectl logs {pod_name} -n {namespace}{container_arg} --tail={tail_lines}"
+                result = self.ssh_manager.execute_command(cmd, timeout=60)
+                if result["success"]:
+                    return result["stdout"]
+                else:
+                    raise InfrastructureError(f"Failed to get logs via SSH: {result['stderr']}")
+            else:
+                raise InfrastructureError("SSH fallback not available for log retrieval")
+        
+        # Direct API access
         try:
             logs = self.k8s_core_v1.read_namespaced_pod_log(
                 name=pod_name,
@@ -467,6 +620,10 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._delete_job_via_ssh(job_name, namespace)
+        
         try:
             self.logger.info(f"Deleting job '{job_name}'...")
             
@@ -479,7 +636,32 @@ class KubernetesManager:
             return True
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._delete_job_via_ssh(job_name, namespace)
             self.logger.error(f"Failed to delete job '{job_name}': {e}")
+            return False
+    
+    def _delete_job_via_ssh(self, job_name: str, namespace: str) -> bool:
+        """Delete job via SSH kubectl command."""
+        try:
+            self.logger.info(f"Deleting job '{job_name}' via SSH...")
+            
+            cmd = f"delete job {job_name}"
+            result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+            
+            if result["success"]:
+                self.logger.info(f"Job '{job_name}' deleted successfully via SSH")
+                return True
+            else:
+                self.logger.error(f"Failed to delete job '{job_name}' via SSH: {result['stderr']}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error deleting job '{job_name}' via SSH: {e}")
             return False
     
     def _wait_for_deployment_scale(self, deployment_name: str, expected_replicas: int, 
@@ -724,3 +906,558 @@ class KubernetesManager:
                 return False
             else:
                 raise InfrastructureError(f"Error checking resource existence: {e}") from e
+    
+    def get_pod_by_name(self, pod_name: str, namespace: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Get pod by exact name.
+        
+        Args:
+            pod_name: Name of the pod
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            Pod information dictionary or None if not found
+        """
+        self._ensure_k8s_available()
+        
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "default")
+        
+        try:
+            if self.use_ssh_fallback:
+                return self._get_pod_by_name_via_ssh(pod_name, namespace)
+            
+            pod = self.k8s_core_v1.read_namespaced_pod(name=pod_name, namespace=namespace)
+            
+            pod_info = {
+                "name": pod.metadata.name,
+                "namespace": pod.metadata.namespace,
+                "status": pod.status.phase,
+                "ready": "True" if pod.status.conditions and any(
+                    c.type == "Ready" and c.status == "True" for c in pod.status.conditions
+                ) else "False",
+                "restart_count": pod.status.container_statuses[0].restart_count if pod.status.container_statuses else 0,
+                "node_name": pod.spec.node_name,
+                "labels": pod.metadata.labels,
+                "creation_timestamp": pod.metadata.creation_timestamp.isoformat() if pod.metadata.creation_timestamp else None
+            }
+            
+            self.logger.debug(f"Retrieved pod '{pod_name}' from namespace '{namespace}'")
+            return pod_info
+            
+        except ApiException as e:
+            if e.status == 404:
+                self.logger.debug(f"Pod '{pod_name}' not found in namespace '{namespace}'")
+                return None
+            else:
+                raise InfrastructureError(f"Failed to get pod '{pod_name}': {e}") from e
+    
+    def _get_pod_by_name_via_ssh(self, pod_name: str, namespace: str) -> Optional[Dict[str, Any]]:
+        """Get pod by name via SSH kubectl command."""
+        cmd = f"get pod {pod_name} -n {namespace} -o json"
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            if "NotFound" in result.get("stderr", ""):
+                return None
+            raise InfrastructureError(f"Failed to get pod via SSH: {result['stderr']}")
+        
+        try:
+            pod_data = json.loads(result["stdout"])
+            metadata = pod_data.get("metadata", {})
+            spec = pod_data.get("spec", {})
+            status = pod_data.get("status", {})
+            conditions = status.get("conditions", [])
+            
+            ready_condition = next((c for c in conditions if c.get("type") == "Ready"), None)
+            ready = "True" if ready_condition and ready_condition.get("status") == "True" else "False"
+            
+            container_statuses = status.get("containerStatuses", [])
+            restart_count = container_statuses[0].get("restartCount", 0) if container_statuses else 0
+            
+            pod_info = {
+                "name": metadata.get("name"),
+                "namespace": metadata.get("namespace"),
+                "status": status.get("phase", "Unknown"),
+                "ready": ready,
+                "restart_count": restart_count,
+                "node_name": spec.get("nodeName"),
+                "labels": metadata.get("labels", {}),
+                "creation_timestamp": metadata.get("creationTimestamp")
+            }
+            
+            return pod_info
+            
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse kubectl output as JSON: {e}") from e
+    
+    def get_pod_status(self, pod_name: str, namespace: Optional[str] = None) -> str:
+        """
+        Get current pod status (phase).
+        
+        Args:
+            pod_name: Name of the pod
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            Pod status phase (Running, Pending, Failed, etc.)
+        """
+        pod_info = self.get_pod_by_name(pod_name, namespace)
+        if pod_info:
+            return pod_info.get("status", "Unknown")
+        return "NotFound"
+    
+    def wait_for_pod_ready(self, pod_name: str, namespace: Optional[str] = None, timeout: int = 120) -> bool:
+        """
+        Wait for pod to become ready.
+        
+        Args:
+            pod_name: Name of the pod
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            timeout: Timeout in seconds
+            
+        Returns:
+            True if pod became ready, False if timeout
+        """
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "default")
+        
+        self.logger.debug(f"Waiting for pod '{pod_name}' to be ready (timeout: {timeout}s)...")
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            pod_info = self.get_pod_by_name(pod_name, namespace)
+            
+            if pod_info:
+                status = pod_info.get("status", "Unknown")
+                ready = pod_info.get("ready", "False")
+                
+                if status == "Running" and ready == "True":
+                    self.logger.debug(f"Pod '{pod_name}' is ready")
+                    return True
+                
+                if status in ["Failed", "Unknown"]:
+                    self.logger.warning(f"Pod '{pod_name}' entered unexpected state: {status}")
+                    return False
+            
+            time.sleep(2)
+        
+        self.logger.warning(f"Pod '{pod_name}' did not become ready within {timeout} seconds")
+        return False
+    
+    def restart_pod(self, pod_name: str, namespace: Optional[str] = None) -> bool:
+        """
+        Restart a pod by deleting it (Kubernetes will recreate it automatically).
+        
+        Args:
+            pod_name: Name of the pod to restart
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            True if restart was successful
+        """
+        self.logger.info(f"Restarting pod '{pod_name}' by deletion...")
+        return self.delete_pod(pod_name, namespace)
+    
+    def scale_statefulset(self, statefulset_name: str, replicas: int, 
+                         namespace: Optional[str] = None) -> bool:
+        """
+        Scale a StatefulSet to the specified number of replicas.
+        
+        Args:
+            statefulset_name: Name of the StatefulSet
+            replicas: Number of replicas to scale to
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            True if scaling was successful
+        """
+        self._ensure_k8s_available()
+        
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "default")
+        
+        try:
+            self.logger.info(f"Scaling StatefulSet '{statefulset_name}' to {replicas} replicas...")
+            
+            # Patch StatefulSet scale
+            self.k8s_apps_v1.patch_namespaced_stateful_set_scale(
+                name=statefulset_name,
+                namespace=namespace,
+                body={"spec": {"replicas": replicas}}
+            )
+            
+            # Wait for scaling to complete
+            self._wait_for_statefulset_scale(statefulset_name, replicas, namespace)
+            
+            self.logger.info(f"StatefulSet '{statefulset_name}' scaled to {replicas} replicas successfully")
+            return True
+            
+        except ApiException as e:
+            self.logger.error(f"Failed to scale StatefulSet '{statefulset_name}': {e}")
+            return False
+    
+    def _wait_for_statefulset_scale(self, statefulset_name: str, expected_replicas: int, 
+                                    namespace: str, timeout: int = 120):
+        """
+        Wait for StatefulSet to reach expected number of replicas.
+        
+        Args:
+            statefulset_name: Name of the StatefulSet
+            expected_replicas: Expected number of replicas
+            namespace: Kubernetes namespace
+            timeout: Timeout in seconds
+        """
+        self.logger.debug(f"Waiting for StatefulSet '{statefulset_name}' to reach {expected_replicas} replicas...")
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                statefulset = self.k8s_apps_v1.read_namespaced_stateful_set(
+                    name=statefulset_name,
+                    namespace=namespace
+                )
+                
+                ready_replicas = statefulset.status.ready_replicas or 0
+                
+                if ready_replicas == expected_replicas:
+                    self.logger.debug(f"StatefulSet '{statefulset_name}' reached {expected_replicas} replicas")
+                    return
+                
+                self.logger.debug(f"StatefulSet '{statefulset_name}' has {ready_replicas} ready replicas, waiting...")
+                
+            except ApiException as e:
+                self.logger.warning(f"K8s API error while waiting for StatefulSet scale: {e}")
+            
+            time.sleep(5)
+        
+        raise InfrastructureError(
+            f"StatefulSet '{statefulset_name}' did not reach {expected_replicas} replicas within {timeout} seconds"
+        )
+    
+    def get_ingress(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get Ingress resources in the specified namespace.
+        
+        Args:
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            List of Ingress information dictionaries
+        """
+        self._ensure_k8s_available()
+        
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "panda")
+        
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_ingress_via_ssh(namespace)
+        
+        try:
+            from kubernetes.client import NetworkingV1Api
+            networking_v1 = NetworkingV1Api()
+            
+            ingress_list = networking_v1.list_namespaced_ingress(namespace=namespace)
+            
+            ingress_info_list = []
+            for ingress in ingress_list.items:
+                rules = []
+                for rule in ingress.spec.rules or []:
+                    paths = []
+                    if rule.http:
+                        for path in rule.http.paths or []:
+                            paths.append({
+                                "path": path.path,
+                                "path_type": path.path_type,
+                                "service_name": path.backend.service.name if path.backend.service else None,
+                                "service_port": path.backend.service.port.number if path.backend.service and path.backend.service.port else None
+                            })
+                    rules.append({
+                        "host": rule.host,
+                        "paths": paths
+                    })
+                
+                ingress_info = {
+                    "name": ingress.metadata.name,
+                    "namespace": ingress.metadata.namespace,
+                    "rules": rules,
+                    "labels": ingress.metadata.labels or {}
+                }
+                ingress_info_list.append(ingress_info)
+            
+            self.logger.debug(f"Retrieved {len(ingress_info_list)} Ingress resources from namespace '{namespace}'")
+            return ingress_info_list
+            
+        except ApiException as e:
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_ingress_via_ssh(namespace)
+            raise InfrastructureError(f"Failed to get Ingress resources: {e}") from e
+    
+    def _get_ingress_via_ssh(self, namespace: str) -> List[Dict[str, Any]]:
+        """Get Ingress resources via SSH kubectl command."""
+        cmd = f"get ingress -n {namespace} -o json"
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            raise InfrastructureError(f"Failed to get Ingress via SSH: {result['stderr']}")
+        
+        try:
+            ingress_data = json.loads(result["stdout"])
+            ingress_list = []
+            
+            for item in ingress_data.get("items", []):
+                metadata = item.get("metadata", {})
+                spec = item.get("spec", {})
+                
+                rules = []
+                for rule in spec.get("rules", []):
+                    paths = []
+                    http = rule.get("http", {})
+                    for path in http.get("paths", []):
+                        backend = path.get("backend", {})
+                        service = backend.get("service", {})
+                        paths.append({
+                            "path": path.get("path"),
+                            "path_type": path.get("pathType"),
+                            "service_name": service.get("name"),
+                            "service_port": service.get("port", {}).get("number")
+                        })
+                    rules.append({
+                        "host": rule.get("host"),
+                        "paths": paths
+                    })
+                
+                ingress_info = {
+                    "name": metadata.get("name"),
+                    "namespace": metadata.get("namespace"),
+                    "rules": rules,
+                    "labels": metadata.get("labels", {})
+                }
+                ingress_list.append(ingress_info)
+            
+            return ingress_list
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse Ingress JSON: {e}") from e
+    
+    def get_services(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get Services in the specified namespace.
+        
+        Args:
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            List of Service information dictionaries
+        """
+        self._ensure_k8s_available()
+        
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "panda")
+        
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_services_via_ssh(namespace)
+        
+        try:
+            services = self.k8s_core_v1.list_namespaced_service(namespace=namespace)
+            
+            service_list = []
+            for svc in services.items:
+                ports = []
+                for port in svc.spec.ports or []:
+                    ports.append({
+                        "name": port.name,
+                        "port": port.port,
+                        "target_port": port.target_port if isinstance(port.target_port, int) else str(port.target_port),
+                        "protocol": port.protocol
+                    })
+                
+                service_info = {
+                    "name": svc.metadata.name,
+                    "namespace": svc.metadata.namespace,
+                    "type": svc.spec.type,
+                    "cluster_ip": svc.spec.cluster_ip,
+                    "ports": ports,
+                    "labels": svc.metadata.labels or {}
+                }
+                service_list.append(service_info)
+            
+            self.logger.debug(f"Retrieved {len(service_list)} Services from namespace '{namespace}'")
+            return service_list
+            
+        except ApiException as e:
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_services_via_ssh(namespace)
+            raise InfrastructureError(f"Failed to get Services: {e}") from e
+    
+    def _get_services_via_ssh(self, namespace: str) -> List[Dict[str, Any]]:
+        """Get Services via SSH kubectl command."""
+        cmd = f"get svc -n {namespace} -o json"
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            raise InfrastructureError(f"Failed to get Services via SSH: {result['stderr']}")
+        
+        try:
+            svc_data = json.loads(result["stdout"])
+            service_list = []
+            
+            for item in svc_data.get("items", []):
+                metadata = item.get("metadata", {})
+                spec = item.get("spec", {})
+                
+                ports = []
+                for port in spec.get("ports", []):
+                    ports.append({
+                        "name": port.get("name"),
+                        "port": port.get("port"),
+                        "target_port": port.get("targetPort"),
+                        "protocol": port.get("protocol", "TCP")
+                    })
+                
+                service_info = {
+                    "name": metadata.get("name"),
+                    "namespace": metadata.get("namespace"),
+                    "type": spec.get("type", "ClusterIP"),
+                    "cluster_ip": spec.get("clusterIP"),
+                    "ports": ports,
+                    "labels": metadata.get("labels", {})
+                }
+                service_list.append(service_info)
+            
+            return service_list
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse Services JSON: {e}") from e
+    
+    def get_endpoints(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get Endpoints in the specified namespace.
+        
+        Args:
+            namespace: Kubernetes namespace (defaults to configured namespace)
+            
+        Returns:
+            List of Endpoint information dictionaries
+        """
+        self._ensure_k8s_available()
+        
+        if not namespace:
+            namespace = self.k8s_config.get("namespace", "panda")
+        
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._get_endpoints_via_ssh(namespace)
+        
+        try:
+            endpoints = self.k8s_core_v1.list_namespaced_endpoints(namespace=namespace)
+            
+            endpoint_list = []
+            for ep in endpoints.items:
+                subsets = []
+                for subset in ep.subsets or []:
+                    addresses = []
+                    for addr in subset.addresses or []:
+                        addresses.append({
+                            "ip": addr.ip,
+                            "hostname": addr.hostname,
+                            "target_ref": {
+                                "kind": addr.target_ref.kind if addr.target_ref else None,
+                                "name": addr.target_ref.name if addr.target_ref else None,
+                                "namespace": addr.target_ref.namespace if addr.target_ref else None
+                            } if addr.target_ref else None
+                        })
+                    
+                    ports = []
+                    for port in subset.ports or []:
+                        ports.append({
+                            "name": port.name,
+                            "port": port.port,
+                            "protocol": port.protocol
+                        })
+                    
+                    subsets.append({
+                        "addresses": addresses,
+                        "ports": ports
+                    })
+                
+                endpoint_info = {
+                    "name": ep.metadata.name,
+                    "namespace": ep.metadata.namespace,
+                    "subsets": subsets,
+                    "labels": ep.metadata.labels or {}
+                }
+                endpoint_list.append(endpoint_info)
+            
+            self.logger.debug(f"Retrieved {len(endpoint_list)} Endpoints from namespace '{namespace}'")
+            return endpoint_list
+            
+        except ApiException as e:
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                self._init_ssh_fallback()
+                return self._get_endpoints_via_ssh(namespace)
+            raise InfrastructureError(f"Failed to get Endpoints: {e}") from e
+    
+    def _get_endpoints_via_ssh(self, namespace: str) -> List[Dict[str, Any]]:
+        """Get Endpoints via SSH kubectl command."""
+        cmd = f"get endpoints -n {namespace} -o json"
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        
+        if not result["success"]:
+            raise InfrastructureError(f"Failed to get Endpoints via SSH: {result['stderr']}")
+        
+        try:
+            ep_data = json.loads(result["stdout"])
+            endpoint_list = []
+            
+            for item in ep_data.get("items", []):
+                metadata = item.get("metadata", {})
+                subsets_data = item.get("subsets", [])
+                
+                subsets = []
+                for subset in subsets_data:
+                    addresses = []
+                    for addr in subset.get("addresses", []):
+                        target_ref = addr.get("targetRef", {})
+                        addresses.append({
+                            "ip": addr.get("ip"),
+                            "hostname": addr.get("hostname"),
+                            "target_ref": {
+                                "kind": target_ref.get("kind"),
+                                "name": target_ref.get("name"),
+                                "namespace": target_ref.get("namespace")
+                            } if target_ref else None
+                        })
+                    
+                    ports = []
+                    for port in subset.get("ports", []):
+                        ports.append({
+                            "name": port.get("name"),
+                            "port": port.get("port"),
+                            "protocol": port.get("protocol", "TCP")
+                        })
+                    
+                    subsets.append({
+                        "addresses": addresses,
+                        "ports": ports
+                    })
+                
+                endpoint_info = {
+                    "name": metadata.get("name"),
+                    "namespace": metadata.get("namespace"),
+                    "subsets": subsets,
+                    "labels": metadata.get("labels", {})
+                }
+                endpoint_list.append(endpoint_info)
+            
+            return endpoint_list
+        except json.JSONDecodeError as e:
+            raise InfrastructureError(f"Failed to parse Endpoints JSON: {e}") from e

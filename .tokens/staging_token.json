@@ -1,0 +1,7 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZXMiOltdLCJpYXQiOjE3NjI0MzYxNDMsImV4cCI6MTc2MjQzNjQ0M30.VEAOm-LJuO76aCtMuoO319aIVc3cass7Cm5jAQbSNPE",
+  "acquired_at": "2025-11-06T15:35:43.383561",
+  "expires_at": "2025-11-06T15:40:43",
+  "base_url": "https://10.10.10.100/prisma/api",
+  "username": "prisma"
+}

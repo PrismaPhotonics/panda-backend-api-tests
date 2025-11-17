@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automation Specs Gap Review - Interactive Presentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .presentation-container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            padding: 60px;
+            min-height: 600px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        h2 {
+            color: #4a5568;
+            font-size: 36px;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        h3 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 24px;
+            margin-bottom: 40px;
+        }
+
+        .code-example {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .code-example h4 {
+            color: #2d3748;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .code-link {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 24px;
+            margin: 8px 8px 8px 0;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+
+        .code-link:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .code-link::before {
+            content: "📝 ";
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        .test-link {
+            background: #48bb78;
+        }
+
+        .test-link:hover {
+            background: #38a169;
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        }
+
+        .test-link::before {
+            content: "🧪 ";
+        }
+
+        .config-link {
+            background: #ed8936;
+        }
+
+        .config-link:hover {
+            background: #dd6b20;
+            box-shadow: 0 4px 12px rgba(237, 137, 54, 0.4);
+        }
+
+        .config-link::before {
+            content: "⚙️ ";
+        }
+
+        .copy-button {
+            background: #805ad5;
+            margin-left: 8px;
+        }
+
+        .copy-button:hover {
+            background: #6b46c1;
+            box-shadow: 0 4px 12px rgba(128, 90, 213, 0.4);
+        }
+
+        .copy-button::before {
+            content: "📋 ";
+        }
+
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            background-color: #2d3748;
+            color: white;
+            text-align: center;
+            padding: 8px 16px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+        }
+
+        .path-display {
+            background: #2d3748;
+            color: #68d391;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            font-size: 14px;
+            word-break: break-all;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .path-display:hover {
+            border-color: #68d391;
+            background: #1a202c;
+        }
+
+        .instructions-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 16px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-size: 15px;
+            color: #2c5282;
+        }
+
+        .instructions-box strong {
+            color: #1a365d;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .instructions-box ol {
+            padding-left: 20px;
+            margin-top: 8px;
+        }
+
+        .instructions-box li {
+            padding: 5px 0;
+            font-size: 15px;
+            color: #2c5282;
+            border: none;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+
+        .p0 {
+            background: #fc8181;
+            color: #742a2a;
+        }
+
+        .p1 {
+            background: #f6ad55;
+            color: #7c2d12;
+        }
+
+        .p2 {
+            background: #fbd38d;
+            color: #744210;
+        }
+
+        .p3 {
+            background: #cbd5e0;
+            color: #2d3748;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        li {
+            padding: 15px 0;
+            font-size: 20px;
+            color: #4a5568;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        li:last-child {
+            border-bottom: none;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 60px;
+            background: #f7fafc;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .nav-button {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .nav-button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slide-counter {
+            font-size: 18px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .intro-slide {
+            text-align: center;
+            padding: 100px 60px;
+        }
+
+        .intro-slide h1 {
+            font-size: 56px;
+            margin-bottom: 30px;
+        }
+
+        .intro-slide .subtitle {
+            font-size: 28px;
+        }
+
+        .issue-description {
+            background: #fff5f5;
+            border-left: 4px solid #fc8181;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-size: 18px;
+            color: #742a2a;
+        }
+
+        .impact-note {
+            background: #fefcbf;
+            border-left: 4px solid #f6ad55;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #744210;
+        }
+
+        .summary-table {
+            width: 100%;
+            margin: 30px 0;
+            border-collapse: collapse;
+        }
+
+        .summary-table th,
+        .summary-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .summary-table th {
+            background: #f7fafc;
+            color: #2d3748;
+            font-weight: 700;
+        }
+
+        .summary-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .keyboard-hint {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .stats-box {
+            display: inline-block;
+            padding: 20px 40px;
+            margin: 15px;
+            background: #f7fafc;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stats-box .number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #667eea;
+            display: block;
+        }
+
+        .stats-box .label {
+            font-size: 16px;
+            color: #718096;
+            margin-top: 8px;
+        }
+
+        .file-path {
+            font-family: 'Courier New', monospace;
+            background: #2d3748;
+            color: #f7fafc;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active intro-slide">
+            <h1>🎯 Automation Specs Gap Review</h1>
+            <p class="subtitle">Bridging the Gap Between Tests and Requirements</p>
+            <div style="margin-top: 60px;">
+                <div class="stats-box">
+                    <span class="number">9</span>
+                    <span class="label">Code Examples</span>
+                </div>
+                <div class="stats-box">
+                    <span class="number">82+</span>
+                    <span class="label">Affected Tests</span>
+                </div>
+                <div class="stats-box">
+                    <span class="number">4</span>
+                    <span class="label">Priority Levels</span>
+                </div>
+            </div>
+            
+            <div class="instructions-box" style="max-width: 700px; margin: 40px auto; text-align: left;">
+                <strong>💡 How to Navigate & Use This Presentation:</strong>
+                <ol>
+                    <li><strong>Navigate:</strong> Use ← → arrow keys or click Next/Previous</li>
+                    <li><strong>View Code:</strong> Click "📋 Copy Path" buttons to copy file paths</li>
+                    <li><strong>Open in Cursor:</strong> Press Ctrl+P in Cursor, paste path, hit Enter</li>
+                    <li><strong>Or:</strong> Click on the green code boxes to copy paths directly</li>
+                </ol>
+                <p style="margin-top: 15px; color: #2c5282; font-style: italic;">
+                    Note: Direct vscode:// links may be blocked by browsers. Use Copy Path instead!
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: Example 1 - ROI 50% -->
+        <div class="slide">
+            <h2><span class="priority-badge p0">P0</span>#1: ROI Change Limit - Hardcoded 50%</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> ROI change limit is hardcoded to 50% without any official specification or approval.
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">src/utils/validators.py:395</p>
+                <p style="margin-top: 10px; color: #4a5568;">Function: <code>validate_roi_change_safety()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">max_change_percent: float = 50.0  # ❌ HARDCODED - NO SPEC!</pre>
+                
+                <div style="margin-top: 15px;">
+                    <button class="code-link" onclick="copyForCtrlP('src/utils/validators.py', 395, this)">📋 Copy Path</button>
+                    <div class="path-display" title="Click to copy" onclick="copyToClipboard('src/utils/validators.py:395', this)">
+                        src/utils/validators.py:395
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-example">
+                <h4>🧪 Test Location:</h4>
+                <p class="file-path">tests/integration/api/test_dynamic_roi_adjustment.py:475</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_unsafe_roi_change()</code></p>
+                
+                <div style="margin-top: 15px;">
+                    <button class="test-link" onclick="copyForCtrlP('tests/integration/api/test_dynamic_roi_adjustment.py', 475, this)">📋 Copy Path</button>
+                    <div class="path-display" title="Click to copy" onclick="copyToClipboard('tests/integration/api/test_dynamic_roi_adjustment.py:475', this)">
+                        tests/integration/api/test_dynamic_roi_adjustment.py:475
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions-box">
+                <strong>💡 How to Open in Cursor:</strong>
+                <ol>
+                    <li>Click "📋 Copy Path" button above</li>
+                    <li>Open Cursor IDE</li>
+                    <li>Press <strong>Ctrl+P</strong></li>
+                    <li>Paste (Ctrl+V) and press Enter</li>
+                </ol>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> 6 tests depend on this unconfirmed hardcoded value. Could be 30%? 70%? We don't know!
+            </div>
+        </div>
+
+        <!-- Slide 3: Example 2 - Performance Assertions -->
+        <div class="slide">
+            <h2><span class="priority-badge p0">P0</span>#2: Performance Assertions Disabled (P95/P99)</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> P95/P99 performance assertions are disabled with TODO comments. Tests run but cannot fail even if performance is poor!
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">tests/integration/performance/test_performance_high_priority.py:67</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_config_endpoint_latency_p95_p99()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+# TODO: Update thresholds after specs meeting
+THRESHOLD_P95_MS = 500   # ❌ Arbitrary value
+THRESHOLD_P99_MS = 1000  # ❌ Arbitrary value
+
+# TODO: Uncomment after specs meeting
+# assert p95 < THRESHOLD_P95_MS   ❌ DISABLED!
+# assert p99 < THRESHOLD_P99_MS   ❌ DISABLED!
+                </pre>
+                
+                <div style="margin-top: 15px;">
+                    <button class="code-link" onclick="copyForCtrlP('tests/integration/performance/test_performance_high_priority.py', 67, this)">📋 Copy Path</button>
+                    <div class="path-display" title="Click to copy" onclick="copyToClipboard('tests/integration/performance/test_performance_high_priority.py:67', this)">
+                        tests/integration/performance/test_performance_high_priority.py:67
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions-box">
+                <strong>💡 Quick Open:</strong> Click "📋 Copy Path" → Open Cursor → Press <strong>Ctrl+P</strong> → Paste → Enter
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> 28 performance tests with disabled assertions. Cannot enforce performance regression gates without SLA!
+            </div>
+        </div>
+
+        <!-- Slide 4: Example 3 - NFFT Validation -->
+        <div class="slide">
+            <h2><span class="priority-badge p1">P1</span>#3: NFFT Validation Too Permissive</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> NFFT validation only warns for non-power-of-2 values but doesn't reject them. Accepts any positive integer!
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">src/utils/validators.py:194</p>
+                <p style="margin-top: 10px; color: #4a5568;">Function: <code>validate_nfft_value()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+if not is_power_of_2:
+    warnings.warn(...)  # ❌ Only warns, doesn't reject!
+
+return True  # ✅ Always returns True!
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/src/utils/validators.py:194" class="code-link">View Code →</a>
+            </div>
+
+            <div class="code-example">
+                <h4>🧪 Test Location:</h4>
+                <p class="file-path">tests/integration/api/test_spectrogram_pipeline.py:98</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_nfft_non_power_of_2()</code></p>
+                <a href="vscode://file/C:/Projects/focus_server_automation/tests/integration/api/test_spectrogram_pipeline.py:98" class="test-link">View Test →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> Code doesn't enforce the valid NFFT list from config. Invalid NFFT harms performance/memory!
+            </div>
+        </div>
+
+        <!-- Slide 5: Example 4 - Frequency Range -->
+        <div class="slide">
+            <h2><span class="priority-badge p1">P1</span>#4: Frequency Range - No Absolute Max/Min</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> FrequencyRange model has no upper limit. Accepts any positive value including extremes (e.g., 999999 Hz).
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">src/models/focus_server_models.py:46</p>
+                <p style="margin-top: 10px; color: #4a5568;">Model: <code>FrequencyRange</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+class FrequencyRange(BaseModel):
+    min: int = Field(..., ge=0)  # ✅ >= 0
+    max: int = Field(..., ge=0)  # ✅ >= 0
+    # ❌ NO UPPER LIMIT!
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/src/models/focus_server_models.py:46" class="code-link">View Code →</a>
+            </div>
+
+            <div class="code-example">
+                <h4>🧪 Test Location:</h4>
+                <p class="file-path">tests/integration/api/test_spectrogram_pipeline.py:159</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_frequency_range_variations()</code></p>
+                <a href="vscode://file/C:/Projects/focus_server_automation/tests/integration/api/test_spectrogram_pipeline.py:159" class="test-link">View Test →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> 16 tests affected. Could accept frequencies beyond hardware limits!
+            </div>
+        </div>
+
+        <!-- Slide 6: Example 5 - Sensor Range -->
+        <div class="slide">
+            <h2><span class="priority-badge p2">P2</span>#5: Sensor Range - No Min/Max ROI Size</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> Sensor range validation has no check for minimum or maximum ROI size. Could be 1 sensor or all 2222 sensors!
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">src/utils/validators.py:116</p>
+                <p style="margin-top: 10px; color: #4a5568;">Function: <code>validate_sensor_range()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+if max_sensor <= min_sensor:
+    raise ValidationError("max > min")
+
+# ❌ NO CHECK FOR MINIMUM ROI SIZE!
+# ❌ NO CHECK FOR MAXIMUM ROI SIZE!
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/src/utils/validators.py:116" class="code-link">View Code →</a>
+            </div>
+
+            <div class="code-example">
+                <h4>🧪 Test Location:</h4>
+                <p class="file-path">tests/integration/api/test_config_validation_high_priority.py:416</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_invalid_channel_range_min_greater_than_max()</code></p>
+                <a href="vscode://file/C:/Projects/focus_server_automation/tests/integration/api/test_config_validation_high_priority.py:416" class="test-link">View Test →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> 15 tests affected. No guardrails for ROI size constraints!
+            </div>
+        </div>
+
+        <!-- Slide 7: Example 6 - Polling Timeouts -->
+        <div class="slide">
+            <h2><span class="priority-badge p2">P2</span>#6: Polling Helper - Hardcoded Timeouts</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> Polling timeouts are hardcoded (60s timeout, 1s interval). Same values for both live and historic scenarios!
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">src/utils/helpers.py:474</p>
+                <p style="margin-top: 10px; color: #4a5568;">Function: <code>poll_until()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+def poll_until(
+    condition_func,
+    timeout_seconds: int = 60,      # ❌ Hardcoded
+    poll_interval: float = 1.0      # ❌ Hardcoded
+):
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/src/utils/helpers.py:474" class="code-link">View Code →</a>
+            </div>
+
+            <div class="code-example">
+                <h4>🧪 Test Location:</h4>
+                <p class="file-path">tests/integration/api/test_live_monitoring_flow.py:184</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_poll_waterfall_data_live_task()</code></p>
+                <a href="vscode://file/C:/Projects/focus_server_automation/tests/integration/api/test_live_monitoring_flow.py:184" class="test-link">View Test →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> Used throughout integration tests. Different scenarios may need different timeouts!
+            </div>
+        </div>
+
+        <!-- Slide 8: Example 7 - Defaults Mismatch -->
+        <div class="slide">
+            <h2><span class="priority-badge p2">P2</span>#7: Default Payloads Mismatch Config</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> Code defaults (0-100) don't match config file defaults (11-109). Which is correct?
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">src/utils/helpers.py:507</p>
+                <p style="margin-top: 10px; color: #4a5568;">Function: <code>generate_config_payload()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+def generate_config_payload(
+    sensors_min: int = 0,          # ❌ Config says: 11
+    sensors_max: int = 100,        # ❌ Config says: 109
+    freq_max: int = 500,           # ❌ Config says: 1000
+):
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/src/utils/helpers.py:507" class="code-link">View Code →</a>
+            </div>
+
+            <div class="code-example">
+                <h4>⚙️ Config Reference:</h4>
+                <p class="file-path">config/environments.yaml:24</p>
+                <pre style="margin-top: 15px; color: #744210; font-size: 16px;">
+constraints:
+  sensors:
+    default_start: 11     # ≠ Code: 0
+    default_end: 109      # ≠ Code: 100
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/config/environments.yaml:24" class="config-link">View Config →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> Used by ALL config tests! Code and config are not synchronized!
+            </div>
+        </div>
+
+        <!-- Slide 9: Example 8 - No Assertions -->
+        <div class="slide">
+            <h2><span class="priority-badge p3">P3</span>#8: Config Validation Tests - No Assertions</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> Config validation tests have TODO comments and no assertions. Tests run but don't actually check anything!
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">tests/integration/api/test_config_validation_high_priority.py:475</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_frequency_range_equal_min_max()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+# TODO: Update assertion after specs meeting
+# For now, just log  ❌ NO ASSERTION!
+logger.info(f"status_code={response.status_code}")
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/tests/integration/api/test_config_validation_high_priority.py:475" class="code-link">View Test →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> 8 tests with missing assertions. Edge cases (min==max) have undefined behavior!
+            </div>
+        </div>
+
+        <!-- Slide 10: Example 9 - MongoDB Outage -->
+        <div class="slide">
+            <h2><span class="priority-badge p3">P3</span>#9: MongoDB Outage Resilience - Behavior Unclear</h2>
+            
+            <div class="issue-description">
+                <strong>Problem:</strong> MongoDB outage test expects 5s response time but actual is 15s. Expected HTTP code and recovery time are unclear!
+            </div>
+
+            <div class="code-example">
+                <h4>📝 Code Location:</h4>
+                <p class="file-path">tests/performance/test_mongodb_outage_resilience.py:157</p>
+                <p style="margin-top: 10px; color: #4a5568;">Test: <code>test_mongodb_scale_down_outage_returns_503_no_orchestration()</code></p>
+                <pre style="margin-top: 15px; color: #742a2a; font-size: 16px;">
+# Test failure:
+AssertionError: Response time 15.423s exceeds maximum 5.0s
+                </pre>
+                <a href="vscode://file/C:/Projects/focus_server_automation/tests/performance/test_mongodb_outage_resilience.py:157" class="code-link">View Test →</a>
+            </div>
+
+            <div class="impact-note">
+                <strong>⚠️ Impact:</strong> Unclear SLA for outage scenarios. What's the correct HTTP code? Recovery time? Caching policy?
+            </div>
+        </div>
+
+        <!-- Slide 11: Summary -->
+        <div class="slide">
+            <h2>📊 Summary - Complete Picture</h2>
+            
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Priority</th>
+                        <th>Problem</th>
+                        <th>Affected Tests</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><span class="priority-badge p0">P0</span></td>
+                        <td>ROI 50% hardcoded</td>
+                        <td>6 tests</td>
+                        <td>⏳ Needs spec</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><span class="priority-badge p0">P0</span></td>
+                        <td>Performance assertions disabled</td>
+                        <td>28 tests</td>
+                        <td>⏳ Needs SLA</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><span class="priority-badge p1">P1</span></td>
+                        <td>NFFT too permissive</td>
+                        <td>6 tests</td>
+                        <td>⏳ Needs enforcement</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><span class="priority-badge p1">P1</span></td>
+                        <td>Frequency no max</td>
+                        <td>16 tests</td>
+                        <td>⏳ Needs limits</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><span class="priority-badge p2">P2</span></td>
+                        <td>Sensor no limits</td>
+                        <td>15 tests</td>
+                        <td>⏳ Needs constraints</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><span class="priority-badge p2">P2</span></td>
+                        <td>Polling hardcoded</td>
+                        <td>Many tests</td>
+                        <td>⏳ Needs config</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><span class="priority-badge p2">P2</span></td>
+                        <td>Defaults mismatch</td>
+                        <td>ALL tests</td>
+                        <td>⏳ Needs sync</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td><span class="priority-badge p3">P3</span></td>
+                        <td>No assertions</td>
+                        <td>8 tests</td>
+                        <td>⏳ Needs behavior spec</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td><span class="priority-badge p3">P3</span></td>
+                        <td>MongoDB unclear</td>
+                        <td>5 tests</td>
+                        <td>⏳ Needs SLA</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 40px; text-align: center;">
+                <div class="stats-box">
+                    <span class="number">82+</span>
+                    <span class="label">Total Affected Tests</span>
+                </div>
+                <div class="stats-box">
+                    <span class="number">9</span>
+                    <span class="label">Critical Code Locations</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Call to Action -->
+        <div class="slide intro-slide">
+            <h1>🎯 Next Steps</h1>
+            
+            <ul style="text-align: left; max-width: 800px; margin: 60px auto;">
+                <li><strong>Today:</strong> Review all 9 code examples with development team</li>
+                <li><strong>This Week:</strong> Define specifications for P0 and P1 items</li>
+                <li><strong>Next Week:</strong> Update tests with official specs</li>
+                <li><strong>Goal:</strong> Enable 82+ tests to properly validate system behavior</li>
+            </ul>
+
+            <div style="margin-top: 60px;">
+                <p style="font-size: 24px; color: #667eea; font-weight: 600;">
+                    Let's bridge the gap between automation and requirements! 🚀
+                </p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+            <div>
+                <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">12</span></span>
+                <div class="keyboard-hint">Use ← → arrow keys to navigate</div>
+            </div>
+            <button class="nav-button" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+            document.getElementById('totalSlides').textContent = totalSlides;
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // Copy to clipboard function
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                button.style.background = '#38a169';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 2000);
+                
+                return true;
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    button.textContent = '✅ Copied!';
+                    button.style.background = '#38a169';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.style.background = '';
+                    }, 2000);
+                } catch (err2) {
+                    alert('Copy failed. Please copy manually.');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        // Open in Cursor function
+        function openInCursor(filePath, lineNumber, button) {
+            // Try to open with vscode:// protocol
+            const vscodeUrl = `vscode://file/C:/Projects/focus_server_automation/${filePath}${lineNumber ? ':' + lineNumber : ''}`;
+            
+            // Create temporary link and click it
+            const tempLink = document.createElement('a');
+            tempLink.href = vscodeUrl;
+            tempLink.target = '_blank';
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+            
+            // Visual feedback
+            const originalBg = button.style.background;
+            button.style.background = '#38a169';
+            setTimeout(() => {
+                button.style.background = originalBg;
+            }, 500);
+        }
+
+        // Copy path for Ctrl+P
+        function copyForCtrlP(filePath, lineNumber, button) {
+            const text = `${filePath}${lineNumber ? ':' + lineNumber : ''}`;
+            copyToClipboard(text, button);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft') {
+                changeSlide(-1);
+            } else if (event.key === 'ArrowRight') {
+                changeSlide(1);
+            } else if (event.key === 'Home') {
+                showSlide(0);
+            } else if (event.key === 'End') {
+                showSlide(totalSlides - 1);
+            }
+        });
+
+        // Click on path-display to copy
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('path-display')) {
+                const text = e.target.textContent;
+                copyToClipboard(text, e.target);
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>
+

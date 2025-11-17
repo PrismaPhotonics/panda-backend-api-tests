@@ -228,7 +228,7 @@ Write-Host "   mongosh `"$MONGODB_URI`"" -ForegroundColor Cyan
 Write-Host "   db.getCollection(`"$GUID`").getIndexes()" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "2. Run the test to verify:" -ForegroundColor White
-Write-Host "   pytest tests/data_quality/test_mongodb_data_quality.py::TestMongoDBDataQuality::test_mongodb_indexes_exist_and_optimal -v --env=production" -ForegroundColor Cyan
+Write-Host "   pytest be_focus_server_tests/data_quality/test_mongodb_data_quality.py::TestMongoDBDataQuality::test_mongodb_indexes_exist_and_optimal -v --env=production" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
 

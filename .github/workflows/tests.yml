@@ -195,10 +195,10 @@ jobs:
         echo "✅ All tests completed (excluding load/stress tests)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Excluded Test Categories:" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Load tests (\`tests/load/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Stress tests (\`tests/stress/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Infrastructure tests (\`tests/infrastructure/\` - require SSH/K8s/RabbitMQ access)" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Integration load tests (\`tests/integration/load/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Load tests (\`be_focus_server_tests/load/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Stress tests (\`be_focus_server_tests/stress/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Infrastructure tests (\`be_focus_server_tests/infrastructure/\` - require SSH/K8s/RabbitMQ access)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Integration load tests (\`be_focus_server_tests/integration/load/\`)" >> $GITHUB_STEP_SUMMARY
         echo "- ❌ API load tests (\`focus_server_api_load_tests/\`)" >> $GITHUB_STEP_SUMMARY
         echo "- ❌ Alert load/performance tests" >> $GITHUB_STEP_SUMMARY
         echo "- ❌ gRPC stream tests (marked with \`@pytest.mark.grpc\`)" >> $GITHUB_STEP_SUMMARY

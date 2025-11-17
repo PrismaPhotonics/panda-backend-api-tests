@@ -72,6 +72,7 @@ netaddr>=0.10.1
 
 # Jira Integration
 jira>=3.5.0  # Jira API client for Python
+pytest-xray>=3.0.0  # Optional: pytest plugin for Xray integration (makes marker handling easier)
 
 # File System Operations
 # pathlib2>=2.3.7  # Not needed in Python 3.4+, using built-in pathlib

@@ -1,0 +1,93 @@
+================================================================================
+COMBINED API ENDPOINTS VALIDATION REPORT
+================================================================================
+Generated: 2025-11-06T15:36:36.852161
+Environment: staging
+
+================================================================================
+FOCUS SERVER API - SUMMARY
+================================================================================
+Total Endpoints: 4
+Available: 3
+Not Found (404): 1
+Errors: 0
+Auth Required: 0
+
+Focus Server API - DETAILED RESULTS:
+--------------------------------------------------------------------------------
+[OK] GET    /channels                                          (get_channels)
+    Status Code: 200
+    Response Time: 22.48ms
+[OK] GET    /live_metadata                                     (get_live_metadata)
+    Status Code: 200
+    Response Time: 2.38ms
+[OK] POST   /configure                                         (configure_streaming_job)
+    Status Code: 422
+    Response Time: 1.96ms
+[404] GET    /metadata/{job_id}                                 (get_job_metadata)
+    Status Code: 404
+    Response Time: 2.05ms
+
+Recommendations:
+  - 1 Focus Server API endpoint(s) returned 404. Verify that the Focus Server is running and the base URL is correct.
+
+================================================================================
+PRISMA WEB APP API - SUMMARY
+================================================================================
+Total Endpoints: 8
+Available: 8
+Not Found (404): 0
+Errors: 0
+Auth Required: 0
+
+================================================================================
+API Endpoints Validation Report
+================================================================================
+Generated: 2025-11-06T15:36:36.627668
+Base URL: https://10.10.10.100/prisma/api
+Site ID: prisma-210-1000
+
+Summary:
+  Total Endpoints: 8
+  [OK] Available: 8
+  [AUTH] Auth Required: 0
+  [404] Not Found (404): 0
+  [ERROR] Errors: 0
+  [DEPRECATED] Deprecated: 0
+
+================================================================================
+Detailed Results
+================================================================================
+
+[OK] Available Endpoints:
+  GET    /login-configuration                               (GetLoginConfiguration)
+    Response time: 36.89ms
+  GET    /{siteId}/api/alert                                (AlertController_findAll)
+    Response time: 54.67ms
+  GET    /{siteId}/api/alert/export-alerts                  (AlertController_exportsAlerts)
+    Response time: 9.60ms
+  GET    /{siteId}/api/alert/get-alert-status               (AlertController_getAlertStatus)
+    Response time: 24.41ms
+  GET    /{siteId}/api/point/map-setup                      (PointController_findAll)
+    Response time: 53.31ms
+  GET    /{siteId}/api/region                               (RegionController_getAllRegions)
+    Response time: 4.80ms
+  GET    /{siteId}/api/site/get-sites                       (SiteController_findAll)
+    Response time: 3.94ms
+  GET    /{siteId}/api/user/config                          (GetLegacyUserConfiguration)
+    Response time: 70.39ms
+
+================================================================================
+Recommendations
+================================================================================
+1. [OK] /login-configuration endpoint is accessible - this is the prerequisite endpoint.
+2. [OK] Good coverage: 100.0% of endpoints are available.
+
+================================================================================
+OVERALL SUMMARY
+================================================================================
+Total Endpoints Tested: 12
+Available: 11 (91.7%)
+Not Found: 1
+Errors: 0
+Auth Required: 0

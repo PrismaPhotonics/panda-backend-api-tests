@@ -22,7 +22,7 @@ import json
 import logging
 import argparse
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 import requests
 
@@ -96,8 +96,24 @@ class XrayUploader:
         
         return result
     
-    def upload_junit(self, junit_file: str, test_exec_key: str = None) -> Dict[str, Any]:
-        """Upload JUnit XML format."""
+    def upload_junit(
+        self, 
+        junit_file: str, 
+        test_exec_key: str = None,
+        test_plan_key: str = None,
+        test_environments: List[str] = None,
+        revision: str = None
+    ) -> Dict[str, Any]:
+        """
+        Upload JUnit XML format.
+        
+        Args:
+            junit_file: Path to JUnit XML file
+            test_exec_key: Existing Test Execution key (optional)
+            test_plan_key: Test Plan key to link (e.g., "PZ-14024")
+            test_environments: List of environment names (e.g., ["Staging"])
+            revision: Revision/Build identifier (e.g., Git SHA)
+        """
         logger.info(f"Uploading JUnit XML: {junit_file}")
         
         with open(junit_file, "rb") as f:
@@ -107,6 +123,18 @@ class XrayUploader:
             if test_exec_key:
                 params["testExecKey"] = test_exec_key
                 logger.info(f"Linking to existing Test Execution: {test_exec_key}")
+            
+            if test_plan_key:
+                params["testPlanKey"] = test_plan_key
+                logger.info(f"Linking to Test Plan: {test_plan_key}")
+            
+            if test_environments:
+                params["testEnvironments"] = ",".join(test_environments)
+                logger.info(f"Environments: {', '.join(test_environments)}")
+            
+            if revision:
+                params["revision"] = revision
+                logger.info(f"Revision: {revision}")
             
             token = self.authenticate()
             
@@ -144,6 +172,19 @@ def main():
     parser.add_argument(
         "--test-exec-key",
         help="Link to existing Test Execution key"
+    )
+    parser.add_argument(
+        "--test-plan",
+        help="Test Plan key to link (e.g., PZ-14024)"
+    )
+    parser.add_argument(
+        "--environment",
+        action="append",
+        help="Test environment (can be specified multiple times, e.g., --environment Staging)"
+    )
+    parser.add_argument(
+        "--revision",
+        help="Revision/Build identifier (e.g., Git SHA)"
     )
     parser.add_argument(
         "--verbose",
@@ -187,7 +228,13 @@ def main():
         if file_path.suffix == ".json" or (args.format == "json"):
             result = uploader.upload_json(str(file_path), args.test_exec_key)
         else:
-            result = uploader.upload_junit(str(file_path), args.test_exec_key)
+            result = uploader.upload_junit(
+                str(file_path),
+                test_exec_key=args.test_exec_key,
+                test_plan_key=args.test_plan,
+                test_environments=args.environment,
+                revision=args.revision
+            )
         
         logger.info("\n🎉 Upload complete!")
         logger.info("You can view results in Jira Xray:")

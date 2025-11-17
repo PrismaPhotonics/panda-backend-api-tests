@@ -141,7 +141,9 @@ class SSHManager:
                 port=port,
                 username=username,
                 key_filename=key_file,
-                timeout=10
+                timeout=10,
+                allow_agent=False,  # Don't try agent when we have key file
+                look_for_keys=False  # Don't look for other keys
             )
         elif password:
             # Use password authentication
@@ -150,7 +152,9 @@ class SSHManager:
                 port=port,
                 username=username,
                 password=password,
-                timeout=10
+                timeout=10,
+                allow_agent=False,  # Don't try agent with password
+                look_for_keys=False  # Don't look for keys with password
             )
         else:
             raise InfrastructureError("No authentication method configured (password or key_file)")
@@ -193,7 +197,9 @@ class SSHManager:
                 port=jump_port,
                 username=jump_username,
                 key_filename=jump_key_file,
-                timeout=10
+                timeout=10,
+                allow_agent=False,  # Don't try agent when we have key file
+                look_for_keys=False  # Don't look for other keys
             )
         elif jump_password:
             self.jump_ssh_client.connect(
@@ -202,8 +208,8 @@ class SSHManager:
                 username=jump_username,
                 password=jump_password,
                 timeout=10,
-                allow_agent=True,  # Enable agent forwarding
-                look_for_keys=True  # Look for keys in default locations
+                allow_agent=False,  # Don't try agent with password
+                look_for_keys=False  # Don't look for keys with password
             )
         else:
             raise InfrastructureError("No authentication method configured for jump host")
@@ -229,8 +235,8 @@ class SSHManager:
         self.ssh_client = SSHClient()
         self.ssh_client.set_missing_host_key_policy(AutoAddPolicy())
         
-        # Try multiple authentication methods in order of preference
-        # 1. SSH key file (if configured)
+        # Try authentication methods in order of preference
+        # 1. SSH key file (if configured) - try this first without agent/look_for_keys
         if target_key_file:
             try:
                 # Expand tilde in key_file path
@@ -241,20 +247,22 @@ class SSHManager:
                     key_filename=target_key_file,
                     sock=channel,
                     timeout=10,
-                    allow_agent=True,  # Also try agent
-                    look_for_keys=True  # Look for keys in default locations
+                    allow_agent=False,  # Don't try agent when we have key file
+                    look_for_keys=False  # Don't look for other keys
                 )
                 self.logger.debug("Connected to target host using SSH key file")
-            except paramiko.AuthenticationException:
-                self.logger.warning(f"SSH key file authentication failed, trying other methods...")
-                # Fall through to try other methods
-            else:
                 self.connected = True
                 self.use_jump_host = True
                 self.logger.info(f"Successfully connected to target host {target_hostname}:{target_port} via jump host {jump_hostname}")
                 return True
+            except paramiko.AuthenticationException:
+                self.logger.debug("SSH key file authentication failed, trying SSH agent...")
+                # Create new client for next attempt
+                self.ssh_client.close()
+                self.ssh_client = SSHClient()
+                self.ssh_client.set_missing_host_key_policy(AutoAddPolicy())
         
-        # 2. SSH Agent (forwarded from jump host or local)
+        # 2. SSH Agent (forwarded from jump host or local) - only if no key_file or key_file failed
         try:
             self.ssh_client.connect(
                 hostname=target_hostname,
@@ -262,8 +270,7 @@ class SSHManager:
                 sock=channel,
                 timeout=10,
                 allow_agent=True,  # Use SSH agent
-                look_for_keys=True,  # Look for keys in default locations
-                # Don't set password here - let it try keys first
+                look_for_keys=True  # Look for keys in default locations
             )
             self.logger.debug("Connected to target host using SSH agent/key")
             self.connected = True
@@ -272,7 +279,10 @@ class SSHManager:
             return True
         except paramiko.AuthenticationException:
             self.logger.debug("SSH agent/key authentication failed, trying password...")
-            # Fall through to try password
+            # Create new client for next attempt
+            self.ssh_client.close()
+            self.ssh_client = SSHClient()
+            self.ssh_client.set_missing_host_key_policy(AutoAddPolicy())
         
         # 3. Password authentication (last resort, if allowed by server)
         if target_password:

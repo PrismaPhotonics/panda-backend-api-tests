@@ -14,6 +14,7 @@ from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
 from src.core.exceptions import APIError, NetworkError, TimeoutError
+from src.core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 
 
 class BaseAPIClient:
@@ -54,18 +55,44 @@ class BaseAPIClient:
         self._setup_retry_strategy()
         self._setup_headers()
         
+        # Initialize circuit breaker to prevent cascading failures
+        # Opens after 5 consecutive failures, stays open for 60 seconds
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=5,
+            timeout=60,
+            expected_exception=(requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+        )
+        
         self.logger.info(f"API client initialized for {self.base_url} (SSL verify: {self.verify_ssl})")
     
     def _setup_retry_strategy(self):
-        """Set up retry strategy for HTTP requests."""
+        """
+        Set up retry strategy for HTTP requests with exponential backoff.
+        
+        Configuration:
+        - Exponential backoff: 1s, 2s, 4s (backoff_factor=2.0)
+        - Retry on connection errors (connect=3)
+        - Retry on read errors (read=3)
+        - Retry on HTTP status codes: 429, 500, 502, 503, 504
+        """
         retry_strategy = Retry(
             total=self.max_retries,
-            backoff_factor=1.0,
+            backoff_factor=2.0,  # Exponential backoff: 1s, 2s, 4s
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"]
+            allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"],
+            connect=3,  # Retry on connection errors
+            read=3      # Retry on read errors
         )
         
-        adapter = HTTPAdapter(max_retries=retry_strategy)
+        # Increased connection pool size for concurrent requests
+        # pool_connections: number of connection pools to cache (one per host)
+        # pool_maxsize: maximum number of connections to save in the pool per host
+        # Set to 200 to support 200+ concurrent requests
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=200,  # Increased from 50 to support 200+ concurrent requests
+            pool_maxsize=200       # Increased from 50 to support 200+ concurrent requests
+        )
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
     
@@ -142,8 +169,12 @@ class BaseAPIClient:
         # Start timing
         start_time = time.time()
         
+        # Execute request with circuit breaker protection
         try:
-            response = self.session.request(method, url, **kwargs)
+            response = self.circuit_breaker.call(
+                self.session.request,
+                method, url, **kwargs
+            )
             elapsed = (time.time() - start_time) * 1000  # Convert to milliseconds
             
             # Log response details
@@ -179,6 +210,24 @@ class BaseAPIClient:
             
             # Handle HTTP errors
             if response.status_code >= 400:
+                # Check if 503 is due to "waiting for fiber" - don't retry in that case
+                if response.status_code == 503:
+                    try:
+                        error_data = response.json()
+                        error_message = str(error_data.get('error', '') or error_data.get('message', '')).lower()
+                        # Check if error indicates "waiting for fiber"
+                        if 'waiting for fiber' in error_message or 'waiting_for_fiber' in error_message:
+                            self.logger.warning("503 error due to 'waiting for fiber' - skipping retry")
+                            # Raise error immediately without retry
+                            raise APIError(
+                                message="System is waiting for fiber - cannot configure",
+                                status_code=503,
+                                response_body=error_data
+                            )
+                    except (ValueError, KeyError, json.JSONDecodeError):
+                        # If we can't parse the error, continue with normal handling
+                        pass
+                
                 self._handle_http_error(response, url)
             
             return response
@@ -189,6 +238,11 @@ class BaseAPIClient:
             self.logger.error(f"{'='*80}")
             raise TimeoutError(f"Request timed out after {self.timeout} seconds", self.timeout) from e
             
+        except CircuitBreakerOpenError as e:
+            elapsed = (time.time() - start_time) * 1000
+            self.logger.error(f"[CIRCUIT_BREAKER] Circuit breaker is OPEN after {elapsed:.2f}ms for {method} {url}: {e}")
+            self.logger.error(f"{'='*80}")
+            raise NetworkError(f"Circuit breaker is open - server appears down: {e}") from e
         except requests.exceptions.ConnectionError as e:
             elapsed = (time.time() - start_time) * 1000
             self.logger.error(f"[CONNECTION_ERROR] Connection error after {elapsed:.2f}ms for {method} {url}: {e}")

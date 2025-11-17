@@ -1,0 +1,778 @@
+[{
+  "_id": {
+    "$oid": "6915d6c8193b9579a52305be"
+  },
+  "uuid": "d8c46fd7-734f-4fdb-ba56-84b2ccf9b5c6",
+  "start_time": {
+    "$date": "2025-11-13T12:59:02.204Z"
+  },
+  "end_time": null,
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "d8c46fd7-734f-4fdb-ba56-84b2ccf9b5c6",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d699193b9579a52305bd"
+  },
+  "uuid": "4313eeba-365a-46fb-b429-a7f29425384c",
+  "start_time": {
+    "$date": "2025-11-13T12:58:12.030Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:58:52.029Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "4313eeba-365a-46fb-b429-a7f29425384c",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d676193b9579a52305bc"
+  },
+  "uuid": "dbc20d05-54a6-4564-ba1d-c3725603a3c4",
+  "start_time": {
+    "$date": "2025-11-13T12:57:29.023Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:57:59.023Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "dbc20d05-54a6-4564-ba1d-c3725603a3c4",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d664193b9579a52305bb"
+  },
+  "uuid": "239745dd-4e9f-4b1b-bf2d-d25a91b30551",
+  "start_time": {
+    "$date": "2025-11-13T12:57:15.712Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:57:30.710Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "239745dd-4e9f-4b1b-bf2d-d25a91b30551",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d647193b9579a52305ba"
+  },
+  "uuid": "7071d139-a5e2-4fd6-91b0-0c96d47621f5",
+  "start_time": {
+    "$date": "2025-11-13T12:56:46.017Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:57:11.016Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "7071d139-a5e2-4fd6-91b0-0c96d47621f5",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d630193b9579a52305b9"
+  },
+  "uuid": "4faa86b4-8f38-4c98-9368-2d5ba1f2c080",
+  "start_time": {
+    "$date": "2025-11-13T12:56:28.609Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:56:48.608Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "4faa86b4-8f38-4c98-9368-2d5ba1f2c080",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d61d193b9579a52305b8"
+  },
+  "uuid": "989ccf33-5c38-4d0d-b7a5-eaa0c256a49b",
+  "start_time": {
+    "$date": "2025-11-13T12:56:03.010Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:56:18.009Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "989ccf33-5c38-4d0d-b7a5-eaa0c256a49b",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d5fc193b9579a52305b7"
+  },
+  "uuid": "2cd51d62-f895-4580-b461-a5290191e3cf",
+  "start_time": {
+    "$date": "2025-11-13T12:55:35.362Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:56:05.361Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "2cd51d62-f895-4580-b461-a5290191e3cf",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d5f3193b9579a52305b6"
+  },
+  "uuid": "55701964-cee1-4215-a67a-5c4e595896dc",
+  "start_time": {
+    "$date": "2025-11-13T12:55:20.003Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:55:25.003Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "55701964-cee1-4215-a67a-5c4e595896dc",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+},
+{
+  "_id": {
+    "$oid": "6915d5c5193b9579a52305b5"
+  },
+  "uuid": "609c3c60-7e02-4456-8c39-2b0a5a046bce",
+  "start_time": {
+    "$date": "2025-11-13T12:54:42.116Z"
+  },
+  "end_time": {
+    "$date": "2025-11-13T12:55:22.115Z"
+  },
+  "deleted": false,
+  "fiber_metadata": {
+    "layer_type": "smart_recorder",
+    "uuid": "609c3c60-7e02-4456-8c39-2b0a5a046bce",
+    "sw_version": null,
+    "cmd": "--storage-cfg /home/prisma/pz/config/storage_manager/storage.yaml --storage segy -b segy -fl 10000 --file-limit-duration 5 -vf --record-livefs --mongo-mapper-index --allow-use-existing-queue --mq-max-length-bytes 1074000000",
+    "processors": [],
+    "version": "TLV-1.3",
+    "num_traces": 10000,
+    "parent": {
+      "layer_type": "baby_analyzer",
+      "uuid": "4c129ab7-2832-4b1e-bf9e-e7c9b16abc47",
+      "sw_version": "11.17.10513",
+      "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F amqp://prisma:prismapanda@10.10.10.107:5672/%2F",
+      "processors": [],
+      "in_uuids": null,
+      "gaps": null,
+      "parent": {
+        "layer_type": "baby_analyzer",
+        "uuid": "5ae9b0f1-1e72-4400-89ed-bb7054e12bcf",
+        "sw_version": "11.17.10513",
+        "cmd": "--log-name forwarder_11.17.10513 --input-throttle-limit 3000 -vf amqps://prisma:f4!!ODYtR4bbit@prisma-210-1103:5671/%2F amqps://prisma:f4!!ODYtR4bbit@analyzer-210-1103:5671/%2F",
+        "processors": [],
+        "in_uuids": null,
+        "gaps": null,
+        "parent": {
+          "layer_type": "prp2_recording",
+          "uuid": "e9769403-f4dc-4ae5-9978-f7523cd0c9d7",
+          "sw_version": "11.17.10513",
+          "dx": 1.0213698148727417,
+          "prr": 2000,
+          "num_traces": 2048,
+          "num_samples_per_trace": 9791,
+          "fast_time_pixels": 9791,
+          "slow_time_pixels": 2048,
+          "version": "TLV-1.3",
+          "fiber_start_meters": 0,
+          "fiber_length_meters": 10000,
+          "gauge_length_meters": 10.213698387145996,
+          "late_t_axis_decimation": 4,
+          "fiber_description": "Panda3_staging",
+          "decimation_factor_x": 4,
+          "recording_timezone": "Asia/Jerusalem",
+          "recording_machine_name": "prisma-210-1103",
+          "content_type": null,
+          "feature_names": null,
+          "producer_version": null,
+          "source_uuid": null,
+          "n_features": 1,
+          "original_uuid": null,
+          "algo_metadata": null,
+          "recording_sw_version": null,
+          "cut_sw_version": null,
+          "start_time": {
+            "$date": "2025-11-11T12:48:37.460Z"
+          },
+          "end_time": {
+            "$date": "2025-12-11T12:48:37.460Z"
+          },
+          "preprocessor_version": "11",
+          "preprocessor_calculation_version": "8",
+          "dtype": "float32"
+        }
+      }
+    }
+  }
+}]

@@ -5,6 +5,7 @@ import pymongo
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError, OperationFailure
 import time
 
+@pytest.mark.xray("PZ-13898")
 def test_mongodb_connection():
     """Test MongoDB connection with various configurations."""
     print("=" * 80)

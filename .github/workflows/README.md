@@ -19,15 +19,21 @@ This workflow runs all tests except those that create load on the system.
 #### What Tests Are Run
 
 ✅ **Included Test Categories:**
-- **Unit tests only** (`tests/unit/`)
+- **Unit tests** (`be_focus_server_tests/unit/`)
+- **Integration tests** (non-load) - will skip if infrastructure not available
+- **Data quality tests** - will skip if MongoDB/Focus Server not available
+- **Infrastructure tests** - will skip if SSH/K8s/RabbitMQ not available
+- **API tests** - will skip if Focus Server not available
 
-**Note:** Only unit tests are run in CI as they don't require external infrastructure. All other tests (Integration, Infrastructure, API, Data Quality) require access to internal services (Focus Server API, MongoDB, RabbitMQ, Kubernetes, SSH) that are not available in GitHub Actions runners. These tests should be run locally or in dedicated test environments.
+**Note:** The workflow attempts to run all tests except load/stress tests. Tests requiring external infrastructure (Focus Server API, MongoDB, RabbitMQ, Kubernetes, SSH) will automatically skip if the services are not available in the CI environment. This allows the workflow to run successfully even without access to internal services, while still running tests that can execute.
+
+**Focus Server Connection:** If `FOCUS_BASE_URL` secret is configured and the server is reachable, tests requiring Focus Server will run. Otherwise, they will be skipped gracefully.
 
 ❌ **Excluded Test Categories:**
-- Load tests (`tests/load/`)
-- Stress tests (`tests/stress/`)
-- Infrastructure tests (`tests/infrastructure/` - require SSH/K8s/RabbitMQ access)
-- Integration load tests (`tests/integration/load/`)
+- Load tests (`be_focus_server_tests/load/`)
+- Stress tests (`be_focus_server_tests/stress/`)
+- Infrastructure tests (`be_focus_server_tests/infrastructure/` - require SSH/K8s/RabbitMQ access)
+- Integration load tests (`be_focus_server_tests/integration/load/`)
 - Alert load tests (`test_alert_generation_load.py`)
 - Alert performance tests (`test_alert_generation_performance.py`)
 - gRPC stream tests (marked with `@pytest.mark.grpc`)
@@ -72,13 +78,13 @@ To run the same set of tests locally that the CI runs:
 
 ```bash
 # Run only unit tests (same as CI)
-pytest tests/unit/ -m "unit" -v
+pytest be_focus_server_tests/unit/ -m "unit" -v
 
 # Or run all tests excluding load/stress/infrastructure (requires local infrastructure access)
-pytest tests/ \
-  --ignore=tests/load \
-  --ignore=tests/stress \
-  --ignore=tests/infrastructure \
+pytest be_focus_server_tests/ \
+  --ignore=be_focus_server_tests/load \
+  --ignore=be_focus_server_tests/stress \
+  --ignore=be_focus_server_tests/infrastructure \
   --ignore-glob=**/integration/load \
   --ignore-glob=**/test_alert_generation_load.py \
   --ignore-glob=**/test_alert_generation_performance.py \

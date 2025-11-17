@@ -32,7 +32,7 @@ jobs:
         env:
           ENVIRONMENT: new_production
         run: |
-          pytest tests/ \
+          pytest be_focus_server_tests/ \
             --xray \
             --junitxml=reports/junit.xml \
             --html=reports/report.html \

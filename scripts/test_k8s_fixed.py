@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.config_manager import ConfigManager
 from src.infrastructure.kubernetes_manager_fixed import KubernetesManagerFixed
 
+@pytest.mark.xray("PZ-13899")
 def test_kubernetes_connection():
     """Test Kubernetes connection with the fixed manager."""
     print("=" * 80)

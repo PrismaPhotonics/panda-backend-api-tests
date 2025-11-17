@@ -1,0 +1,11 @@
+# Data Acquisition Infrastructure
+
+**Source:** [Confluence Page](/spaces/PRISMATEAM/pages/744226821/Data+Acquisition+Infrastructure)
+**Page ID:** 744226821
+**Space:** PRISMATEAM
+**Last Updated:** 2025-02-13T12:12:29.360Z
+**Version:** 10
+
+---
+
+<p /><h1>Goal</h1><p>The following section and docs were made in an effort of transferring the knowledge required for maintaining and further developing all data collection related software within PZ.</p><p>Each doc starts with the basic concept, the whereabouts of the code within PZ, links to the usage documentation, deep dive into specific critical code parts.</p><p>Hopefully this guide helps you take full control over our Data Collection Infrastructure:</p><p>Sincerely yours, </p><p><ac:link><ri:user ri:account-id="60a416862009f10068a415ce" /></ac:link> </p><ac:image ac:align="center" ac:layout="center" ac:original-height="1340" ac:original-width="2007"><ri:attachment ri:filename="_DSC4529.jpg" ri:version-at-save="1" /></ac:image><h1>Contents</h1><p><a href="https://prismaphotonics.atlassian.net/l/cp/k0NF005b" data-card-appearance="inline">https://prismaphotonics.atlassian.net/l/cp/k0NF005b</a> </p><p><a href="https://prismaphotonics.atlassian.net/l/cp/9hCGHNGy" data-card-appearance="inline">https://prismaphotonics.atlassian.net/l/cp/9hCGHNGy</a> </p><p><a href="https://prismaphotonics.atlassian.net/l/cp/66JSRqau" data-card-appearance="inline">https://prismaphotonics.atlassian.net/l/cp/66JSRqau</a> </p><p><a href="https://prismaphotonics.atlassian.net/l/cp/6szW1fHW" data-card-appearance="inline">https://prismaphotonics.atlassian.net/l/cp/6szW1fHW</a>  </p><p><a href="https://prismaphotonics.atlassian.net/l/cp/JBjhfuz0" data-card-appearance="inline">https://prismaphotonics.atlassian.net/l/cp/JBjhfuz0</a></p><h1>(Attempt at a) Video Lecture</h1><p><a href="https://drive.google.com/drive/folders/1tiPXD2J4wqm-fTm4cJd65D-9r0E8_tHB?usp=share_link" data-card-appearance="inline">https://drive.google.com/drive/folders/1tiPXD2J4wqm-fTm4cJd65D-9r0E8_tHB?usp=share_link</a> </p><p>(Half the recording was messed up, the meeting exited mid way, share screen was shut down from a keyboard shortcut I pressed accidently, when encountering no share screen and no audio you reached the end of what I managed to record&hellip;)</p>

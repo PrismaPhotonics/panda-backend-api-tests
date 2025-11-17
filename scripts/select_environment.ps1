@@ -151,7 +151,7 @@ switch ($Action) {
             Write-Host ""
             Write-Host "[SUCCESS] Environment set to staging!" -ForegroundColor Green
             Write-Host "You can now run tests:" -ForegroundColor Cyan
-            Write-Host "  pytest tests/ -v" -ForegroundColor White
+            Write-Host "  pytest be_focus_server_tests/ -v" -ForegroundColor White
         }
     }
     "production" {

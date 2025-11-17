@@ -1,0 +1,19 @@
+# Ignore all log files
+*.log
+
+# Ignore test run logs
+test_runs/
+
+# Ignore error logs
+errors/
+
+# Ignore warning logs
+warnings/
+
+# Ignore archives
+archive/
+
+# But keep the directory structure
+!.gitignore
+!README.md
+

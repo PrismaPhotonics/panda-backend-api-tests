@@ -73,6 +73,7 @@ class TestSummaryReport:
         # Check common locations
         patterns = [
             'reports/junit-backend.xml',
+            'reports/junit-frontend.xml',
             'reports/junit.xml',
             '**/junit-backend.xml',
             '**/junit-frontend.xml',
@@ -82,13 +83,13 @@ class TestSummaryReport:
         for pattern in patterns:
             files = glob.glob(pattern, recursive=True)
             for f in files:
-                if 'frontend' in f.lower() or 'fe_' in f.lower():
+                if 'frontend' in f.lower() or 'fe_' in f.lower() or 'fe_panda' in f.lower():
                     if f not in frontend_files:
                         frontend_files.append(f)
-                elif 'backend' in f.lower() or 'be_' in f.lower() or 'focus_server' in f.lower():
+                elif 'backend' in f.lower() or 'be_' in f.lower() or 'focus_server' in f.lower() or 'tests/' in f:
                     if f not in backend_files:
                         backend_files.append(f)
-                elif 'junit.xml' in f and f not in backend_files:
+                elif 'junit.xml' in f and f not in backend_files and f not in frontend_files:
                     # Default to backend if unclear
                     backend_files.append(f)
         

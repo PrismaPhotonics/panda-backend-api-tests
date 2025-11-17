@@ -1,0 +1,1583 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/login-configuration": {
+      "get": {
+        "description": "The externalLoginButtons is a list of all external login buttons which can be supported. Pay attention to the `visible` property, as it can be used to hide buttons for which there are no configured providers.The resetPassword is boolean value indicating whether the reset password feature is enabled.",
+        "operationId": "GetLoginConfiguration",
+        "parameters": [
+          {
+            "name": "successRedirectUrl",
+            "required": false,
+            "in": "query",
+            "description": "Root-relative URL of the page to redirect in the end of the flow.",
+            "schema": {
+              "default": "/",
+              "example": "/some-ui-page",
+              "type": "string"
+            }
+          },
+          {
+            "name": "errorRedirectUrl",
+            "required": false,
+            "in": "query",
+            "description": "Root-relative URL of the page to redirect in case of an error.\n\nThe following query parameters will be appended to it:\n\n#### `errorTraceId`\n\n**Example**: `?errorTraceId=575bfd1e-825c-4ca1-be3b-18e42ea78b61`\n\nThe unique identifier that can be provided to support to look up more information about the error.\n\n\n\n#### `errorType`\n\n**Example**: `?errorType=userNotMatchedError`\n\nThe possible values are:\n\n- `clientError`. The client sent an invalid request, e.g. `successRedirectUrl` is not a valid URL.\n\n- `userNotMatchedError`. We could not match an existing internal user to the external user.\n\n- `loginForbiddenError`. The login was forbidden for the specific user by the access control rules set up by tenant administrator.\n\n- `loginSessionExpiredError`. The login session has expired and its state was lost. Restart login from scratch.\n\n- `providerAccessDeniedError`. The external login provider denied the access to the user. Most likely, the user did not consent to the requested permissions.\n\n- `providerTemporarilyUnavailableError`. The external login provider is temporarily unavailable. Try again later.\n\n- `providerUnknownError`. The external login provider returned an unknown error. Please try again later.\n\n- `internalError`. An internal error occurred. If the issue persists, please contact support providing the `errorTraceId`.\n\n\n\n#### `errorMessage`\n\n**Example**: `?errorMessage=We+could+not+match+an+existing+internal+user+to+the+external+user.`\n\nDeveloper-friendly error message in English.\n\n\n\n#### `matchUserAttributes` (optional, array)\n\n**Example**: `?matchUserAttributes=johndoe%40acme.org&matchUserAttributes=jdoe%40acme.onmicrosoft.com`\n\nThe attributes of the external user we used to look up the internal user. Will be available only in case of `userNotMatchedError`.\n\n",
+            "schema": {
+              "default": "/externalLoginError",
+              "example": "/externalLoginError",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Object with external login buttons and reset password login configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendLoginConfigurationDto"
+                },
+                "example": {
+                  "externalLoginButtons": [
+                    {
+                      "id": "microsoft",
+                      "url": "/microsoft-oauth2-flow/start?successRedirectUrl=${successRedirectUrl}&errorRedirectUrl=${errorRedirectUrl}",
+                      "visible": true
+                    }
+                  ],
+                  "isPasswordResetAvailable": true
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get login configuration",
+        "tags": [
+          "Login Configuration"
+        ]
+      }
+    },
+    "/sites/{siteId}/geo-channel-collections!generate": {
+      "post": {
+        "deprecated": true,
+        "description": "[DEPRECATED] Use `Infer Geo Channel Collection from Fiber` instead.Re-generate geo channels collection on a given parameters for a specific site. The created collection is becoming active.",
+        "operationId": "GenerateGeoChannelsCollection",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "description": "Unique identifier for the site, which is actually a machine name.",
+              "example": "prisma-210-1000",
+              "minLength": 1,
+              "readOnly": true,
+              "pattern": "^prisma-\\d{3}-\\d{4}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackendGeoChannelCollectionParamsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Generated geo channels collection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackendGeoChannelCollectionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The data provided in the request is invalid. We failed to parse it or there are semantic errors.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GenerateGeoChannelsCollection400Error_ValidationError"
+                    }
+                  ],
+                  "title": "GenerateGeoChannelsCollection400Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "ValidationError": "#/components/schemas/GenerateGeoChannelsCollection400Error_ValidationError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The operation is forbidden due to missing permission `super_admin`. By default, this permission is available for `super admin` role(s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GenerateGeoChannelsCollection403Error_OperationForbiddenError"
+                    }
+                  ],
+                  "title": "GenerateGeoChannelsCollection403Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "OperationForbiddenError": "#/components/schemas/GenerateGeoChannelsCollection403Error_OperationForbiddenError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object referenced by the URL path was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GenerateGeoChannelsCollection404Error_NotFoundError"
+                    }
+                  ],
+                  "title": "GenerateGeoChannelsCollection404Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "NotFoundError": "#/components/schemas/GenerateGeoChannelsCollection404Error_NotFoundError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Back-end expected one state in the database, but got something else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GenerateGeoChannelsCollection409Error_InconsistentGeoChannelsError"
+                    }
+                  ],
+                  "title": "GenerateGeoChannelsCollection409Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "InconsistentGeoChannelsError": "#/components/schemas/GenerateGeoChannelsCollection409Error_InconsistentGeoChannelsError"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Generate Geo Channels Collection.",
+        "tags": [
+          "Map"
+        ]
+      }
+    },
+    "/sites/{siteId}/geo-channel-collections!infer-from-fiber": {
+      "post": {
+        "description": "Creates geo channel collection from fiber points, as they were originally provided in the anchoring file. The created collection becomes active.\n\n* Fiber points are sorted by DoF in ascending order.\n\n* Points with the same GPS coordinate are skipped.\n\n* Geo channel number is inferred from the order of the point in the list (when they are sorted by DoF and duplicates removed).",
+        "operationId": "InferGeoChannelsCollectionFromFiber",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "description": "Unique identifier for the site, which is actually a machine name.",
+              "example": "prisma-210-1000",
+              "minLength": 1,
+              "readOnly": true,
+              "pattern": "^prisma-\\d{3}-\\d{4}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Generated geo channel collection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendGeoChannelCollectionDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The operation is forbidden due to missing permission `super_admin`. By default, this permission is available for `super admin` role(s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InferGeoChannelsCollectionFromFiber403Error_OperationForbiddenError"
+                    }
+                  ],
+                  "title": "InferGeoChannelsCollectionFromFiber403Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "OperationForbiddenError": "#/components/schemas/InferGeoChannelsCollectionFromFiber403Error_OperationForbiddenError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object referenced by the URL path was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InferGeoChannelsCollectionFromFiber404Error_NotFoundError"
+                    }
+                  ],
+                  "title": "InferGeoChannelsCollectionFromFiber404Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "NotFoundError": "#/components/schemas/InferGeoChannelsCollectionFromFiber404Error_NotFoundError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Back-end expected one state in the database, but got something else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InferGeoChannelsCollectionFromFiber409Error_InconsistentGeoChannelsError"
+                    }
+                  ],
+                  "title": "InferGeoChannelsCollectionFromFiber409Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "InconsistentGeoChannelsError": "#/components/schemas/InferGeoChannelsCollectionFromFiber409Error_InconsistentGeoChannelsError"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Infer Geo Channels Collection from Fiber",
+        "tags": [
+          "Map"
+        ]
+      }
+    },
+    "/{siteId}/api/user/sign-up": {
+      "post": {
+        "operationId": "LegacyUserController_signUp",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserWithNotificationSettingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/update": {
+      "post": {
+        "operationId": "LegacyUserController_updateUser",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserWithNotificationSettingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/update-other-user": {
+      "post": {
+        "operationId": "LegacyUserController_updateOtherUser",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserWithNotificationSettingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/delete": {
+      "post": {
+        "operationId": "LegacyUserController_deleteUser",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/validate-username": {
+      "post": {
+        "operationId": "LegacyUserController_validateUsername",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateUsernameDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/validate-email": {
+      "post": {
+        "operationId": "LegacyUserController_validateEmail",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/add-permission-to-role": {
+      "post": {
+        "operationId": "LegacyUserController_addPermissionToRole",
+        "parameters": {
+          "size": 0
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/addPermissionToRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/get-all-users": {
+      "get": {
+        "operationId": "LegacyUserController_getAllUsers",
+        "parameters": [
+          {
+            "name": "getSetting",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackendUserDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/user/config": {
+      "get": {
+        "operationId": "GetLegacyUserConfiguration",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendUserConfigViewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/users/{userId}!toggle-login": {
+      "post": {
+        "description": "Forbids or allows login with certain identities for a given user.",
+        "operationId": "ToggleUserLogin",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "int32",
+              "description": "Numerical identifier of the user.",
+              "example": 42,
+              "readOnly": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackendToggleUserIdentityLoginCommandBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user object with changed identities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendUserDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The operation is forbidden due to missing permission `user_identity__write`. By default, this permission is available for `super admin`, `admin` role(s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ToggleUserLogin403Error_OperationForbiddenError"
+                    }
+                  ],
+                  "title": "ToggleUserLogin403Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "OperationForbiddenError": "#/components/schemas/ToggleUserLogin403Error_OperationForbiddenError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ToggleUserLogin404Error_NotFoundError"
+                    }
+                  ],
+                  "title": "ToggleUserLogin404Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "NotFoundError": "#/components/schemas/ToggleUserLogin404Error_NotFoundError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "One or more of the provided identities to update were not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ToggleUserLogin409Error_DependencyNotFoundError"
+                    }
+                  ],
+                  "title": "ToggleUserLogin409Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "DependencyNotFoundError": "#/components/schemas/ToggleUserLogin409Error_DependencyNotFoundError"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Toggle User Login",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/users/{userId}!delete-external-identities": {
+      "post": {
+        "description": "Deletes selected external user identities. Next time the user logs in, the internal <-> external user association will be performed based on user attributes, e.g. username or email.",
+        "operationId": "DeleteExternalUserIdentities",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "int32",
+              "description": "Numerical identifier of the user.",
+              "example": 42,
+              "readOnly": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackendDeleteExternalUserIdentitiesCommandBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user object with changed identities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendUserDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported identity type provided.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeleteExternalUserIdentities400Error_ValidationError"
+                    }
+                  ],
+                  "title": "DeleteExternalUserIdentities400Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "ValidationError": "#/components/schemas/DeleteExternalUserIdentities400Error_ValidationError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeleteExternalUserIdentities404Error_NotFoundError"
+                    }
+                  ],
+                  "title": "DeleteExternalUserIdentities404Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "NotFoundError": "#/components/schemas/DeleteExternalUserIdentities404Error_NotFoundError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "One or more of the provided identities to delete were not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeleteExternalUserIdentities409Error_DependencyNotFoundError"
+                    }
+                  ],
+                  "title": "DeleteExternalUserIdentities409Error",
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "DependencyNotFoundError": "#/components/schemas/DeleteExternalUserIdentities409Error_DependencyNotFoundError"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete External User Identities",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/{siteId}/api/role": {
+      "get": {
+        "operationId": "RoleController_getAllRoles",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackendRoleListEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Role"
+        ]
+      }
+    },
+    "/{siteId}/api/point/map-setup": {
+      "get": {
+        "operationId": "PointController_findAll",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Point"
+        ]
+      }
+    },
+    "/{siteId}/api/alert": {
+      "get": {
+        "operationId": "AlertController_findAll",
+        "parameters": [
+          {
+            "name": "startTime",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "endTime",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "classIds",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "name": "severities",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "isLive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isLiveView",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "orderBy",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderByDirection",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "getAlertCount",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "regionIds",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "name": "withRegions",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Either a list of all alerts (if `withAlertCount` is not passed) or an object representing a page of alerts. See the schema for details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "V1AlertListResponse",
+                  "example": {
+                    "alertsCount": 10,
+                    "alerts": {
+                      "size": 0
+                    },
+                    "maxPage": 5
+                  },
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "title": "V1Alert",
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/V1BackendIndividualAlertDto"
+                          },
+                          {
+                            "$ref": "#/components/schemas/V1BackendGroupAlertDto"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/V1BackendAlertPageDto"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Alert"
+        ]
+      }
+    },
+    "/{siteId}/api/alert/delete": {
+      "delete": {
+        "operationId": "AlertController_deleteAlerts",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAlertsOptionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Alert"
+        ]
+      }
+    },
+    "/{siteId}/api/alert/export-alerts": {
+      "get": {
+        "operationId": "AlertController_exportsAlerts",
+        "parameters": [
+          {
+            "name": "startTime",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "endTime",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "classIds",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "name": "severities",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "isLive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isLiveView",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "orderBy",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderByDirection",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "getAlertCount",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "regionIds",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "name": "withRegions",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isCSV",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isJSON",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Alert"
+        ]
+      }
+    },
+    "/{siteId}/api/alert/get-alert-status": {
+      "get": {
+        "operationId": "AlertController_getAlertStatus",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Alert"
+        ]
+      }
+    },
+    "/{siteId}/api/site/get-sites": {
+      "get": {
+        "operationId": "SiteController_findAll",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Map"
+        ]
+      }
+    },
+    "/{siteId}/api/region": {
+      "get": {
+        "operationId": "RegionController_getAllRegions",
+        "parameters": [
+          {
+            "name": "withGeneral",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/V1BackendRegionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Region"
+        ]
+      }
+    },
+    "/{siteId}/api/region/add": {
+      "post": {
+        "operationId": "RegionController_addRegion",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionCreateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Region"
+        ]
+      }
+    },
+    "/{siteId}/api/region/update": {
+      "post": {
+        "operationId": "RegionController_updateRegion",
+        "parameters": [
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionCreateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Region"
+        ]
+      }
+    },
+    "/{siteId}/api/region/{id}": {
+      "delete": {
+        "operationId": "RegionController_deleteRegion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Region"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Prisma Web App API",
+    "description": "API being used by the Prisma Web App and the desktop application.",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": {
+    "size": 0
+  },
+  "servers": [
+    {
+      "url": "/prisma/api",
+      "description": "Prisma Web App Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access-token"
+      }
+    },
+    "schemas": {
+      "DeleteExternalUserIdentities404Error_NotFoundError": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "NotFoundError"
+            ],
+            "description": "The type of the object. Always set to `NotFoundError`.",
+            "example": "NotFoundError",
+            "nullable": false
+          },
+          "statusCode": {
+            "type": "number",
+            "enum": [
+              404
+            ],
+            "description": " Always set to '404'.",
+            "example": 404,
+            "nullable": false
+          },
+          "path": {
+            "type": "string",
+            "description": "HTTP path where the error happened.",
+            "example": "/some-things/42/some-other-things"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2024-07-01T15:30:00.000Z",
+            "description": "When the error happened.",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string",
+            "example": "Some object with id \"25\" was not found."
+          }
+        },
+        "required": [
+          "type",
+          "statusCode",
+          "path",
+          "timestamp",
+          "message"
+        ]
+      },
+      "BackendExternalUserIdentityReferenceDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "MicrosoftEntraUserIdentity"
+            ],
+            "description": "Type of the API resource."
+          },
+          "id": {
+            "type": "string",
+            "description": "Id of the API resource, converted to a string.",
+            "format": "uuid",
+            "minLength": 1,
+            "readOnly": false,
+            "dtoModelName": "UserIdentity"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ]
+      },
+      "BackendDeleteExternalUserIdentitiesCommandBodyDto": {
+        "type": "object",
+        "properties": {
+          "identitiesToDelete": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackendExternalUserIdentityReferenceDto"
+            }
+          }
+        },
+        "required": [
+          "identitiesToDelete"
+        ]
+      },
+      "RegionEntity": {
+        "type": "object",
+        "properties": {}
+      },
+      "BackendRoleListEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "createTime": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2024-07-01T15:30:00.000Z"
+          },
+          "updateTime": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2024-07-01T15:30:00.000Z"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "super admin",
+              "admin",
+              "viewer"
+            ]
+          },
+          "region": {
+            "$ref": "#/components/schemas/RegionEntity"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "createTime",
+          "updateTime",
+          "type",
+          "region",
+          "permissions"
+        ]
+      },
+      "V1BackendAlertPageDto": {
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "array",
+            "items": {
+              "title": "V1Alert",
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/V1BackendIndividualAlertDto"
+                },
+                {
+                  "$ref": "#/components/schemas/V1BackendGroupAlertDto"
+                }
+              ]
+            }
+          },
+          "alertsCount": {
+            "type": "number"
+          },
+          "maxPage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "alerts",
+          "alertsCount",
+          "maxPage"
+        ]
+      },
+      "DeleteAlertsOptionsDto": {
+        "type": "object",
+        "properties": {
+          "alertIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "alertIds"
+        ]
+      },
+      "RegionCreateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "points"
+        ]
+      }
+    }
+  }
+}

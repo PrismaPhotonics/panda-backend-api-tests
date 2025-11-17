@@ -1,0 +1,37 @@
+Test ID,Summary,Description,Test Type,Test Category,File Location
+PZ-15000,Alert Generation - Successful SD Alert,Verify that SD (Spatial Distribution) alerts can be successfully generated and processed through the backend system.,Integration Test,Positive,test_alert_generation_positive.py
+PZ-15001,Alert Generation - Successful SC Alert,Verify that SC (Single Channel) alerts can be successfully generated and processed through the backend system.,Integration Test,Positive,test_alert_generation_positive.py
+PZ-15002,Alert Generation - Multiple Alerts,Verify that multiple alerts can be generated and processed simultaneously without conflicts.,Integration Test,Positive,test_alert_generation_positive.py
+PZ-15003,Alert Generation - Different Severity Levels,Verify that alerts with different severity levels (1, 2, 3) are correctly generated and processed.,Integration Test,Positive,test_alert_generation_positive.py
+PZ-15004,Alert Generation - Alert Processing via RabbitMQ,Verify that alerts are correctly processed through RabbitMQ message queue system.,Integration Test,Positive,test_alert_generation_positive.py
+PZ-15010,Alert Generation - Invalid Class ID,Verify that alerts with invalid class IDs are rejected with appropriate error message (400/422 status code).,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15011,Alert Generation - Invalid Severity,Verify that alerts with invalid severity levels are rejected with appropriate error message (400/422 status code).,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15012,Alert Generation - Invalid DOF Range,Verify that alerts with invalid DOF (Distance on Fiber) values are rejected or handled appropriately (400/422 status code).,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15013,Alert Generation - Missing Required Fields,Verify that alerts with missing required fields are rejected (400 Bad Request).,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15014,Alert Generation - RabbitMQ Connection Failure,Verify that system handles RabbitMQ connection failures gracefully with appropriate error message.,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15015,Alert Generation - MongoDB Connection Failure,SKIPPED: Alerts are NOT stored in MongoDB - this test is invalid.,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15016,Alert Generation - Invalid Alert ID Format,Verify that alerts with invalid alert ID formats are rejected or handled appropriately (400/422 status code).,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15017,Alert Generation - Duplicate Alert IDs,Verify that duplicate alert IDs are handled appropriately. Note: The system may accept duplicate IDs as separate alert events.,Integration Test,Negative,test_alert_generation_negative.py
+PZ-15020,Alert Generation - Boundary DOF Values,Verify that alerts with boundary DOF values (min, max, edge cases) are handled correctly.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15021,Alert Generation - Minimum/Maximum Severity,Verify that alerts with minimum (1) and maximum (3) severity are handled correctly.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15022,Alert Generation - Zero Alerts Amount,Verify that alerts with alertsAmount = 0 are handled appropriately.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15023,Alert Generation - Very Large Alert ID,Verify that alerts with very long alert IDs (1000+ characters) are handled correctly (truncate, reject, or process).,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15024,Alert Generation - Concurrent Alerts with Same DOF,Verify that multiple alerts with the same DOF can be processed concurrently without conflicts.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15025,Alert Generation - Rapid Sequential Alerts,Verify that rapid sequential alerts are processed correctly without loss or corruption.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15026,Alert Generation - Alert with Maximum Fields,Verify that alerts with all possible fields set to maximum values are processed correctly.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15027,Alert Generation - Alert with Minimum Fields,Verify that alerts with only required fields (minimum) are processed correctly.,Integration Test,Edge Case,test_alert_generation_edge_cases.py
+PZ-15030,Alert Generation - High Volume Load,Verify that system can handle high volume of alerts (1000+) without degradation or failures. Success rate >= 99%.,Integration Test,Load,test_alert_generation_load.py
+PZ-15031,Alert Generation - Sustained Load,Verify that system can handle sustained load over extended period (10+ minutes) without degradation. No memory leaks or performance degradation.,Integration Test,Load,test_alert_generation_load.py
+PZ-15032,Alert Generation - Burst Load,Verify that system can handle sudden burst of alerts (500 simultaneous) without failures or degradation.,Integration Test,Load,test_alert_generation_load.py
+PZ-15033,Alert Generation - Mixed Alert Types Load,Verify that system can handle mixed alert types (SD, SC, different severities) under load without issues.,Integration Test,Load,test_alert_generation_load.py
+PZ-15034,Alert Generation - RabbitMQ Queue Capacity,Verify that RabbitMQ queues can handle high volume of alerts without overflow or message loss.,Integration Test,Load,test_alert_generation_load.py
+PZ-15035,Alert Generation - MongoDB Write Load,SKIPPED: Alerts are NOT stored in MongoDB - this test is invalid.,Integration Test,Load,test_alert_generation_load.py
+PZ-15040,Alert Generation - Response Time,Verify that alert generation response time meets requirements: Mean < 100ms, P95 < 200ms, P99 < 500ms.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15041,Alert Generation - Throughput,Verify that alert generation throughput meets requirements: >= 100 alerts/second.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15042,Alert Generation - Latency,Verify that alert generation latency (time from creation to processing) meets requirements: Mean < 50ms, P95 < 100ms.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15043,Alert Generation - Resource Usage,Verify that alert generation does not cause excessive resource usage: CPU usage < 80%, Memory usage increase < 500MB.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15044,Alert Generation - End-to-End Performance,Verify end-to-end performance from alert creation to storage: Mean < 200ms, P95 < 500ms.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15045,Alert Generation - RabbitMQ Performance,Verify RabbitMQ performance in alert processing: Publish time < 10ms, Consume time < 50ms.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15046,Alert Generation - MongoDB Performance,SKIPPED: Alerts are NOT stored in MongoDB - this test is invalid.,Integration Test,Performance,test_alert_generation_performance.py
+PZ-15051,Deep Alert Logs Investigation,Comprehensive investigation of alert logs across all components: Focus Server, Prisma Web App API, RabbitMQ, gRPC Jobs, MongoDB, RabbitMQ Management API.,Integration Test,Investigation,test_deep_alert_logs_investigation.py
+

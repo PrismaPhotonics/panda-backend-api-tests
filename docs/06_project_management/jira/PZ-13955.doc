@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>[#PZ-13955] Visual Regression Testing </title>
+    <meta http-equiv="Content-Type" Content="application/vnd.ms-word; charset=UTF-8">
+        <style type="text/css">
+
+.tableBorder, .grid
+{
+    background-color: #fff;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableBorder td, .grid td
+{
+    vertical-align: top;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+.noPadding
+{
+    padding: 0 !important;
+}
+
+h3 .subText
+{
+    font-size: 60%;
+    font-weight: normal;
+}
+
+.tabLabel
+{
+    font-weight: bold;
+    border: 1px solid #ccc;
+    border-bottom:none;
+    padding: 2px;
+    display: inline;
+}
+
+td.blank
+{
+    padding: 0;
+    margin: 0;
+}
+
+.blank td
+{
+    border: none;
+}
+
+#descriptionArea
+{
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+hr
+{
+    border-top:1px solid #aaa;
+}
+
+hr.fullcontent
+{
+  height: 15px;
+  padding: 10px 0;
+  background: #fff url('https://prismaphotonics.atlassian.net/images/icons/hr.gif') no-repeat scroll center;
+}
+
+</style>
+
+</head>
+<body>
+
+<table class="tableBorder" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" width="100%" colspan="2" valign="top">
+                            <h3 class="formtitle">
+                        [PZ-13955]&nbsp;<a href="https://prismaphotonics.atlassian.net/browse/PZ-13955">Visual Regression Testing </a>
+            <span class="subText">
+               Created: 26/Oct/25                   &nbsp;Updated: 27/Oct/25
+
+                                            </span>
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Status:</b></td>
+        <td width="80%">TO DO</td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Project:</b></td>
+        <td width="80%"><a href="https://prismaphotonics.atlassian.net/secure/BrowseProject.jspa?id=10000">Prisma</a></td>
+    </tr>
+
+        <tr>
+            <td><b>Components:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+    
+
+        <tr>
+            <td><b>Fix versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+    
+    </table>
+
+<br />
+<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" valign="top" width="20%">
+            <b>Type:</b>
+        </td>
+        <td bgcolor="#ffffff" valign="top"  width="30%" >
+            Task
+        </td>
+
+                    <td bgcolor="#f0f0f0">
+                <b>Priority:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap>
+                Medium
+            </td>
+            </tr>
+    <tr>
+                        <td bgcolor="#f0f0f0" valign="top" width="20%">
+                <b>Reporter:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top"  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_reporter_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+        
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Assignee:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_assignee_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+            </tr>
+    	<tr>
+		<td bgcolor="#f0f0f0" width="20%">
+			<b>Resolution:</b>
+		</td>
+		<td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+            				Unresolved
+                    </td>
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Votes:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+                0
+            </td>
+        
+    </tr>
+    
+        <tr>
+        <td bgcolor="#f0f0f0" width="20%">
+            <b>Labels:</b>
+        </td>
+        <td id="labels-43607-value" class="value" bgcolor="#ffffff" valign="top" colspan="3" nowrap>
+                            None
+                    </td>
+    </tr>
+    
+    	<tr>
+        		<td bgcolor="#f0f0f0" width="20%"><b>Remaining Estimate:</b></td>
+        <td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Time Spent:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+	</tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Original estimate:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    
+    </table>
+
+
+
+    <br />
+
+    	<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+            
+
+        
+    
+
+
+    
+                        <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Sprint:</b></td>
+                <td id="customfield_10020-43607-value" class="value" bgcolor="#ffffff" width="80%"></td>
+            </tr>
+            </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Description</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td id="descriptionArea">
+            <h3><a name="Task7.1%3ASetupvisualtestingframework"></a><b>Task 7.1: Setup visual testing framework</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Description:</b></p>
+
+<ul>
+	<li>Install <tt>pixelmatch==0.3.0</tt> and <tt>pillow==10.1.0</tt></li>
+</ul>
+
+
+<ul>
+	<li>Create <tt>tests/visual/baselines/</tt> directory</li>
+</ul>
+
+
+<ul>
+	<li>Configure comparison thresholds (5% tolerance)</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Visual testing libraries installed</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Baseline directory structure created</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Comparison threshold configured</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task7.2%3ACapturebaselinescreenshots"></a><b>Task 7.2: Capture baseline screenshots</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Description:</b></p>
+
+<p>Capture reference screenshots:</p>
+
+<ul>
+	<li>Spectrogram display (live mode)</li>
+</ul>
+
+
+<ul>
+	<li>Waterfall display</li>
+</ul>
+
+
+<ul>
+	<li>Error message dialogs</li>
+</ul>
+
+
+<ul>
+	<li>Configuration panels</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] All baseline screenshots captured</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Screenshots stored in baselines directory</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Screenshots properly named</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task7.3%3AImplementcomparisontests"></a><b>Task 7.3: Implement comparison tests</b></h3>
+
+<p><b>Estimate:</b> 3 hours</p>
+
+<p><b>Description:</b></p>
+
+<p>Implement the following tests:</p>
+
+<ul>
+	<li><tt>test_spectrogram_visual_baseline</tt> - Compare spectrogram display</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_waterfall_visual_baseline</tt> - Compare waterfall display</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_error_message_styling</tt> - Compare error styling</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Visual comparison tests working</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Diff images generated on mismatch</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Tests pass within threshold</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task7.4%3ADocumentationforvisualtests"></a><b>Task 7.4: Documentation for visual tests</b></h3>
+
+<p><b>Estimate:</b> 1 hour</p>
+
+<p><b>Description:</b></p>
+
+<ul>
+	<li>Create <tt>tests/visual/README.md</tt></li>
+</ul>
+
+
+<ul>
+	<li>Document how to update baselines</li>
+</ul>
+
+
+<ul>
+	<li>Document how to review visual diffs</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Documentation complete</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Update process clear</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Review process documented</li>
+</ul>
+
+            <br/>
+        </td>
+    </tr>
+    </table>
+
+Generated at Tue Nov 04 08:43:34 UTC 2025 by Roy Avrahami using Jira 1001.0.0-SNAPSHOT#100290-rev:c7faf2d76294a838eccb8baf436ee325c9a178b7.
+
+</body>
+</html>

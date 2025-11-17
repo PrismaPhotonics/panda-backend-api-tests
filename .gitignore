@@ -38,6 +38,7 @@ html-reports/
 .env.local
 *.secret
 credentials.json
+.tokens/  # Token storage directory (contains authentication tokens)
 
 # Build and distribution
 build/

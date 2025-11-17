@@ -29,12 +29,13 @@ class MongoDBManager:
     - Health monitoring
     """
     
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, kubernetes_manager: Optional[Any] = None):
         """
         Initialize MongoDB manager.
         
         Args:
             config_manager: Configuration manager instance
+            kubernetes_manager: Optional KubernetesManager instance (for SSH fallback support)
         """
         self.config_manager = config_manager
         self.mongo_config = config_manager.get_database_config()
@@ -44,11 +45,17 @@ class MongoDBManager:
         # MongoDB client
         self.client: Optional[pymongo.MongoClient] = None
         
-        # Kubernetes clients
+        # Kubernetes manager (preferred - supports SSH fallback)
+        self.kubernetes_manager: Optional[Any] = kubernetes_manager
+        
+        # Kubernetes clients (fallback - direct API access)
         self.k8s_apps_v1: Optional[client.AppsV1Api] = None
         self.k8s_core_v1: Optional[client.CoreV1Api] = None
         
-        self._load_k8s_config()
+        # Only load direct K8s config if kubernetes_manager not provided
+        if not self.kubernetes_manager:
+            self._load_k8s_config()
+        
         self.logger.info("MongoDB manager initialized")
     
     def _load_k8s_config(self):
@@ -153,22 +160,40 @@ class MongoDBManager:
             deployment_name = self._get_mongodb_deployment_name()
             namespace = self.k8s_config["namespace"]
             
-            # Get pods with the deployment label
-            pods = self.k8s_core_v1.list_namespaced_pod(
-                namespace=namespace,
-                label_selector=f"app={deployment_name}"
-            )
+            # Use KubernetesManager if available (supports SSH fallback)
+            if self.kubernetes_manager is not None:
+                try:
+                    pods = self.kubernetes_manager.get_pods(namespace=namespace)
+                    mongodb_pods = [p for p in pods if deployment_name in p["name"]]
+                    if mongodb_pods:
+                        pod_name = mongodb_pods[0]["name"]
+                        self.logger.debug(f"Found MongoDB pod via KubernetesManager: {pod_name}")
+                        return pod_name
+                except Exception as e:
+                    self.logger.warning(f"Failed to get pod name via KubernetesManager: {e}")
             
-            if pods.items:
-                pod_name = pods.items[0].metadata.name
-                self.logger.debug(f"Found MongoDB pod: {pod_name}")
-                return pod_name
+            # Fallback to direct API access
+            if self.k8s_core_v1 is not None:
+                pods = self.k8s_core_v1.list_namespaced_pod(
+                    namespace=namespace,
+                    label_selector=f"app={deployment_name}"
+                )
+                if pods.items:
+                    pod_name = pods.items[0].metadata.name
+                    self.logger.debug(f"Found MongoDB pod: {pod_name}")
+                    return pod_name
+                else:
+                    self.logger.warning("No MongoDB pods found")
+                    return None
             else:
-                self.logger.warning("No MongoDB pods found")
+                self.logger.warning("Kubernetes API not available")
                 return None
                 
         except ApiException as e:
             raise InfrastructureError(f"K8s API error getting MongoDB pod name: {e}") from e
+        except Exception as e:
+            self.logger.warning(f"Failed to get MongoDB pod name: {e}")
+            return None
     
     def scale_down_mongodb(self, replicas: int = 0):
         """
@@ -371,6 +396,9 @@ class MongoDBManager:
         """
         Get MongoDB status information.
         
+        Uses KubernetesManager if available (supports SSH fallback),
+        otherwise falls back to direct Kubernetes API access.
+        
         Returns:
             Dictionary containing MongoDB status
         """
@@ -388,21 +416,42 @@ class MongoDBManager:
                 status["connected"] = True
                 self.disconnect()
             
-            # Get deployment status (only if K8s is available)
-            if self.k8s_apps_v1 is not None:
-                deployment_name = self._get_mongodb_deployment_name()
-                namespace = self.k8s_config["namespace"]
-                
-                deployment = self.k8s_apps_v1.read_namespaced_deployment(
-                    name=deployment_name,
-                    namespace=namespace
-                )
+            # Get deployment status (prefer KubernetesManager for SSH fallback support)
+            deployment_name = self._get_mongodb_deployment_name()
+            namespace = self.k8s_config["namespace"]
             
-                status["replicas"] = deployment.spec.replicas or 0
-                status["ready_replicas"] = deployment.status.ready_replicas or 0
-                
-                # Get pod name
-                status["pod_name"] = self._get_mongodb_pod_name()
+            if self.kubernetes_manager is not None:
+                # Use KubernetesManager (supports SSH fallback)
+                try:
+                    deployments = self.kubernetes_manager.get_deployments(namespace=namespace)
+                    deployment = next(
+                        (d for d in deployments if d["name"] == deployment_name),
+                        None
+                    )
+                    
+                    if deployment:
+                        status["replicas"] = deployment.get("replicas", 0)
+                        status["ready_replicas"] = deployment.get("ready_replicas", 0)
+                        status["pod_name"] = self._get_mongodb_pod_name()
+                    else:
+                        status["error"] = f"Deployment '{deployment_name}' not found"
+                except Exception as e:
+                    self.logger.error(f"Error getting MongoDB status via KubernetesManager: {e}")
+                    status["error"] = str(e)
+            elif self.k8s_apps_v1 is not None:
+                # Fallback to direct API access
+                try:
+                    deployment = self.k8s_apps_v1.read_namespaced_deployment(
+                        name=deployment_name,
+                        namespace=namespace
+                    )
+                    
+                    status["replicas"] = deployment.spec.replicas or 0
+                    status["ready_replicas"] = deployment.status.ready_replicas or 0
+                    status["pod_name"] = self._get_mongodb_pod_name()
+                except Exception as e:
+                    self.logger.error(f"Error getting MongoDB status via direct API: {e}")
+                    status["error"] = str(e)
             else:
                 status["error"] = "Kubernetes not available"
             

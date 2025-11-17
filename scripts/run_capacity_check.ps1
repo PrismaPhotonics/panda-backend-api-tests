@@ -234,10 +234,10 @@ Write-Banner "✅ בדיקת קיבולת הושלמה"
 Write-Host ""
 Write-Host "אופציות נוספות:" -ForegroundColor Yellow
 Write-Host "  1. הרץ בדיקת pytest מלאה:"
-Write-Host "     pytest tests/load/test_job_capacity_limits.py -v -m load" -ForegroundColor Gray
+Write-Host "     pytest be_focus_server_tests/load/test_job_capacity_limits.py -v -m load" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  2. הרץ רק baseline test:"
-Write-Host "     pytest tests/load/test_job_capacity_limits.py -v -m baseline" -ForegroundColor Gray
+Write-Host "     pytest be_focus_server_tests/load/test_job_capacity_limits.py -v -m baseline" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  3. צפה בלוגים:"
 Write-Host "     Get-Content logs\quick_capacity_check_*.log -Tail 50" -ForegroundColor Gray

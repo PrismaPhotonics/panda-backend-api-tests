@@ -1,0 +1,65 @@
+פקודות להרצת טסטי Alerts:
+
+===========================================
+הרצת כל טסטי Alerts:
+===========================================
+
+py -m pytest be_focus_server_tests/integration/alerts/ -v --skip-health-check
+
+===========================================
+הרצה לפי קטגוריה:
+===========================================
+
+# Positive Tests (5 טסטים):
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_positive.py -v --skip-health-check
+
+# Negative Tests (7 טסטים):
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_negative.py -v --skip-health-check
+
+# Edge Cases (8 טסטים):
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_edge_cases.py -v --skip-health-check
+
+# Load Tests (5 טסטים):
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_load.py -v --skip-health-check
+
+# Performance Tests (6 טסטים):
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_performance.py -v --skip-health-check
+
+===========================================
+הרצה לפי Markers:
+===========================================
+
+py -m pytest be_focus_server_tests/integration/alerts/ -m positive -v --skip-health-check
+py -m pytest be_focus_server_tests/integration/alerts/ -m negative -v --skip-health-check
+py -m pytest be_focus_server_tests/integration/alerts/ -m edge_case -v --skip-health-check
+py -m pytest be_focus_server_tests/integration/alerts/ -m load -v --skip-health-check
+py -m pytest be_focus_server_tests/integration/alerts/ -m performance -v --skip-health-check
+
+===========================================
+הרצה מומלצת (מהירה):
+===========================================
+
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_positive.py be_focus_server_tests/integration/alerts/test_alert_generation_negative.py be_focus_server_tests/integration/alerts/test_alert_generation_edge_cases.py -v --skip-health-check --log-cli-level=INFO
+
+===========================================
+הרצת טסט ספציפי:
+===========================================
+
+# SD Alert Test:
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_positive.py::TestAlertGenerationPositive::test_successful_sd_alert_generation -v --skip-health-check
+
+# Invalid Class ID Test:
+py -m pytest be_focus_server_tests/integration/alerts/test_alert_generation_negative.py::TestAlertGenerationNegative::test_invalid_class_id -v --skip-health-check
+
+===========================================
+הרצה עם לוגים מפורטים:
+===========================================
+
+py -m pytest be_focus_server_tests/integration/alerts/ -v --skip-health-check --log-cli-level=INFO -s
+
+===========================================
+הרצה עם HTML Report:
+===========================================
+
+py -m pytest be_focus_server_tests/integration/alerts/ -v --skip-health-check --html=reports/alerts_tests_report.html --self-contained-html
+

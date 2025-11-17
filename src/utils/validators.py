@@ -347,11 +347,18 @@ def validate_metadata_consistency(
     if not isinstance(metadata, (LiveMetadataFlat, RecordingMetadata)):
         raise ValidationError("metadata must be LiveMetadataFlat or RecordingMetadata")
     
-    # Validate PRR
+    # Check if system is waiting for fiber (for LiveMetadataFlat only)
+    if isinstance(metadata, LiveMetadataFlat):
+        if metadata.is_waiting_for_fiber:
+            # System is waiting for fiber - validation is relaxed
+            # PRR can be 0.0, num_samples_per_trace and dtype can be None
+            return True
+    
+    # Validate PRR (must be > 0 if system is ready)
     if metadata.prr <= 0:
         raise ValidationError(f"Invalid PRR: {metadata.prr} (must be > 0)")
     
-    # Validate num_samples_per_trace
+    # Validate num_samples_per_trace (must be > 0 if system is ready)
     if metadata.num_samples_per_trace <= 0:
         raise ValidationError(
             f"Invalid num_samples_per_trace: {metadata.num_samples_per_trace} (must be > 0)"

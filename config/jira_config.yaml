@@ -15,7 +15,7 @@ jira:
   # Authentication
   # Use API Token for Jira Cloud (recommended)
   # For Jira Server/Data Center, use username/password or API token
-  api_token: "ATATT3xFfGF01lXkpLEMF151x_N8f90jc0FMf9oVwSiVV1P0XyTxgcef6UxNE8ZjfCGC7Aoy-xTVeUcorZIxYhpibV5JnkCvILpv9Rq27Hhg0dQX_I1M05mYp4ABAX6e81jYP7MuMEG11mmZj9rm-w_3RlSPdFUErttiQw8shWTEolFT6wVGW-M=22FE4F76"
+  api_token: "${ATLASSIAN_API_TOKEN}"
   
   # Alternative: Username and Password (for Jira Server/Data Center)
   # Only use if API token doesn't work
@@ -36,6 +36,19 @@ jira:
   # SSL Settings
   verify_ssl: true  # Set to false for self-signed certificates
   ssl_cert_path: null  # Optional: Path to SSL certificate file
+
+# Confluence Integration Configuration
+# ====================================
+confluence:
+  # Confluence Server URL (uses same base_url as Jira)
+  base_url: "https://prismaphotonics.atlassian.net"  # Prisma Photonics Confluence Cloud
+  
+  # Authentication
+  # Use API Token for Confluence Cloud (recommended)
+  api_token: "${ATLASSIAN_API_TOKEN}"
+  
+  # Email for API token authentication (required for Cloud)
+  email: "roy.avrahami@prismaphotonics.com"  # Required for Confluence Cloud API token auth
 
 # Default Issue Fields
 # =====================

@@ -1,0 +1,405 @@
+h1. Specs Meeting: Missing Test Specifications
+
+||Meeting Type||Technical Specs Review||
+||Duration||2-3 hours||
+||Required Attendees||Dev Lead, Site Manager, Product Owner, QA Lead||
+||Date||TBD||
+||Status||{status:colour=Red|title=URGENT|subtle=false} *Blocking 82+ automated tests*||
+
+----
+
+h2. Meeting Objective
+
+{info:title=Goal}
+Define missing specifications that are currently blocking test automation quality gates.
+{info}
+
+{panel:title=What We Need|borderStyle=solid|borderColor=#ccc|titleBGColor=#f0f0f0|bgColor=#ffffff}
+Clear pass/fail criteria for automated tests that currently have:
+* Hardcoded values without confirmation
+* Disabled assertions waiting for specs
+* TODO comments blocking test completion
+* Undefined behavior for edge cases
+{panel}
+
+{tip:title=Expected Outcome}
+Document agreed-upon values and behaviors that will be implemented in test code within 1-2 weeks.
+{tip}
+
+----
+
+h2. The Problem
+
+h3. Current Situation:
+
+* *190+ automated tests* exist in the framework
+* *82+ tests* are directly affected by missing specs
+* *28 performance tests* have assertions disabled/commented out
+* *50+ hardcoded values* were never confirmed with the team
+
+h3. Impact:
+
+{warning}
+* Tests run but *can't fail* when they should
+* Can't detect *performance degradation*
+* Can't enforce *data quality* rules
+* False positives waste investigation time
+* False negatives miss real bugs
+{warning}
+
+----
+
+h2. Top 7 Critical Issues (Prioritized)
+
+----
+
+h3. *Issue #1: Performance Assertions Disabled*
+
+{panel:title=Source Code File|borderColor=#dc3545}
+{{src/utils/validators.py}} (validation logic)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/integration/performance/test_performance_high_priority.py:146-170}} (28 performance tests)
+* {{tests/integration/api/test_api_endpoints_high_priority.py}} (API endpoint tests)
+{panel}
+
+{panel:title=The Problem|bgColor=#fff3cd}
+{code:python}
+# TODO: Uncomment after specs meeting
+# assert p95 < THRESHOLD_P95_MS   # DISABLED!
+# assert p99 < THRESHOLD_P99_MS   # DISABLED!
+
+# For now, just log warning
+if p95 >= THRESHOLD_P95_MS:
+    logger.warning(f"WARNING: P95 {p95}ms exceeds {THRESHOLD_P95_MS}ms")
+{code}
+{panel}
+
+{panel:title=Impact|borderColor=#dc3545|bgColor=#f8d7da}
+* *28 performance tests* collect metrics but can't fail
+* Can't detect performance regressions
+* Can't enforce SLAs
+{panel}
+
+h4. What We Need:
+
+||Endpoint||Metric||Current Guess||Need Decision||
+|POST /config|P95 latency|500ms|*? ms*|
+|POST /config|P99 latency|1000ms|*? ms*|
+|POST /config|Error rate|5%|*? %*|
+|GET /metadata|P95 latency|\-|*? ms*|
+|GET /channels|Response time|1000ms|*? ms*|
+
+h4. Questions:
+# What are acceptable P95/P99 thresholds for each endpoint?
+# What's the maximum error rate before we fail the test?
+# What's the measurement window/sample size?
+
+----
+
+h3. *Issue #2: ROI Change Limit - Hardcoded 50%*
+
+{panel:title=Source Code File|borderColor=#fd7e14}
+{{src/utils/validators.py:390-460}} (validation logic)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/unit/test_validators.py}} (ROI validation unit tests)
+* {{tests/integration/api/test_dynamic_roi_adjustment.py}} (6 ROI change tests)
+* {{tests/integration/api/test_config_validation_high_priority.py}} (ROI config validation)
+{panel}
+
+{panel:title=The Problem|bgColor=#fff3cd}
+{code:python}
+def validate_roi_change_safety(
+    old_roi: ROIConfig,
+    new_roi: ROIConfig,
+    max_change_percent: float = 50.0  # NEVER CONFIRMED!
+):
+    """Validates ROI changes aren't too drastic."""
+    ...
+{code}
+{panel}
+
+{panel:title=Impact|borderColor=#fd7e14|bgColor=#ffe5d0}
+* *6 ROI validation tests* depend on this unconfirmed value
+* Could be blocking legitimate user changes
+* Could be allowing dangerous changes
+* No one knows if 50% is correct
+{panel}
+
+h4. What We Need:
+# Confirm: Is 50% the correct maximum change?
+# Or should it be: 30%? 70%? Different value?
+# Is there a cooldown period between consecutive changes?
+# What happens when exceeded - reject? warn? throttle?
+
+{note}
+*Current Code Behavior:*
+If ROI change > 50% → Returns validation error
+Used in: sensor range, frequency range, channel range adjustments
+{note}
+
+----
+
+h3. *Issue #3: NFFT Validation Too Permissive*
+
+{panel:title=Source Code File|borderColor=#ffc107}
+{{src/utils/validators.py:194-227}} (validation logic)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/unit/test_validators.py}} (NFFT validation unit tests)
+* {{tests/unit/test_models_validation.py}} (6 NFFT model validation tests)
+* {{tests/integration/api/test_config_validation_high_priority.py}} (NFFT config validation)
+* {{tests/integration/api/test_spectrogram_pipeline.py}} (NFFT in pipeline tests)
+{panel}
+
+{panel:title=The Problem|bgColor=#fff3cd}
+{code:python}
+def validate_nfft_value(nfft: int) -> bool:
+    """Validate NFFT value."""
+    if not is_power_of_2(nfft):
+        warnings.warn(f"NFFT={nfft} not power of 2")  # Only warns!
+    return True  # Always passes!
+{code}
+{panel}
+
+h4. Code vs Config Mismatch:
+
+{warning:title=Inconsistency}
+* *Config file* ({{config/settings.yaml}}): Says valid values = \[256, 512, 1024, 2048\]
+* *Validation code*: Accepts ANY positive integer, only warns if not power of 2
+* *Tests*: Can't assert behavior because it's undefined
+{warning}
+
+h4. Impact:
+* *6 NFFT tests* can't enforce rules
+* Invalid NFFT values could harm performance/memory
+* Inconsistency between config and code
+
+h4. What We Need:
+# Should code *enforce* the list in config? (reject invalid values)
+# Or keep *warning-only* behavior? (accept but warn)
+# What's the absolute maximum NFFT? (currently unlimited)
+# Can user override with custom values?
+
+----
+
+h3. *Issue #4: Frequency Range - No Absolute Limits*
+
+{panel:title=Source Code File}
+{{src/models/focus_server_models.py:46-57}} (model definition)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/unit/test_validators.py}} (frequency validation unit tests)
+* {{tests/unit/test_models_validation.py}} (16 frequency range model tests)
+* {{tests/integration/api/test_config_validation_high_priority.py}} (frequency edge cases)
+* {{tests/integration/api/test_spectrogram_pipeline.py}} (frequency in pipeline)
+* {{tests/integration/api/test_singlechannel_view_mapping.py}} (frequency mapping)
+* {{tests/integration/api/test_live_monitoring_flow.py}} (live frequency tests)
+{panel}
+
+{code:python}
+class FrequencyRange(BaseModel):
+    min_freq: float = Field(gt=0)  # Only: must be > 0
+    max_freq: float = Field(gt=0)  # Only: must be > 0
+    # No absolute maximum!
+    # No minimum span required!
+{code}
+
+h4. Impact:
+* *16 frequency tests* have no upper bounds
+* Could accept extreme values (e.g., 999999999 Hz)
+* Can't test realistic ranges
+
+h4. What We Need:
+# Absolute maximum frequency? (e.g., 48000 Hz? 96000 Hz?)
+# Absolute minimum frequency? (e.g., 20 Hz?)
+# Minimum span required? (e.g., max \- min >= 100 Hz?)
+# Edge case: Is {{min_freq == max_freq}} valid? (single frequency)
+
+----
+
+h3. *Issue #5: Sensor Range - No Min/Max ROI Size*
+
+{panel:title=Source Code File}
+{{src/utils/validators.py:116-151}} (validation logic)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/unit/test_validators.py}} (15 sensor validation unit tests)
+* {{tests/unit/test_models_validation.py}} (sensor range model tests)
+* {{tests/integration/api/test_live_monitoring_flow.py}} (sensor range in live mode)
+* {{tests/integration/api/test_dynamic_roi_adjustment.py}} (sensor ROI adjustment)
+{panel}
+
+h4. Current Gaps:
+* Could allow ROI with *just 1 sensor* (min=max=1) \- is this valid?
+* Could allow ROI with *all 2222 sensors* (min=1, max=2222) \- practical?
+* No minimum ROI size constraint
+* No maximum ROI size constraint
+
+h4. Impact:
+* *15 sensor validation tests* lack boundaries
+* Could allow impractical configurations
+
+h4. What We Need:
+# Minimum ROI size? (e.g., at least 10 sensors? 50?)
+# Maximum ROI size? (e.g., at most 500 sensors? 1000?)
+# Is single-sensor ROI valid? (min == max)
+# Practical recommendations for typical use cases?
+
+----
+
+h3. *Issue #6: API Response Time - Arbitrary Timeout*
+
+{panel:title=Source Code File}
+{{src/apis/focus_server_api.py}} (API implementation)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/integration/api/test_api_endpoints_high_priority.py:135-147}} (3 API timeout tests)
+* {{tests/integration/performance/test_performance_high_priority.py}} (API performance tests)
+{panel}
+
+h4. What We Need:
+
+||Endpoint||Current||Need||
+|GET /channels|1000ms|?|
+|GET /metadata|\-|?|
+|POST /config|\-|?|
+
+----
+
+h3. *Issue #7: Config Validation - No Assertions*
+
+{panel:title=Source Code File}
+{{src/utils/validators.py}} (validation logic)
+{panel}
+
+{panel:title=Test Files Affected|bgColor=#d4edda}
+* {{tests/integration/api/test_config_validation_high_priority.py:475-520}} (8 edge case tests with TODOs)
+* {{tests/unit/test_validators.py}} (edge case validation unit tests)
+* {{tests/unit/test_models_validation.py}} (edge case model validation tests)
+{panel}
+
+h4. What We Need:
+
+||Test Case||Current||Need Decision||
+|min_freq == max_freq|Unknown|200 OK or 400 Error?|
+|min_channel == max_channel|Unknown|200 OK or 400 Error?|
+|ROI size = 1 sensor|Unknown|Valid or invalid?|
+|NFFT not in config list|Warning|Reject or accept?|
+
+----
+
+h2. Summary Table
+
+||#||Issue||Tests Blocked||Priority||Code Location||
+|1|Performance assertions disabled|28|{status:colour=Red|title=Critical}|{{test_performance_high_priority.py:146}}|
+|2|ROI change limit (50%)|6|{status:colour=Red|title=Critical}|{{validators.py:395}}|
+|3|NFFT validation permissive|6|{status:colour=Red|title=Critical}|{{validators.py:194}}|
+|4|Frequency range no limits|16|{status:colour=Yellow|title=High}|{{focus_server_models.py:46}}|
+|5|Sensor range no min/max|15|{status:colour=Yellow|title=High}|{{validators.py:116}}|
+|6|API response time arbitrary|3|{status:colour=Grey|title=Medium}|{{test_api_endpoints.py:135}}|
+|7|Config edge cases undefined|8|{status:colour=Grey|title=Medium}|{{test_config_validation.py:475}}|
+
+{info:title=Total Impact}
+*82+ tests affected*
+{info}
+
+----
+
+h2. Meeting Agenda
+
+{panel:title=Part 1: Context (15 min)|bgColor=#e7f3ff}
+* Review this document
+* Show code examples
+* Explain impact on test quality
+{panel}
+
+{panel:title=Part 2: Issue #1-3 - Critical (60 min)|bgColor=#ffe7e7}
+* Performance SLAs
+* ROI change limit
+* NFFT validation
+* *Document decisions*
+{panel}
+
+{panel:title=Part 3: Issue #4-7 - High/Medium (45 min)|bgColor=#fff7e7}
+* Frequency/sensor ranges
+* API timeouts
+* Edge cases
+* *Document decisions*
+{panel}
+
+{panel:title=Part 4: Implementation Plan (20 min)|bgColor=#e7ffe7}
+* Timeline for code updates
+* Testing approach
+* Documentation requirements
+{panel}
+
+{panel:title=Part 5: Follow-up (10 min)|bgColor=#f0f0f0}
+* Schedule review meeting
+* Assign action items
+{panel}
+
+----
+
+h2. Desired Outcomes
+
+{tip:title=After this meeting, we should have:}
+(/) *Documented decisions* for all 7 issues
+(/) *Specific numeric values* (thresholds, limits, timeouts)
+(/) *Defined behaviors* for edge cases
+(/) *Implementation plan* with timeline
+(/) *Test updates* scheduled within 1-2 weeks
+{tip}
+
+----
+
+h2. Supporting Materials
+
+h3. Code Files to Review:
+# {{src/utils/validators.py}} \- Validation functions
+# {{tests/integration/performance/test_performance_high_priority.py}} \- Performance tests
+# {{tests/integration/api/test_config_validation_high_priority.py}} \- Config tests
+# {{config/settings.yaml}} \- Configuration file
+
+h3. Documentation Available:
+* Full code evidence: {{documentation/specs/CODE_EVIDENCE_MISSING_SPECS.md}}
+* Critical specs list: {{documentation/specs/CRITICAL_MISSING_SPECS_LIST.md}}
+* 135 questions checklist: {{documentation/specs/specs_checklist_for_meeting.csv}}
+
+----
+
+h2. Next Steps (After Meeting)
+
+{panel:title=Implementation Timeline|bgColor=#f0fff0}
+# *Document Decisions* \- Update specs document with agreed values
+# *Update Code* \- Modify validators and test assertions
+# *Enable Assertions* \- Uncomment performance test assertions
+# *Run Tests* \- Verify all affected tests pass/fail correctly
+# *Update Xray* \- Document specs in Jira test cases
+# *Schedule Review* \- Follow-up meeting to verify implementation
+{panel}
+
+----
+
+{note:title=Contact}
+Questions Before Meeting?
+*Contact:* QA Automation Team
+
+*Preparation:* Please review code examples in Issues #1-3 before the meeting.
+{note}
+
+----
+
+{info}
+*Document Version:* 1.0
+*Last Updated:* October 22, 2025
+*Status:* {status:colour=Green|title=Ready for Meeting}
+{info}
+

@@ -31,11 +31,12 @@ jobs:
         id: run-tests
         run: |
           mkdir -p reports logs screenshots
-          pytest tests/ -v \
+          pytest be_focus_server_tests/ -v \
             --junitxml=reports/junit.xml \
             --html=reports/report.html \
             --self-contained-html \
             --tb=short \
+            --override-ini="testpaths=" \
             || TEST_EXIT_CODE=$?
           # Always continue (we'll upload results even if tests failed)
           exit ${TEST_EXIT_CODE:-0}

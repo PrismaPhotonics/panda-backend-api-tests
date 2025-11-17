@@ -32,8 +32,16 @@ Usage:
 
 from external.jira.jira_client import JiraClient
 from external.jira.jira_agent import JiraAgent, get_agent
+from external.jira.bug_deduplication import BugDeduplicationService
+from external.jira.bug_creator import BugCreatorService
 
-__all__ = ["JiraClient", "JiraAgent", "get_agent"]
+__all__ = [
+    "JiraClient",
+    "JiraAgent",
+    "get_agent",
+    "BugDeduplicationService",
+    "BugCreatorService"
+]
 
 __version__ = "1.0.0"
 

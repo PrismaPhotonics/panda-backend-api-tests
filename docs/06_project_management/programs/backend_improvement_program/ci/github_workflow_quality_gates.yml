@@ -1,0 +1,447 @@
+# GitHub Actions Workflow: Quality Gates
+# Automated quality checks for Backend Improvement Program
+
+name: Quality Gates
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'be_focus_server_tests/**'
+      - 'config/**'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'be_focus_server_tests/**'
+
+env:
+  PYTHON_VERSION: '3.12'
+  POETRY_VERSION: '1.7.0'
+
+jobs:
+  # Job 1: Lint & Type Check
+  lint-and-type-check:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black mypy types-requests types-pydantic
+
+      - name: Run Ruff (linter)
+        run: |
+          ruff check src/ be_focus_server_tests/
+          ruff format --check src/ be_focus_server_tests/
+
+      - name: Run Black (formatter check)
+        run: |
+          black --check src/ be_focus_server_tests/
+
+      - name: Run MyPy (type checker)
+        run: |
+          mypy src/ --ignore-missing-imports --no-strict-optional
+        continue-on-error: true  # Allow type checking to warn but not fail
+
+  # Job 2: Unit Tests & Coverage
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock pytest-xdist
+
+      - name: Run unit tests with coverage
+        run: |
+          pytest be_focus_server_tests/unit/ \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term \
+            --cov-fail-under=70 \
+            --junit-xml=junit-unit.xml \
+            -v
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: unit
+          name: unit-tests-coverage
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: unit-test-results
+          path: |
+            junit-unit.xml
+            htmlcov/
+
+  # Job 3: Contract Tests (OpenAPI/AsyncAPI Validation)
+  contract-tests:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest openapi-spec-validator jsonschema
+
+      - name: Run contract tests
+        run: |
+          pytest be_focus_server_tests/contract/ \
+            --junit-xml=junit-contract.xml \
+            -v
+
+      - name: Validate OpenAPI schemas
+        run: |
+          python -m openapi_spec_validator config/openapi.yaml || echo "OpenAPI spec not found, skipping"
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: contract-test-results
+          path: junit-contract.xml
+
+  # Job 4: Backward Compatibility Check (OpenAPI Diff)
+  backward-compatibility:
+    name: Backward Compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install openapi-diff
+        run: |
+          python -m pip install --upgrade pip
+          pip install openapi-diff-cli
+
+      - name: Check OpenAPI backward compatibility
+        run: |
+          # Compare OpenAPI spec from base branch to PR branch
+          openapi-diff \
+            config/openapi.yaml \
+            --base-ref origin/${{ github.base_ref }} \
+            --head-ref HEAD \
+            || echo "OpenAPI diff check failed - review manually"
+        continue-on-error: true  # Warn but don't fail (manual review)
+
+      - name: Comment PR with breaking changes
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Backward Compatibility Warning:** Potential breaking changes detected in API contracts. Please review manually.'
+            })
+
+  # Job 5: Basic Performance Checks (Smoke Tests)
+  performance-smoke:
+    name: Performance Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-benchmark locust
+
+      - name: Run performance smoke tests
+        run: |
+          # Run basic performance checks (P95 latency threshold)
+          pytest be_focus_server_tests/performance/smoke/ \
+            --junit-xml=junit-performance.xml \
+            -v \
+            --benchmark-only \
+            --benchmark-save
+
+      - name: Check P95 latency threshold
+        run: |
+          # Custom script to validate P95 < threshold
+          python scripts/check_performance_threshold.py || exit 1
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            junit-performance.xml
+            .benchmarks/
+
+  # Job 6: Security Scan (Basic)
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+
+      - name: Run Bandit (security linter)
+        run: |
+          bandit -r src/ -f json -o bandit-report.json || true
+        continue-on-error: true
+
+      - name: Check dependencies for vulnerabilities
+        run: |
+          safety check --json || true
+        continue-on-error: true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+
+  # Job 7: Component Tests (if applicable)
+  component-tests:
+    name: Component Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [lint-and-type-check, unit-tests]
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3.12-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run component tests
+        env:
+          MONGODB_URI: mongodb://localhost:27017/test_db
+          RABBITMQ_HOST: localhost
+          RABBITMQ_PORT: 5672
+        run: |
+          pytest be_focus_server_tests/integration/component/ \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=term \
+            --junit-xml=junit-component.xml \
+            -v
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: component
+          name: component-tests-coverage
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: component-test-results
+          path: junit-component.xml
+
+  # Job 8: Quality Gate Summary
+  quality-gate-summary:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [lint-and-type-check, unit-tests, contract-tests, backward-compatibility, performance-smoke, security-scan, component-tests]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create quality gate summary
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const summary = `
+            # 🔍 Quality Gate Results
+
+            ## ✅ Passed Checks
+            ${process.env.LINT_PASSED === 'true' ? '- ✅ Lint & Type Check' : '- ❌ Lint & Type Check'}
+            ${process.env.UNIT_TESTS_PASSED === 'true' ? '- ✅ Unit Tests (≥70% coverage)' : '- ❌ Unit Tests'}
+            ${process.env.CONTRACT_TESTS_PASSED === 'true' ? '- ✅ Contract Tests' : '- ❌ Contract Tests'}
+            ${process.env.COMPONENT_TESTS_PASSED === 'true' ? '- ✅ Component Tests' : '- ⚠️ Component Tests'}
+
+            ## ⚠️ Warnings
+            ${process.env.BACKWARD_COMPAT_PASSED === 'false' ? '- ⚠️ Backward Compatibility (review manually)' : ''}
+            ${process.env.PERFORMANCE_PASSED === 'false' ? '- ⚠️ Performance (review manually)' : ''}
+            ${process.env.SECURITY_PASSED === 'false' ? '- ⚠️ Security (review manually)' : ''}
+
+            ## 📊 Coverage
+            - Unit Tests: ${process.env.UNIT_COVERAGE || 'N/A'}%
+            - Component Tests: ${process.env.COMPONENT_COVERAGE || 'N/A'}%
+
+            **Status:** ${process.env.ALL_REQUIRED_PASSED === 'true' ? '✅ All required checks passed' : '❌ Some required checks failed'}
+            `;
+
+            core.summary = summary;
+
+      - name: Comment PR with summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Post summary as PR comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+---
+
+## 📋 **Quality Gate Rules**
+
+### **Required for Merge:**
+1. ✅ Lint & Type Check must pass
+2. ✅ Unit Tests must pass with ≥70% coverage
+3. ✅ Contract Tests must pass
+4. ✅ Component Tests should pass (if applicable)
+
+### **Warnings (Blocking):**
+1. ⚠️ Backward Compatibility - Manual review required if warnings
+2. ⚠️ Performance - Manual review required if P95 exceeds threshold
+3. ⚠️ Security - Manual review required if vulnerabilities found
+
+### **Optional (Nightly):**
+- Full API/E2E test suite (run nightly, not blocking)
+- Full performance test suite (run nightly)
+- Full security scan (run nightly)
+
+---
+
+## 🔧 **Configuration**
+
+### **Coverage Thresholds**
+- Unit Tests: ≥70%
+- Component Tests: ≥80% (target)
+- API Tests: ≥80% (target)
+
+### **Performance Thresholds**
+- P95 Latency: < 200ms (configurable per endpoint)
+- P99 Latency: < 500ms (configurable per endpoint)
+
+### **Customize Thresholds**
+Edit the workflow file to adjust:
+- `--cov-fail-under=70` (unit test coverage)
+- Performance thresholds in `scripts/check_performance_threshold.py`
+
+---
+
+**Workflow Version:** 1.0  
+**Last Updated:** 2025-10-29  
+**Maintained by:** DevOps & QA Teams
+
+---
+
+**[← Back to Program](../../README.md)**
+
+

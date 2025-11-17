@@ -215,6 +215,7 @@ def test_jump_connection(env: str = "staging") -> bool:
         print(f"[ERROR] Failed to connect through jump host: {e}")
         return False
 
+@pytest.mark.xray("PZ-13900")
 def test_network_connectivity(env: str = "staging"):
     """Test basic network connectivity to SSH hosts."""
     print("\n" + "=" * 80)

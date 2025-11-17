@@ -4,7 +4,7 @@
 # This script demonstrates the new enhanced logging capabilities.
 
 param(
-    [string]$TestFile = "tests/integration/api/test_singlechannel_view_mapping.py",
+    [string]$TestFile = "be_focus_server_tests/integration/api/test_singlechannel_view_mapping.py",
     [switch]$CollectPodLogs,
     [switch]$SavePodLogs,
     [switch]$FullDebug,

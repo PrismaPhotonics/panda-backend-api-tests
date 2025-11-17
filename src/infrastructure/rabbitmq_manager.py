@@ -242,17 +242,27 @@ class RabbitMQConnectionManager:
             
             logger.debug(f"Connecting to {self.ssh_user}@{self.k8s_host}...")
             
-            # Connect with key file or password
+            # Expand tilde in key_file path if needed
+            key_file = None
             if self.ssh_key_file:
+                from pathlib import Path
+                if self.ssh_key_file.startswith('~'):
+                    home = str(Path.home())
+                    key_file = self.ssh_key_file.replace('~', home, 1)
+                else:
+                    key_file = self.ssh_key_file
+            
+            # Connect with key file (preferred) or password
+            if key_file:
                 client.connect(
                     hostname=self.k8s_host,
                     username=self.ssh_user,
-                    key_filename=self.ssh_key_file,
+                    key_filename=key_file,
                     timeout=30,
-                    look_for_keys=True,
-                    allow_agent=True
+                    allow_agent=False,  # Don't try agent when we have key file
+                    look_for_keys=False  # Don't look for other keys
                 )
-            else:
+            elif self.ssh_password:
                 client.connect(
                     hostname=self.k8s_host,
                     username=self.ssh_user,
@@ -329,8 +339,13 @@ class RabbitMQConnectionManager:
         """
         logger.info(f"Starting port-forward for {service_name}...")
         
-        if not PARAMIKO_AVAILABLE or not self.ssh_password:
-            logger.error("Paramiko or SSH password not available for automation")
+        if not PARAMIKO_AVAILABLE:
+            logger.error("Paramiko not available for automation")
+            return False
+        
+        # Check if we have authentication method
+        if not self.ssh_password and not self.ssh_key_file:
+            logger.error("No SSH authentication method configured (password or key_file)")
             return False
         
         try:
@@ -343,14 +358,34 @@ class RabbitMQConnectionManager:
                     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                     
                     logger.info(f"Connecting to {self.ssh_user}@{self.k8s_host} for port-forward...")
-                    client.connect(
-                        hostname=self.k8s_host,
-                        username=self.ssh_user,
-                        password=self.ssh_password,
-                        timeout=30,
-                        look_for_keys=False,
-                        allow_agent=False
-                    )
+                    
+                    # Try key file first (preferred), then password
+                    if self.ssh_key_file:
+                        # Expand tilde in key_file path
+                        from pathlib import Path
+                        if self.ssh_key_file.startswith('~'):
+                            home = str(Path.home())
+                            key_file = self.ssh_key_file.replace('~', home, 1)
+                        else:
+                            key_file = self.ssh_key_file
+                        
+                        client.connect(
+                            hostname=self.k8s_host,
+                            username=self.ssh_user,
+                            key_filename=key_file,
+                            timeout=30,
+                            allow_agent=False,  # Don't try agent when we have key file
+                            look_for_keys=False  # Don't look for other keys
+                        )
+                    elif self.ssh_password:
+                        client.connect(
+                            hostname=self.k8s_host,
+                            username=self.ssh_user,
+                            password=self.ssh_password,
+                            timeout=30,
+                            look_for_keys=False,
+                            allow_agent=False
+                        )
                     
                     # Start port-forward (this will keep running)
                     pf_cmd = (

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>[#PZ-13952] Historic Mode E2E Tests</title>
+    <meta http-equiv="Content-Type" Content="application/vnd.ms-word; charset=UTF-8">
+        <style type="text/css">
+
+.tableBorder, .grid
+{
+    background-color: #fff;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableBorder td, .grid td
+{
+    vertical-align: top;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+.noPadding
+{
+    padding: 0 !important;
+}
+
+h3 .subText
+{
+    font-size: 60%;
+    font-weight: normal;
+}
+
+.tabLabel
+{
+    font-weight: bold;
+    border: 1px solid #ccc;
+    border-bottom:none;
+    padding: 2px;
+    display: inline;
+}
+
+td.blank
+{
+    padding: 0;
+    margin: 0;
+}
+
+.blank td
+{
+    border: none;
+}
+
+#descriptionArea
+{
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+hr
+{
+    border-top:1px solid #aaa;
+}
+
+hr.fullcontent
+{
+  height: 15px;
+  padding: 10px 0;
+  background: #fff url('https://prismaphotonics.atlassian.net/images/icons/hr.gif') no-repeat scroll center;
+}
+
+</style>
+
+</head>
+<body>
+
+<table class="tableBorder" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" width="100%" colspan="2" valign="top">
+                            <h3 class="formtitle">
+                        [PZ-13952]&nbsp;<a href="https://prismaphotonics.atlassian.net/browse/PZ-13952">Historic Mode E2E Tests</a>
+            <span class="subText">
+               Created: 26/Oct/25                   &nbsp;Updated: 28/Oct/25
+
+                                            </span>
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Status:</b></td>
+        <td width="80%">Working</td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Project:</b></td>
+        <td width="80%"><a href="https://prismaphotonics.atlassian.net/secure/BrowseProject.jspa?id=10000">Prisma</a></td>
+    </tr>
+
+        <tr>
+            <td><b>Components:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+    
+
+        <tr>
+            <td><b>Fix versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+    
+    </table>
+
+<br />
+<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" valign="top" width="20%">
+            <b>Type:</b>
+        </td>
+        <td bgcolor="#ffffff" valign="top"  width="30%" >
+            Task
+        </td>
+
+                    <td bgcolor="#f0f0f0">
+                <b>Priority:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap>
+                Medium
+            </td>
+            </tr>
+    <tr>
+                        <td bgcolor="#f0f0f0" valign="top" width="20%">
+                <b>Reporter:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top"  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_reporter_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+        
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Assignee:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_assignee_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+            </tr>
+    	<tr>
+		<td bgcolor="#f0f0f0" width="20%">
+			<b>Resolution:</b>
+		</td>
+		<td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+            				Unresolved
+                    </td>
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Votes:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+                0
+            </td>
+        
+    </tr>
+    
+        <tr>
+        <td bgcolor="#f0f0f0" width="20%">
+            <b>Labels:</b>
+        </td>
+        <td id="labels-43601-value" class="value" bgcolor="#ffffff" valign="top" colspan="3" nowrap>
+                            None
+                    </td>
+    </tr>
+    
+    	<tr>
+        		<td bgcolor="#f0f0f0" width="20%"><b>Remaining Estimate:</b></td>
+        <td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Time Spent:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+	</tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Original estimate:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    
+    </table>
+
+
+
+    <br />
+
+    	<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+            
+
+        
+    
+
+
+    
+                        <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Sprint:</b></td>
+                <td id="customfield_10020-43601-value" class="value" bgcolor="#ffffff" width="80%">Sprint 70 - Ford Prefect</td>
+            </tr>
+                                <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Story Points:</b></td>
+                <td id="customfield_10026-43601-value" class="value" bgcolor="#ffffff" width="80%">    4
+</td>
+            </tr>
+            </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Description</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td id="descriptionArea">
+            <h3><a name="Task4.1%3ATesthistoricmodewithoutdata"></a><b>Task 4.1: Test historic mode without data</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<p>Implement <tt>test_user_configures_historic_playback_no_data</tt>:</p>
+
+<ul>
+	<li>Select Historic mode</li>
+</ul>
+
+
+<ul>
+	<li>Choose time range with no recordings</li>
+</ul>
+
+
+<ul>
+	<li>Click "Start Playback"</li>
+</ul>
+
+
+<ul>
+	<li>Verify clear error message displayed</li>
+</ul>
+
+
+<ul>
+	<li>Verify UI doesn't crash or hang</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Test handles no-data scenario</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Error message is clear and actionable</li>
+</ul>
+
+
+<ul>
+	<li>[ ] UI remains stable</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task4.2%3ATesthistoricmodewithdata"></a><b>Task 4.2: Test historic mode with data</b></h3>
+
+<p><b>Estimate:</b> 3 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<p>Implement <tt>test_user_sees_historic_playback_with_data</tt>:</p>
+
+<ul>
+	<li>Setup test recording in MongoDB</li>
+</ul>
+
+
+<ul>
+	<li>Select Historic mode with data time range</li>
+</ul>
+
+
+<ul>
+	<li>Start playback</li>
+</ul>
+
+
+<ul>
+	<li>Verify playback controls work</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Test data setup script created</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Playback starts successfully</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Playback controls functional</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task4.3%3ATestplaybackcontrols"></a><b>Task 4.3: Test playback controls</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Assignee:</b> <span class="error">&#91;Unassigned&#93;</span></p>
+
+<p><b>Description:</b></p>
+
+<p>Test playback functionality:</p>
+
+<ul>
+	<li>Test pause/resume playback</li>
+</ul>
+
+
+<ul>
+	<li>Test seek to different time</li>
+</ul>
+
+
+<ul>
+	<li>Test playback speed control (if available)</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Pause/resume works correctly</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Seek functionality works</li>
+</ul>
+
+
+<ul>
+	<li>[ ] All controls tested</li>
+</ul>
+
+            <br/>
+        </td>
+    </tr>
+    </table>
+
+Generated at Tue Nov 04 08:43:01 UTC 2025 by Roy Avrahami using Jira 1001.0.0-SNAPSHOT#100290-rev:c7faf2d76294a838eccb8baf436ee325c9a178b7.
+
+</body>
+</html>

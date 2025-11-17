@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>[#PZ-13951] Live Mode E2E Tests</title>
+    <meta http-equiv="Content-Type" Content="application/vnd.ms-word; charset=UTF-8">
+        <style type="text/css">
+
+.tableBorder, .grid
+{
+    background-color: #fff;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableBorder td, .grid td
+{
+    vertical-align: top;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+.noPadding
+{
+    padding: 0 !important;
+}
+
+h3 .subText
+{
+    font-size: 60%;
+    font-weight: normal;
+}
+
+.tabLabel
+{
+    font-weight: bold;
+    border: 1px solid #ccc;
+    border-bottom:none;
+    padding: 2px;
+    display: inline;
+}
+
+td.blank
+{
+    padding: 0;
+    margin: 0;
+}
+
+.blank td
+{
+    border: none;
+}
+
+#descriptionArea
+{
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+hr
+{
+    border-top:1px solid #aaa;
+}
+
+hr.fullcontent
+{
+  height: 15px;
+  padding: 10px 0;
+  background: #fff url('https://prismaphotonics.atlassian.net/images/icons/hr.gif') no-repeat scroll center;
+}
+
+</style>
+
+</head>
+<body>
+
+<table class="tableBorder" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" width="100%" colspan="2" valign="top">
+                            <h3 class="formtitle">
+                        [PZ-13951]&nbsp;<a href="https://prismaphotonics.atlassian.net/browse/PZ-13951">Live Mode E2E Tests</a>
+            <span class="subText">
+               Created: 26/Oct/25                   &nbsp;Updated: 28/Oct/25
+
+                                            </span>
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Status:</b></td>
+        <td width="80%">Working</td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Project:</b></td>
+        <td width="80%"><a href="https://prismaphotonics.atlassian.net/secure/BrowseProject.jspa?id=10000">Prisma</a></td>
+    </tr>
+
+        <tr>
+            <td><b>Components:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+    
+
+        <tr>
+            <td><b>Fix versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+    
+    </table>
+
+<br />
+<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" valign="top" width="20%">
+            <b>Type:</b>
+        </td>
+        <td bgcolor="#ffffff" valign="top"  width="30%" >
+            Task
+        </td>
+
+                    <td bgcolor="#f0f0f0">
+                <b>Priority:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap>
+                Medium
+            </td>
+            </tr>
+    <tr>
+                        <td bgcolor="#f0f0f0" valign="top" width="20%">
+                <b>Reporter:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top"  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_reporter_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+        
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Assignee:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:f3895741-cf6d-444c-92af-d001de870705"
+                id="word_assignee_712020:f3895741-cf6d-444c-92af-d001de870705"
+                href="https://prismaphotonics.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3Af3895741-cf6d-444c-92af-d001de870705">
+                    Roy Avrahami
+                </a>
+
+                            </td>
+            </tr>
+    	<tr>
+		<td bgcolor="#f0f0f0" width="20%">
+			<b>Resolution:</b>
+		</td>
+		<td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+            				Unresolved
+                    </td>
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Votes:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+                0
+            </td>
+        
+    </tr>
+    
+        <tr>
+        <td bgcolor="#f0f0f0" width="20%">
+            <b>Labels:</b>
+        </td>
+        <td id="labels-43599-value" class="value" bgcolor="#ffffff" valign="top" colspan="3" nowrap>
+                            None
+                    </td>
+    </tr>
+    
+    	<tr>
+        		<td bgcolor="#f0f0f0" width="20%"><b>Remaining Estimate:</b></td>
+        <td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Time Spent:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+	</tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Original estimate:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    
+    </table>
+
+
+
+    <br />
+
+    	<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+            
+
+        
+    
+
+
+    
+                        <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Sprint:</b></td>
+                <td id="customfield_10020-43599-value" class="value" bgcolor="#ffffff" width="80%">Sprint 70 - Ford Prefect</td>
+            </tr>
+                                <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Story Points:</b></td>
+                <td id="customfield_10026-43599-value" class="value" bgcolor="#ffffff" width="80%">    4
+</td>
+            </tr>
+            </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Description</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td id="descriptionArea">
+            <h3><a name="Task3.1%3ATestlivemodeconfiguration"></a><b>Task 3.1: Test live mode configuration</b></h3>
+
+<p><b>Estimate:</b> 3 hours</p>
+
+<p><b>Description:</b></p>
+
+<p>Implement <tt>test_user_configures_and_sees_live_spectrogram</tt>:</p>
+
+<ul>
+	<li>Navigate to Panda App</li>
+</ul>
+
+
+<ul>
+	<li>Fill configuration form (channels 1-99, freq 0-1000Hz, NFFT 1024)</li>
+</ul>
+
+
+<ul>
+	<li>Click "Start Streaming"</li>
+</ul>
+
+
+<ul>
+	<li>Verify canvas displays</li>
+</ul>
+
+
+<ul>
+	<li>Verify frequency axis labels (0-1000 Hz)</li>
+</ul>
+
+
+<ul>
+	<li>Verify channel axis labels (1-99)</li>
+</ul>
+
+
+<ul>
+	<li>Verify data is streaming (canvas updates)</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Test successfully configures live streaming</li>
+</ul>
+
+
+<ul>
+	<li>[ ] All UI elements verified</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Canvas streaming validation working</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task3.2%3ATestlivemodecontrols"></a><b>Task 3.2: Test live mode controls</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Description:</b></p>
+
+<p>Implement the following tests:</p>
+
+<ul>
+	<li><tt>test_user_can_stop_live_streaming</tt> - Verify stop button works</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_user_can_pause_resume_streaming</tt> - Verify pause/resume functionality</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Stop streaming test working</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Pause/resume test working</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Canvas state verified correctly</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task3.3%3ATestviewtypeswitching"></a><b>Task 3.3: Test view type switching</b></h3>
+
+<p><b>Estimate:</b> 3 hours</p>
+
+<p><b>Description:</b></p>
+
+<p>Implement <tt>test_user_switches_between_view_types</tt>:</p>
+
+<ul>
+	<li>Start streaming with MultiChannel view</li>
+</ul>
+
+
+<ul>
+	<li>Switch to SingleChannel view</li>
+</ul>
+
+
+<ul>
+	<li>Switch to Waterfall view</li>
+</ul>
+
+
+<ul>
+	<li>Verify each view renders correctly</li>
+</ul>
+
+
+<ul>
+	<li>Verify data continues streaming during switches</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Can switch between all view types</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Each view displays correctly</li>
+</ul>
+
+
+<ul>
+	<li>[ ] No data loss during transitions</li>
+</ul>
+
+
+<hr />
+
+<h3><a name="Task3.4%3ATestchannelmanagement"></a><b>Task 3.4: Test channel management</b></h3>
+
+<p><b>Estimate:</b> 2 hours</p>
+
+<p><b>Description:</b></p>
+
+<p>Implement the following tests:</p>
+
+<ul>
+	<li><tt>test_user_switches_channels_during_streaming</tt> - Switch channels while streaming</li>
+</ul>
+
+
+<ul>
+	<li><tt>test_user_configures_maximum_channels</tt> - Test with 2222 channels (max)</li>
+</ul>
+
+
+<p><b>Acceptance Criteria:</b></p>
+
+<ul>
+	<li>[ ] Channel switching works during streaming</li>
+</ul>
+
+
+<ul>
+	<li>[ ] Maximum channels configuration accepted</li>
+</ul>
+
+
+<ul>
+	<li>[ ] UI performance acceptable with max channels</li>
+</ul>
+
+            <br/>
+        </td>
+    </tr>
+    </table>
+
+Generated at Tue Nov 04 09:51:47 UTC 2025 by Roy Avrahami using Jira 1001.0.0-SNAPSHOT#100290-rev:c7faf2d76294a838eccb8baf436ee325c9a178b7.
+
+</body>
+</html>
