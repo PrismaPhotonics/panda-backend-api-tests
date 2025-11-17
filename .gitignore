@@ -39,6 +39,8 @@ html-reports/
 *.secret
 credentials.json
 .tokens/  # Token storage directory (contains authentication tokens)
+config/jira_config.yaml  # Contains API tokens - use environment variables instead
+scripts/jira/test_new_token.py  # Contains token references
 
 # Build and distribution
 build/
