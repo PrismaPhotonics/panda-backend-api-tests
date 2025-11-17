@@ -85,14 +85,14 @@ jobs:
         # Don't set SKIP_INFRASTRUCTURE_TESTS - let fixtures handle skipping gracefully
       run: |
         # Override testpaths from pytest.ini to avoid conflicts
-        pytest be_focus_server_tests/ \
+        pytest tests/ \
           --env=local \
           --skip-health-check \
           --skip-sanity-check \
           --override-ini="testpaths=" \
-          --ignore=be_focus_server_tests/unit \
-          --ignore=be_focus_server_tests/load \
-          --ignore=be_focus_server_tests/stress \
+          --ignore=tests/unit \
+          --ignore=tests/load \
+          --ignore=tests/stress \
           --ignore-glob=**/integration/load \
           --ignore-glob=**/test_alert_generation_load.py \
           --ignore-glob=**/test_alert_generation_performance.py \
@@ -209,15 +209,15 @@ jobs:
         echo "## 📋 Test Categories" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Excluded Test Categories:" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Unit tests (\`be_focus_server_tests/unit/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Load tests (\`be_focus_server_tests/load/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Stress tests (\`be_focus_server_tests/stress/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ❌ Integration load tests (\`be_focus_server_tests/integration/load/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Unit tests (\`tests/unit/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Load tests (\`tests/load/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Stress tests (\`tests/stress/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ❌ Integration load tests (\`tests/integration/load/\`)" >> $GITHUB_STEP_SUMMARY
         echo "- ❌ Alert load/performance tests" >> $GITHUB_STEP_SUMMARY
         echo "- ❌ Tests marked with \`@pytest.mark.unit\`, \`@pytest.mark.load\`, or \`@pytest.mark.stress\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Included Test Categories:" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Integration tests (\`be_focus_server_tests/integration/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Integration tests (\`tests/integration/\`)" >> $GITHUB_STEP_SUMMARY
         echo "  - API tests (\`integration/api/\`)" >> $GITHUB_STEP_SUMMARY
         echo "  - Data quality tests (\`integration/data_quality/\`)" >> $GITHUB_STEP_SUMMARY
         echo "  - Error handling tests (\`integration/error_handling/\`)" >> $GITHUB_STEP_SUMMARY
@@ -225,12 +225,12 @@ jobs:
         echo "  - Security tests (\`integration/security/\`)" >> $GITHUB_STEP_SUMMARY
         echo "  - Calculations tests (\`integration/calculations/\`)" >> $GITHUB_STEP_SUMMARY
         echo "  - E2E tests (\`integration/e2e/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Data quality tests (\`be_focus_server_tests/data_quality/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Infrastructure tests (\`be_focus_server_tests/infrastructure/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Data quality tests (\`tests/data_quality/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Infrastructure tests (\`tests/infrastructure/\`)" >> $GITHUB_STEP_SUMMARY
         echo "  - Resilience tests (\`infrastructure/resilience/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Performance tests (\`be_focus_server_tests/performance/\` - non-load)" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Security tests (\`be_focus_server_tests/security/\`)" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ UI tests (\`be_focus_server_tests/ui/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Performance tests (\`tests/performance/\` - non-load)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Security tests (\`tests/security/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ UI tests (\`tests/ui/\`)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Note:** Tests run with \`--env=local\` to skip auto infrastructure setup. Tests requiring Focus Server API will attempt connection if \`FOCUS_BASE_URL\` secret is configured, otherwise they will be skipped gracefully." >> $GITHUB_STEP_SUMMARY
 
