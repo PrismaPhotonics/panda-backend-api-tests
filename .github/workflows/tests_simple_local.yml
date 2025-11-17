@@ -28,12 +28,55 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
+      - name: Check Focus Server availability
+        id: check_focus
+        shell: powershell
+        env:
+          FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+          FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+        run: |
+          if (-not $env:FOCUS_BASE_URL) {
+            Write-Host "⚠️ FOCUS_BASE_URL secret not configured - tests requiring Focus Server will be skipped"
+            Write-Host "ℹ️  To enable Focus Server tests, configure FOCUS_BASE_URL secret in repository settings"
+            echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            $base = "$($env:FOCUS_BASE_URL.TrimEnd('/'))$($env:FOCUS_API_PREFIX)"
+            Write-Host "Checking Focus Server at $base/ack (health check endpoint)"
+            try {
+              $response = Invoke-WebRequest -Uri "$base/ack" -Method Get -SkipCertificateCheck -TimeoutSec 10 -ErrorAction Stop
+              if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                echo "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+                Write-Host "✅ Focus Server is reachable (HTTP $($response.StatusCode))"
+                # Also check channels endpoint
+                try {
+                  $channelsResponse = Invoke-WebRequest -Uri "$base/channels" -Method Get -SkipCertificateCheck -TimeoutSec 10 -ErrorAction Stop
+                  Write-Host "✅ Focus Server channels endpoint is also accessible"
+                } catch {
+                  Write-Host "⚠️ Channels endpoint check failed (this is OK)"
+                }
+              } else {
+                echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+                Write-Host "⚠️ Focus Server returned unexpected status (HTTP $($response.StatusCode))"
+              }
+            } catch {
+              echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+              Write-Host "⚠️ Focus Server not reachable - tests requiring Focus Server will be skipped"
+              Write-Host "ℹ️  This is expected if Focus Server is not accessible"
+            }
+          }
+
       - name: Run tests
         id: run-tests
         shell: powershell
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: ${{ github.workspace }}
+          # Set environment variable to indicate if Focus Server is available
+          FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
+          # Allow Focus Server URL override via secrets (if available)
+          FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+          FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+          VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
         run: |
           New-Item -ItemType Directory -Force -Path reports, logs, screenshots | Out-Null
           $testExitCode = 0
@@ -42,7 +85,27 @@ jobs:
           Write-Host "PYTHONPATH: $env:PYTHONPATH"
           Write-Host "Checking if mongodb_monitoring_agent exists:"
           Test-Path src\infrastructure\mongodb_monitoring_agent.py
-          pytest tests/ -v --junitxml=reports/junit.xml --html=reports/report.html --self-contained-html --tb=short
+          # Run tests excluding load/stress tests
+          # Since this is a self-hosted runner with VPN, infrastructure tests should work
+          # Override testpaths from pytest.ini to avoid conflicts
+          pytest be_focus_server_tests/ `
+            --env=local `
+            --skip-health-check `
+            --skip-sanity-check `
+            --override-ini="testpaths=" `
+            --ignore=be_focus_server_tests/load `
+            --ignore=be_focus_server_tests/stress `
+            --ignore-glob=**/integration/load `
+            --ignore-glob=**/test_alert_generation_load.py `
+            --ignore-glob=**/test_alert_generation_performance.py `
+            -m "not load and not stress and not grpc" `
+            -v `
+            --tb=short `
+            --junitxml=reports/junit.xml `
+            --html=reports/report.html `
+            --self-contained-html `
+            --maxfail=10 `
+            --continue-on-collection-errors
           if ($LASTEXITCODE -ne 0) { $testExitCode = $LASTEXITCODE }
           # Always continue (we'll upload results even if tests failed)
           exit $testExitCode

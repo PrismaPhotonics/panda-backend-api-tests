@@ -40,20 +40,69 @@ jobs:
       run: |
         mkdir -p reports
 
-    - name: Run Unit Tests Only (No External Dependencies)
+    - name: Check Focus Server availability
+      id: check_focus
+      env:
+        FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+        FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      run: |
+        if [ -z "$FOCUS_BASE_URL" ]; then
+          echo "available=false" >> $GITHUB_OUTPUT
+          echo "⚠️ FOCUS_BASE_URL secret not configured - tests requiring Focus Server will be skipped"
+          echo "ℹ️  To enable Focus Server tests, configure FOCUS_BASE_URL secret in repository settings"
+        else
+          BASE="${FOCUS_BASE_URL%/}${FOCUS_API_PREFIX}"
+          echo "Checking Focus Server at $BASE/ack (health check endpoint)"
+          set +e
+          # Try /ack endpoint first (faster than /health)
+          code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/ack" 2>/dev/null || echo "000")
+          if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✅ Focus Server is reachable (HTTP $code)"
+            # Also check channels endpoint
+            channels_code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/channels" 2>/dev/null || echo "000")
+            if [[ "$channels_code" -ge 200 && "$channels_code" -lt 500 ]]; then
+              echo "✅ Focus Server channels endpoint is also accessible"
+            fi
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Focus Server not reachable (HTTP $code) - tests requiring Focus Server will be skipped"
+            echo "ℹ️  This is expected in CI if Focus Server is behind VPN/firewall"
+          fi
+        fi
+
+    - name: Run All Tests (Excluding Load/Stress)
       env:
         CI: true
-        SKIP_INFRASTRUCTURE_TESTS: true
-        SKIP_FOCUS_SERVER_TESTS: true
+        # Use local environment to skip auto infrastructure setup (SSH port-forwards)
+        FOCUS_ENV: local
+        # Allow Focus Server URL override via secrets (if available)
+        FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+        FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+        VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
+        # Set environment variable to indicate if Focus Server is available
+        FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
+        # Don't set SKIP_INFRASTRUCTURE_TESTS - let fixtures handle skipping gracefully
       run: |
-        pytest tests/unit/ \
-          -m "unit" \
+        # Override testpaths from pytest.ini to avoid conflicts
+        pytest be_focus_server_tests/ \
+          --env=local \
+          --skip-health-check \
+          --skip-sanity-check \
+          --override-ini="testpaths=" \
+          --ignore=be_focus_server_tests/load \
+          --ignore=be_focus_server_tests/stress \
+          --ignore-glob=**/integration/load \
+          --ignore-glob=**/test_alert_generation_load.py \
+          --ignore-glob=**/test_alert_generation_performance.py \
+          -m "not load and not stress and not grpc" \
           -v \
           --tb=short \
           --junitxml=reports/junit-backend.xml \
           --html=reports/backend-report.html \
           --self-contained-html \
-          --maxfail=10 || echo "Some tests may have failed - check report"
+          --maxfail=10 \
+          --continue-on-collection-errors
 
     - name: Upload test reports
       uses: actions/upload-artifact@v4
@@ -156,11 +205,15 @@ jobs:
         echo "- ❌ Tests requiring infrastructure (MongoDB, RabbitMQ, Kubernetes, SSH)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Included Test Categories:" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Unit tests only (\`tests/unit/\`)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Unit tests" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Integration tests (non-load)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Infrastructure tests (will skip if no connection available)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Data quality tests" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Security tests" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Performance tests (non-load)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ UI tests" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Note:** Only unit tests are run in CI as they don't require external infrastructure (Focus Server API, MongoDB, RabbitMQ, Kubernetes, SSH)." >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Integration, Infrastructure, and API tests require access to internal services and should be run locally or in dedicated test environments.**" >> $GITHUB_STEP_SUMMARY
+        echo "**Note:** Tests run with \`--env=local\` to skip auto infrastructure setup. Tests requiring Focus Server API will attempt connection if \`FOCUS_BASE_URL\` secret is configured, otherwise they will be skipped." >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "📊 Check the artifacts for detailed test reports." >> $GITHUB_STEP_SUMMARY
 
