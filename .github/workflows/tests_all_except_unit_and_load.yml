@@ -84,10 +84,12 @@ jobs:
         FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
         # Don't set SKIP_INFRASTRUCTURE_TESTS - let fixtures handle skipping gracefully
       run: |
+        # Override testpaths from pytest.ini to avoid conflicts
         pytest be_focus_server_tests/ \
           --env=local \
           --skip-health-check \
           --skip-sanity-check \
+          --override-ini="testpaths=" \
           --ignore=be_focus_server_tests/unit \
           --ignore=be_focus_server_tests/load \
           --ignore=be_focus_server_tests/stress \
