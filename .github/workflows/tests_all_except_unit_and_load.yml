@@ -119,6 +119,8 @@ jobs:
     name: Frontend Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: [backend-tests]
+    if: always()
     continue-on-error: true
 
     steps:
@@ -189,11 +191,22 @@ jobs:
     - name: Download all test reports
       uses: actions/download-artifact@v4
 
-    - name: Create test summary
+    - name: Set up Python for report generation
       run: |
-        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        python -m pip install --upgrade pip
+
+    - name: Generate comprehensive test summary report
+      id: generate_report
+      continue-on-error: true
+      run: |
+        python scripts/generate_test_summary_report.py || echo "report_exit_code=$?" >> $GITHUB_OUTPUT
+
+    - name: Create test categories summary
+      run: |
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ All tests completed (excluding unit tests and load/stress tests)" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📋 Test Categories" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Excluded Test Categories:" >> $GITHUB_STEP_SUMMARY
         echo "- ❌ Unit tests (\`be_focus_server_tests/unit/\`)" >> $GITHUB_STEP_SUMMARY
@@ -220,6 +233,4 @@ jobs:
         echo "- ✅ UI tests (\`be_focus_server_tests/ui/\`)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Note:** Tests run with \`--env=local\` to skip auto infrastructure setup. Tests requiring Focus Server API will attempt connection if \`FOCUS_BASE_URL\` secret is configured, otherwise they will be skipped gracefully." >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📊 Check the artifacts for detailed test reports." >> $GITHUB_STEP_SUMMARY
 
