@@ -550,6 +550,10 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._scale_deployment_via_ssh(deployment_name, replicas, namespace)
+        
         try:
             self.logger.info(f"Scaling deployment '{deployment_name}' to {replicas} replicas...")
             
@@ -567,6 +571,12 @@ class KubernetesManager:
             return True
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                if self._init_ssh_fallback():
+                    return self._scale_deployment_via_ssh(deployment_name, replicas, namespace)
             self.logger.error(f"Failed to scale deployment '{deployment_name}': {e}")
             return False
     
@@ -586,6 +596,10 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._delete_pod_via_ssh(pod_name, namespace)
+        
         try:
             self.logger.info(f"Deleting pod '{pod_name}'...")
             
@@ -601,6 +615,12 @@ class KubernetesManager:
             return True
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                if self._init_ssh_fallback():
+                    return self._delete_pod_via_ssh(pod_name, namespace)
             self.logger.error(f"Failed to delete pod '{pod_name}': {e}")
             return False
     
@@ -664,6 +684,48 @@ class KubernetesManager:
             self.logger.error(f"Error deleting job '{job_name}' via SSH: {e}")
             return False
     
+    def _delete_pod_via_ssh(self, pod_name: str, namespace: str) -> bool:
+        """Delete pod via SSH kubectl command."""
+        try:
+            self.logger.info(f"Deleting pod '{pod_name}' via SSH...")
+            
+            cmd = f"delete pod {pod_name}"
+            result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+            
+            if result["success"]:
+                # Wait for pod deletion
+                self._wait_for_pod_deletion(pod_name, namespace)
+                self.logger.info(f"Pod '{pod_name}' deleted successfully via SSH")
+                return True
+            else:
+                self.logger.error(f"Failed to delete pod '{pod_name}' via SSH: {result['stderr']}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error deleting pod '{pod_name}' via SSH: {e}")
+            return False
+    
+    def _scale_deployment_via_ssh(self, deployment_name: str, replicas: int, namespace: str) -> bool:
+        """Scale deployment via SSH kubectl command."""
+        try:
+            self.logger.info(f"Scaling deployment '{deployment_name}' to {replicas} replicas via SSH...")
+            
+            cmd = f"scale deployment {deployment_name} --replicas={replicas}"
+            result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+            
+            if result["success"]:
+                # Wait for scaling to complete
+                self._wait_for_deployment_scale(deployment_name, replicas, namespace)
+                self.logger.info(f"Deployment '{deployment_name}' scaled to {replicas} replicas successfully via SSH")
+                return True
+            else:
+                self.logger.error(f"Failed to scale deployment '{deployment_name}' via SSH: {result['stderr']}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error scaling deployment '{deployment_name}' via SSH: {e}")
+            return False
+    
     def _wait_for_deployment_scale(self, deployment_name: str, expected_replicas: int, 
                                  namespace: str, timeout: int = 120):
         """
@@ -680,21 +742,41 @@ class KubernetesManager:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                deployment = self.k8s_apps_v1.read_namespaced_deployment(
-                    name=deployment_name,
-                    namespace=namespace
-                )
-                
-                ready_replicas = deployment.status.ready_replicas or 0
-                
-                if ready_replicas == expected_replicas:
-                    self.logger.debug(f"Deployment '{deployment_name}' reached {expected_replicas} replicas")
-                    return
-                
-                self.logger.debug(f"Deployment '{deployment_name}' has {ready_replicas} ready replicas, waiting...")
+                if self.use_ssh_fallback:
+                    # Use kubectl via SSH to check deployment status
+                    cmd = f"get deployment {deployment_name} -o json"
+                    result = self._execute_kubectl_via_ssh(cmd, timeout=10)
+                    
+                    if result["success"]:
+                        deployment_data = json.loads(result["stdout"])
+                        status = deployment_data.get("status", {})
+                        ready_replicas = status.get("readyReplicas", 0)
+                        
+                        if ready_replicas == expected_replicas:
+                            self.logger.debug(f"Deployment '{deployment_name}' reached {expected_replicas} replicas")
+                            return
+                        
+                        self.logger.debug(f"Deployment '{deployment_name}' has {ready_replicas} ready replicas, waiting...")
+                    else:
+                        self.logger.warning(f"Failed to get deployment status via SSH: {result['stderr']}")
+                else:
+                    deployment = self.k8s_apps_v1.read_namespaced_deployment(
+                        name=deployment_name,
+                        namespace=namespace
+                    )
+                    
+                    ready_replicas = deployment.status.ready_replicas or 0
+                    
+                    if ready_replicas == expected_replicas:
+                        self.logger.debug(f"Deployment '{deployment_name}' reached {expected_replicas} replicas")
+                        return
+                    
+                    self.logger.debug(f"Deployment '{deployment_name}' has {ready_replicas} ready replicas, waiting...")
                 
             except ApiException as e:
                 self.logger.warning(f"K8s API error while waiting for deployment scale: {e}")
+            except Exception as e:
+                self.logger.warning(f"Error while waiting for deployment scale: {e}")
             
             time.sleep(5)
         
@@ -716,11 +798,23 @@ class KubernetesManager:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                self.k8s_core_v1.read_namespaced_pod(
-                    name=pod_name,
-                    namespace=namespace
-                )
-                self.logger.debug(f"Pod '{pod_name}' still exists, waiting...")
+                if self.use_ssh_fallback:
+                    # Use kubectl via SSH to check if pod exists
+                    cmd = f"get pod {pod_name}"
+                    result = self._execute_kubectl_via_ssh(cmd, timeout=10)
+                    
+                    if not result["success"]:
+                        # Pod doesn't exist anymore (deleted)
+                        self.logger.debug(f"Pod '{pod_name}' deleted successfully")
+                        return
+                    
+                    self.logger.debug(f"Pod '{pod_name}' still exists, waiting...")
+                else:
+                    self.k8s_core_v1.read_namespaced_pod(
+                        name=pod_name,
+                        namespace=namespace
+                    )
+                    self.logger.debug(f"Pod '{pod_name}' still exists, waiting...")
                 
             except ApiException as e:
                 if e.status == 404:  # Pod not found, meaning it's deleted
