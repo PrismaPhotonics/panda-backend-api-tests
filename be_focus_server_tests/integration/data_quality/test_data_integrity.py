@@ -23,9 +23,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.data_quality
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestDataIntegrity:
     """
     Test suite for data integrity testing.
@@ -36,6 +38,8 @@ class TestDataIntegrity:
     
     @pytest.mark.xray("PZ-14810")
     @pytest.mark.skip(reason="GET /waterfall/{task_id}/{row_count} endpoint not yet implemented in backend")
+
+    @pytest.mark.regression
     def test_data_integrity_across_requests(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14810: Data Quality - Data Integrity Across Requests.

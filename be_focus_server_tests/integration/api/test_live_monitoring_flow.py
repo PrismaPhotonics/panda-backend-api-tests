@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Live Monitoring Core Functionality
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.live
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestLiveMonitoringCore:
     """
     Test suite for core live monitoring functionality.
@@ -48,6 +48,9 @@ class TestLiveMonitoringCore:
     """
     
     @pytest.mark.xray("PZ-13784")
+
+    
+    @pytest.mark.regression
     def test_live_monitoring_configure_and_poll(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13784: Live Monitoring - Configure and Poll.
@@ -115,6 +118,8 @@ class TestLiveMonitoringCore:
     
     @pytest.mark.xray("PZ-13785")
     @pytest.mark.xray("PZ-13786")
+
+    @pytest.mark.regression
     def test_live_monitoring_sensor_data_availability(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13785: Live Monitoring - Sensor Data Availability.
@@ -174,6 +179,8 @@ class TestLiveMonitoringCore:
     @pytest.mark.xray("PZ-13786")
     @pytest.mark.jira("PZ-13985")  # Bug: Live Metadata Missing Required Fields
     @pytest.mark.xray("PZ-13561")
+
+    @pytest.mark.regression
     def test_live_monitoring_get_metadata(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13786: Live Monitoring - GET /metadata.
@@ -218,32 +225,4 @@ class TestLiveMonitoringCore:
             pytest.fail(f"Metadata retrieval failed: {e}")
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_live_monitoring_summary():
-    """
-    Summary test for live monitoring tests.
-    
-    Xray Tests Covered:
-        - PZ-13784: Configure and Poll
-        - PZ-13785: Sensor Data Availability
-        - PZ-13786: GET /metadata
-    
-    Note: ROI tests (PZ-13787-13799) are covered in test_dynamic_roi_adjustment.py
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Live Monitoring Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13784: Configure and Poll")
-    logger.info("  2. PZ-13785: Sensor Data Availability")
-    logger.info("  3. PZ-13786: GET /metadata")
-    logger.info("")
-    logger.info("Note: ROI tests (PZ-13787-13799) in test_dynamic_roi_adjustment.py")
-    logger.info("=" * 80)
 

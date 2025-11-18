@@ -35,9 +35,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Historic Playback Edge Cases
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.historic
+
+
+@pytest.mark.regression
 class TestHistoricPlaybackEdgeCases:
     """
     Test suite for historic playback edge cases and scenarios.
@@ -52,6 +53,8 @@ class TestHistoricPlaybackEdgeCases:
     
     @pytest.mark.xray("PZ-14101", "PZ-13865")
     @pytest.mark.xray("PZ-14101")
+
+    @pytest.mark.regression
     def test_historic_playback_short_duration_1_minute(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13864, PZ-13865: Historic playback with short duration (1 minute).
@@ -127,6 +130,9 @@ class TestHistoricPlaybackEdgeCases:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13866")
+
+    
+    @pytest.mark.regression
     def test_historic_playback_very_old_timestamps_no_data(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13866: Historic playback with very old timestamps (no data).
@@ -175,6 +181,8 @@ class TestHistoricPlaybackEdgeCases:
     
     @pytest.mark.xray("PZ-13868")
     @pytest.mark.slow
+
+    @pytest.mark.regression
     def test_historic_playback_status_208_completion(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13868: Historic playback reaches status 208 (completion).
@@ -263,10 +271,10 @@ class TestHistoricPlaybackEdgeCases:
 # Test Class: Historic Playback Data Quality
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.historic
 @pytest.mark.data_quality
+
+
+@pytest.mark.regression
 class TestHistoricPlaybackDataQuality:
     """
     Test suite for historic playback data quality validation.
@@ -280,6 +288,8 @@ class TestHistoricPlaybackDataQuality:
     
     @pytest.mark.xray("PZ-13867")
     @pytest.mark.slow
+
+    @pytest.mark.regression
     def test_historic_playback_data_integrity(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13867: Data integrity validation for historic playback.
@@ -338,6 +348,8 @@ class TestHistoricPlaybackDataQuality:
     
     @pytest.mark.xray("PZ-13871")
     @pytest.mark.slow
+
+    @pytest.mark.regression
     def test_historic_playback_timestamp_ordering(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13871: Timestamp ordering validation in historic playback.
@@ -392,6 +404,8 @@ class TestHistoricPlaybackDataQuality:
     
     @pytest.mark.xray("PZ-13870")
     @pytest.mark.xray("PZ-13984")
+
+    @pytest.mark.regression
     def test_historic_playback_future_timestamps_rejection(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13870: Historic playback with future timestamps should be rejected.
@@ -455,34 +469,4 @@ class TestHistoricPlaybackDataQuality:
         logger.info("✅ TEST PASSED")
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_historic_playback_additional_summary():
-    """
-    Summary test for additional historic playback tests.
-    
-    Xray Tests Covered:
-        - PZ-13864, 13865: Short Duration (1 Minute)
-        - PZ-13866: Very Old Timestamps
-        - PZ-13867: Data Integrity
-        - PZ-13868: Status 208 Completion
-        - PZ-13870: Future Timestamps
-        - PZ-13871: Timestamp Ordering
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Historic Playback Additional Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13864, 13865: Short duration (1 minute)")
-    logger.info("  2. PZ-13866: Very old timestamps (no data)")
-    logger.info("  3. PZ-13867: Data integrity validation")
-    logger.info("  4. PZ-13868: Status 208 completion")
-    logger.info("  5. PZ-13870: Future timestamps rejection")
-    logger.info("  6. PZ-13871: Timestamp ordering")
-    logger.info("=" * 80)
 

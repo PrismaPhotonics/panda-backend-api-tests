@@ -48,6 +48,7 @@ def k8s_manager(config_manager):
 
 
 @pytest.fixture
+@pytest.mark.regression
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -66,11 +67,10 @@ def test_config():
 # Test Class: Focus Server Pod Resilience
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.resilience
-@pytest.mark.kubernetes
-@pytest.mark.critical
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestFocusServerPodResilience:
     """
     Test suite for Focus Server pod resilience and failure scenarios.
@@ -84,6 +84,9 @@ class TestFocusServerPodResilience:
     """
     
     @pytest.mark.xray("PZ-14727")
+
+    
+    @pytest.mark.regression
     def test_focus_server_pod_deletion_recreation(
         self,
         k8s_manager: KubernetesManager,
@@ -240,6 +243,9 @@ class TestFocusServerPodResilience:
                     logger.warning(f"⚠️  Focus Server pod '{new_pod_name}' is not running")
     
     @pytest.mark.xray("PZ-14728")
+
+    
+    @pytest.mark.regression
     def test_focus_server_scale_down_to_zero(
         self,
         k8s_manager: KubernetesManager,
@@ -413,6 +419,9 @@ class TestFocusServerPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14729")
+
+    
+    @pytest.mark.regression
     def test_focus_server_pod_restart_during_job_creation(
         self,
         k8s_manager: KubernetesManager,
@@ -531,6 +540,9 @@ class TestFocusServerPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14730")
+
+    
+    @pytest.mark.regression
     def test_focus_server_outage_graceful_degradation(
         self,
         k8s_manager: KubernetesManager,
@@ -629,6 +641,9 @@ class TestFocusServerPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14731")
+
+    
+    @pytest.mark.regression
     def test_focus_server_recovery_after_outage(
         self,
         k8s_manager: KubernetesManager,
@@ -736,6 +751,9 @@ class TestFocusServerPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14732")
+
+    
+    @pytest.mark.regression
     def test_focus_server_pod_status_monitoring(
         self,
         k8s_manager: KubernetesManager,
@@ -798,6 +816,9 @@ class TestFocusServerPodResilience:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_focus_server_pod_resilience_summary():
     """Summary test for Focus Server pod resilience tests."""
     logger.info("=" * 80)

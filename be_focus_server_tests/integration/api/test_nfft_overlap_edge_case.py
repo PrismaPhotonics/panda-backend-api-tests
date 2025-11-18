@@ -27,9 +27,10 @@ logger = logging.getLogger(__name__)
 # Test Class: NFFT Overlap Edge Case
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.performance
+
+
+@pytest.mark.regression
 class TestNFFTOverlapEdgeCase:
     """
     Test suite for NFFT escalation under low overlap conditions.
@@ -42,6 +43,8 @@ class TestNFFTOverlapEdgeCase:
     
     @pytest.mark.xray("PZ-13558")
     @pytest.mark.xray("PZ-13873")
+
+    @pytest.mark.regression
     def test_overlap_nfft_escalation_edge_case(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13558: API - Overlap/NFFT Escalation Edge Case.
@@ -123,24 +126,4 @@ class TestNFFTOverlapEdgeCase:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_nfft_overlap_edge_case_summary():
-    """
-    Summary test for NFFT overlap edge case tests.
-    
-    Xray Tests Covered:
-        - PZ-13558: Overlap/NFFT escalation edge case
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("NFFT Overlap Edge Case Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13558: Overlap/NFFT escalation under low overlap")
-    logger.info("=" * 80)
 

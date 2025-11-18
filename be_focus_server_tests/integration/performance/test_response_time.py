@@ -25,9 +25,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.performance
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestResponseTime:
     """
     Test suite for API response time performance.
@@ -44,6 +46,9 @@ class TestResponseTime:
     METADATA_RESPONSE_TIME_THRESHOLD = 1.0   # 1 second
     
     @pytest.mark.xray("PZ-14790")
+
+    
+    @pytest.mark.regression
     def test_configure_response_time(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14790: Performance - POST /configure Response Time.
@@ -110,6 +115,8 @@ class TestResponseTime:
     
     @pytest.mark.xray("PZ-14791")
     @pytest.mark.skip(reason="GET /waterfall/{task_id}/{row_count} endpoint not yet implemented in backend")
+
+    @pytest.mark.regression
     def test_waterfall_response_time(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14791: Performance - GET /waterfall Response Time.
@@ -195,6 +202,9 @@ class TestResponseTime:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14792")
+
+    
+    @pytest.mark.regression
     def test_metadata_response_time(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14792: Performance - GET /metadata Response Time.

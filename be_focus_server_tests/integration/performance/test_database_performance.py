@@ -23,9 +23,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.performance
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestDatabasePerformance:
     """
     Test suite for database query performance.
@@ -35,6 +37,9 @@ class TestDatabasePerformance:
     """
     
     @pytest.mark.xray("PZ-14797")
+
+    
+    @pytest.mark.regression
     def test_database_query_performance(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14797: Performance - Database Query Performance.

@@ -28,10 +28,10 @@ logger = logging.getLogger(__name__)
 # Test Class: MongoDB Recovery
 # ===================================================================
 
-@pytest.mark.data_quality
-@pytest.mark.mongodb
-@pytest.mark.recovery
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestMongoDBRecovery:
     """
     Test suite for MongoDB recovery after outage.
@@ -44,6 +44,8 @@ class TestMongoDBRecovery:
     
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13810")
+
+    @pytest.mark.regression
     def test_mongodb_recovery_recordings_indexed_after_outage(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13687: MongoDB Recovery - Recordings Indexed After Outage.
@@ -138,25 +140,4 @@ class TestMongoDBRecovery:
         logger.info("✅ TEST PASSED: MongoDB Recovery Verified")
         logger.info("=" * 80)
 
-
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_mongodb_recovery_summary():
-    """
-    Summary test for MongoDB recovery tests.
-    
-    Xray Tests Covered:
-        - PZ-13687: Recordings indexed after outage recovery
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("MongoDB Recovery Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13687: Recordings indexed after recovery")
-    logger.info("=" * 80)
 

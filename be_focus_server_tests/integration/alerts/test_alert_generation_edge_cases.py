@@ -5,14 +5,14 @@ Integration Tests - Alerts: Edge Cases
 Tests for edge cases and boundary conditions in alert generation.
 
 Tests Covered (Xray):
-    - PZ-15020: Alert Generation - Boundary DOF Values
-    - PZ-15021: Alert Generation - Minimum/Maximum Severity
-    - PZ-15022: Alert Generation - Zero Alerts Amount
-    - PZ-15023: Alert Generation - Very Large Alert ID
-    - PZ-15024: Alert Generation - Concurrent Alerts with Same DOF
-    - PZ-15025: Alert Generation - Rapid Sequential Alerts
-    - PZ-15026: Alert Generation - Alert with Maximum Fields
-    - PZ-15027: Alert Generation - Alert with Minimum Fields
+    - PZ-14945: Alert Generation - Boundary DOF Values
+    - PZ-14946: Alert Generation - Minimum/Maximum Severity
+    - PZ-14947: Alert Generation - Zero Alerts Amount
+    - PZ-14948: Alert Generation - Very Large Alert ID
+    - PZ-14949: Alert Generation - Concurrent Alerts with Same DOF
+    - PZ-14950: Alert Generation - Rapid Sequential Alerts
+    - PZ-14951: Alert Generation - Alert with Maximum Fields
+    - PZ-14952: Alert Generation - Alert with Minimum Fields
 
 Author: QA Automation Architect
 Date: 2025-11-13
@@ -41,29 +41,31 @@ from be_focus_server_tests.integration.alerts.alert_test_helpers import (
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.alerts
-@pytest.mark.api
 @pytest.mark.edge_case
+
+
+
+@pytest.mark.regression
 class TestAlertGenerationEdgeCases:
     """
     Test suite for edge cases in alert generation.
     
     Tests covered:
-        - PZ-15020: Boundary DOF Values
-        - PZ-15021: Minimum/Maximum Severity
-        - PZ-15022: Zero Alerts Amount
-        - PZ-15023: Very Large Alert ID
-        - PZ-15024: Concurrent Alerts with Same DOF
-        - PZ-15025: Rapid Sequential Alerts
-        - PZ-15026: Alert with Maximum Fields
-        - PZ-15027: Alert with Minimum Fields
+        - PZ-14945: Boundary DOF Values
+        - PZ-14946: Minimum/Maximum Severity
+        - PZ-14947: Zero Alerts Amount
+        - PZ-14948: Very Large Alert ID
+        - PZ-14949: Concurrent Alerts with Same DOF
+        - PZ-14950: Rapid Sequential Alerts
+        - PZ-14951: Alert with Maximum Fields
+        - PZ-14952: Alert with Minimum Fields
     """
     
-    @pytest.mark.xray("PZ-15020")
+    @pytest.mark.xray("PZ-14945")
+    @pytest.mark.regression
     def test_boundary_dof_values(self, config_manager):
         """
-        Test PZ-15020: Alert Generation - Boundary DOF Values.
+        Test PZ-14945: Alert Generation - Boundary DOF Values.
         
         Objective:
             Verify that alerts with boundary DOF values (min, max, edge cases)
@@ -80,7 +82,7 @@ class TestAlertGenerationEdgeCases:
             All boundary DOF values are processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Boundary DOF Values (PZ-15020)")
+        logger.info("TEST: Alert Generation - Boundary DOF Values (PZ-14945)")
         logger.info("=" * 80)
         
         boundary_dofs = [0, 1, 2221, 2222]
@@ -107,10 +109,11 @@ class TestAlertGenerationEdgeCases:
         
         logger.info("✅ TEST PASSED: Boundary DOF values processed correctly")
     
-    @pytest.mark.xray("PZ-15021")
+    @pytest.mark.xray("PZ-14946")
+    @pytest.mark.regression
     def test_min_max_severity(self, config_manager):
         """
-        Test PZ-15021: Alert Generation - Minimum/Maximum Severity.
+        Test PZ-14946: Alert Generation - Minimum/Maximum Severity.
         
         Objective:
             Verify that alerts with minimum (1) and maximum (3) severity
@@ -125,7 +128,7 @@ class TestAlertGenerationEdgeCases:
             Both minimum and maximum severity values are processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Minimum/Maximum Severity (PZ-15021)")
+        logger.info("TEST: Alert Generation - Minimum/Maximum Severity (PZ-14946)")
         logger.info("=" * 80)
         
         severities = [1, 3]  # Min and max
@@ -152,10 +155,11 @@ class TestAlertGenerationEdgeCases:
         
         logger.info("✅ TEST PASSED: Min/max severity processed correctly")
     
-    @pytest.mark.xray("PZ-15022")
+    @pytest.mark.xray("PZ-14947")
+    @pytest.mark.regression
     def test_zero_alerts_amount(self, config_manager):
         """
-        Test PZ-15022: Alert Generation - Zero Alerts Amount.
+        Test PZ-14947: Alert Generation - Zero Alerts Amount.
         
         Objective:
             Verify that alerts with alertsAmount = 0 are handled appropriately.
@@ -168,7 +172,7 @@ class TestAlertGenerationEdgeCases:
             Zero alerts amount is handled appropriately.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Zero Alerts Amount (PZ-15022)")
+        logger.info("TEST: Alert Generation - Zero Alerts Amount (PZ-14947)")
         logger.info("=" * 80)
         
         alert_payload = {
@@ -194,10 +198,11 @@ class TestAlertGenerationEdgeCases:
         
         logger.info("✅ TEST PASSED: Zero alerts amount handled correctly")
     
-    @pytest.mark.xray("PZ-15023")
+    @pytest.mark.xray("PZ-14948")
+    @pytest.mark.regression
     def test_very_large_alert_id(self, config_manager):
         """
-        Test PZ-15023: Alert Generation - Very Large Alert ID.
+        Test PZ-14948: Alert Generation - Very Large Alert ID.
         
         Objective:
             Verify that alerts with very long alert IDs are handled correctly.
@@ -210,7 +215,7 @@ class TestAlertGenerationEdgeCases:
             Very large alert IDs are handled appropriately.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Very Large Alert ID (PZ-15023)")
+        logger.info("TEST: Alert Generation - Very Large Alert ID (PZ-14948)")
         logger.info("=" * 80)
         
         # Very long alert ID
@@ -239,11 +244,12 @@ class TestAlertGenerationEdgeCases:
         
         logger.info("✅ TEST PASSED: Very large alert ID handled correctly")
     
-    @pytest.mark.xray("PZ-15024")
+    @pytest.mark.xray("PZ-14949")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
+    @pytest.mark.regression
     def test_concurrent_alerts_same_dof(self, config_manager):
         """
-        Test PZ-15024: Alert Generation - Concurrent Alerts with Same DOF.
+        Test PZ-14949: Alert Generation - Concurrent Alerts with Same DOF.
         
         Objective:
             Verify that multiple alerts with the same DOF can be processed
@@ -258,7 +264,7 @@ class TestAlertGenerationEdgeCases:
             All concurrent alerts with same DOF are processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Concurrent Alerts Same DOF (PZ-15024)")
+        logger.info("TEST: Alert Generation - Concurrent Alerts Same DOF (PZ-14949)")
         logger.info("=" * 80)
         
         num_alerts = 10
@@ -287,10 +293,11 @@ class TestAlertGenerationEdgeCases:
         
         logger.info(f"✅ TEST PASSED: {num_alerts} concurrent alerts with same DOF processed")
     
-    @pytest.mark.xray("PZ-15025")
+    @pytest.mark.xray("PZ-14950")
+    @pytest.mark.regression
     def test_rapid_sequential_alerts(self, config_manager):
         """
-        Test PZ-15025: Alert Generation - Rapid Sequential Alerts.
+        Test PZ-14950: Alert Generation - Rapid Sequential Alerts.
         
         Objective:
             Verify that rapid sequential alerts are processed correctly
@@ -305,7 +312,7 @@ class TestAlertGenerationEdgeCases:
             All rapid sequential alerts are processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Rapid Sequential Alerts (PZ-15025)")
+        logger.info("TEST: Alert Generation - Rapid Sequential Alerts (PZ-14950)")
         logger.info("=" * 80)
         
         num_alerts = 50
@@ -329,10 +336,11 @@ class TestAlertGenerationEdgeCases:
         
         logger.info(f"✅ TEST PASSED: {num_alerts} rapid sequential alerts processed")
     
-    @pytest.mark.xray("PZ-15026")
+    @pytest.mark.xray("PZ-14951")
+    @pytest.mark.regression
     def test_alert_maximum_fields(self, config_manager):
         """
-        Test PZ-15026: Alert Generation - Alert with Maximum Fields.
+        Test PZ-14951: Alert Generation - Alert with Maximum Fields.
         
         Objective:
             Verify that alerts with all possible fields set to maximum values
@@ -346,7 +354,7 @@ class TestAlertGenerationEdgeCases:
             Alert with maximum fields is processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Alert with Maximum Fields (PZ-15026)")
+        logger.info("TEST: Alert Generation - Alert with Maximum Fields (PZ-14951)")
         logger.info("=" * 80)
         
         alert_payload = {
@@ -368,10 +376,11 @@ class TestAlertGenerationEdgeCases:
         
         logger.info("✅ TEST PASSED: Alert with maximum fields processed correctly")
     
-    @pytest.mark.xray("PZ-15027")
+    @pytest.mark.xray("PZ-14952")
+    @pytest.mark.regression
     def test_alert_minimum_fields(self, config_manager):
         """
-        Test PZ-15027: Alert Generation - Alert with Minimum Fields.
+        Test PZ-14952: Alert Generation - Alert with Minimum Fields.
         
         Objective:
             Verify that alerts with only required fields (minimum) are
@@ -385,7 +394,7 @@ class TestAlertGenerationEdgeCases:
             Alert with minimum fields is processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Alert with Minimum Fields (PZ-15027)")
+        logger.info("TEST: Alert Generation - Alert with Minimum Fields (PZ-14952)")
         logger.info("=" * 80)
         
         alert_payload = {

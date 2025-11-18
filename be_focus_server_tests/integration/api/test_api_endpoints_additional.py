@@ -36,9 +36,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Sensors Endpoint
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestSensorsEndpoint:
     """
     Test suite for GET /sensors endpoint.
@@ -50,6 +51,9 @@ class TestSensorsEndpoint:
     """
     
     @pytest.mark.xray("PZ-13897")
+
+    
+    @pytest.mark.regression
     def test_get_sensors_endpoint(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13897: GET /sensors - Retrieve Available Sensors List.
@@ -118,9 +122,10 @@ class TestSensorsEndpoint:
 # Test Class: Live Metadata Endpoint
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestLiveMetadataEndpoint:
     """
     Test suite for GET /live_metadata endpoint.
@@ -136,6 +141,8 @@ class TestLiveMetadataEndpoint:
     
     @pytest.mark.xray("PZ-13764", "PZ-13561")
     @pytest.mark.xray("PZ-13764")
+
+    @pytest.mark.regression
     def test_get_live_metadata_available(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13764, PZ-13561: GET /live_metadata returns metadata when available.
@@ -187,6 +194,8 @@ class TestLiveMetadataEndpoint:
     
     @pytest.mark.xray("PZ-13765", "PZ-13562")
     @pytest.mark.xray("PZ-13765")
+
+    @pytest.mark.regression
     def test_get_live_metadata_unavailable_404(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13765, PZ-13562: GET /live_metadata returns 404 when unavailable.
@@ -223,8 +232,10 @@ class TestLiveMetadataEndpoint:
 # Test Class: Job Metadata Endpoint
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestJobMetadataEndpoint:
     """
     Test suite for GET /metadata/{job_id} endpoint.
@@ -236,6 +247,9 @@ class TestJobMetadataEndpoint:
     """
     
     @pytest.mark.xray("PZ-13563")
+
+    
+    @pytest.mark.regression
     def test_get_metadata_by_job_id(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13563: GET /metadata/{job_id} - Valid and Invalid Job ID.
@@ -309,8 +323,10 @@ class TestJobMetadataEndpoint:
 # Test Class: Recordings Endpoint
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestRecordingsEndpoint:
     """
     Test suite for POST /recordings_in_time_range endpoint.
@@ -324,6 +340,8 @@ class TestRecordingsEndpoint:
     
     @pytest.mark.xray("PZ-13564", "PZ-13766")
     @pytest.mark.xray("PZ-13564")
+
+    @pytest.mark.regression
     def test_post_recordings_in_time_range(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13564, PZ-13766: POST /recordings_in_time_range.
@@ -389,9 +407,10 @@ class TestRecordingsEndpoint:
 # Test Class: Invalid Range Rejection
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.validation
+
+
+@pytest.mark.regression
 class TestInvalidRangeRejection:
     """
     Test suite for invalid range rejection.
@@ -406,6 +425,8 @@ class TestInvalidRangeRejection:
     
     @pytest.mark.xray("PZ-13759", "PZ-13552")
     @pytest.mark.xray("PZ-13759")
+
+    @pytest.mark.regression
     def test_invalid_time_range_rejection(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13759, PZ-13552: Invalid time range rejection.
@@ -460,6 +481,8 @@ class TestInvalidRangeRejection:
     
     @pytest.mark.xray("PZ-13760", "PZ-13554")
     @pytest.mark.xray("PZ-13760")
+
+    @pytest.mark.regression
     def test_invalid_channel_range_rejection(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13760, PZ-13554: Invalid channel range rejection.
@@ -510,6 +533,8 @@ class TestInvalidRangeRejection:
     
     @pytest.mark.xray("PZ-13761", "PZ-13555")
     @pytest.mark.xray("PZ-13761")
+
+    @pytest.mark.regression
     def test_invalid_frequency_range_rejection(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13761, PZ-13555: Invalid frequency range rejection.
@@ -559,35 +584,4 @@ class TestInvalidRangeRejection:
         logger.info("✅ TEST PASSED")
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_api_endpoints_additional_summary():
-    """
-    Summary test for additional API endpoints.
-    
-    Xray Tests Covered:
-        - PZ-13897: GET /sensors
-        - PZ-13764, 13765: GET /live_metadata
-        - PZ-13563: GET /metadata/{job_id}
-        - PZ-13564, 13766: POST /recordings_in_time_range
-        - PZ-13759-13761: Invalid range rejections
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Additional API Endpoints Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13897: GET /sensors")
-    logger.info("  2. PZ-13764, 13561: GET /live_metadata (available)")
-    logger.info("  3. PZ-13765, 13562: GET /live_metadata (404)")
-    logger.info("  4. PZ-13563: GET /metadata/{job_id}")
-    logger.info("  5. PZ-13564, 13766: POST /recordings_in_time_range")
-    logger.info("  6. PZ-13759, 13552: Invalid time range")
-    logger.info("  7. PZ-13760, 13554: Invalid channel range")
-    logger.info("  8. PZ-13761, 13555: Invalid frequency range")
-    logger.info("=" * 80)
 

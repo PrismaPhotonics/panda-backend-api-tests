@@ -46,6 +46,7 @@ def k8s_manager(config_manager):
 
 
 @pytest.fixture
+@pytest.mark.regression
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -143,11 +144,10 @@ def scale_up_pods(k8s_manager: KubernetesManager, deployments: List[Tuple[str, s
 # Test Class: Multiple Pods Resilience
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.resilience
-@pytest.mark.kubernetes
-@pytest.mark.slow
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestMultiplePodsResilience:
     """
     Test suite for multiple pods failure scenarios.
@@ -160,6 +160,9 @@ class TestMultiplePodsResilience:
     """
     
     @pytest.mark.xray("PZ-14738")
+
+    
+    @pytest.mark.regression
     def test_mongodb_rabbitmq_down_simultaneously(
         self,
         k8s_manager: KubernetesManager,
@@ -268,6 +271,9 @@ class TestMultiplePodsResilience:
             raise
     
     @pytest.mark.xray("PZ-14739")
+
+    
+    @pytest.mark.regression
     def test_mongodb_focus_server_down_simultaneously(
         self,
         k8s_manager: KubernetesManager,
@@ -388,6 +394,9 @@ class TestMultiplePodsResilience:
             raise
     
     @pytest.mark.xray("PZ-14740")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_focus_server_down_simultaneously(
         self,
         k8s_manager: KubernetesManager,
@@ -507,6 +516,9 @@ class TestMultiplePodsResilience:
             raise
     
     @pytest.mark.xray("PZ-14741")
+
+    
+    @pytest.mark.regression
     def test_focus_server_segy_recorder_down_simultaneously(
         self,
         k8s_manager: KubernetesManager,
@@ -632,6 +644,9 @@ class TestMultiplePodsResilience:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_multiple_pods_resilience_summary():
     """Summary test for multiple pods resilience tests."""
     logger.info("=" * 80)

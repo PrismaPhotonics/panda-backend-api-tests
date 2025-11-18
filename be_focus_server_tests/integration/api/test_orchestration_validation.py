@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Orchestration Safety Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.orchestration
+
+
+@pytest.mark.regression
 class TestOrchestrationValidation:
     """
     Test suite for orchestration safety and validation.
@@ -49,6 +49,9 @@ class TestOrchestrationValidation:
     """
     
     @pytest.mark.xray("PZ-14018")
+
+    
+    @pytest.mark.regression
     def test_invalid_configure_does_not_launch_orchestration(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14018: Invalid Configuration Does Not Launch Orchestration.
@@ -149,6 +152,8 @@ class TestOrchestrationValidation:
     
     @pytest.mark.xray("PZ-14019")
     @pytest.mark.xray("PZ-13552")
+
+    @pytest.mark.regression
     def test_history_with_empty_window_returns_400_no_side_effects(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14019: History with Empty Time Window Returns 400 and No Side Effects.
@@ -265,31 +270,4 @@ class TestOrchestrationValidation:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_orchestration_validation_summary():
-    """
-    Summary test for orchestration validation tests.
-    
-    Xray Tests Covered:
-        - PZ-14018: Invalid configure does not launch orchestration
-        - PZ-14019: History with empty window returns 400
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Orchestration Validation Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-14018: Invalid config safety (no orchestration)")
-    logger.info("  2. PZ-14019: Empty window handling (400 + no side effects)")
-    logger.info("")
-    logger.info("Purpose:")
-    logger.info("  - Prevent resource waste on invalid configs")
-    logger.info("  - Ensure safety before orchestration")
-    logger.info("  - Validate data availability")
-    logger.info("=" * 80)
 

@@ -28,9 +28,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Malformed Input Handling
 # ===================================================================
 
-@pytest.mark.security
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestMalformedInputHandling:
     """
     Test suite for security - malformed input handling.
@@ -43,6 +44,8 @@ class TestMalformedInputHandling:
     
     @pytest.mark.xray("PZ-13572", "PZ-13769")
     @pytest.mark.xray("PZ-13572")
+
+    @pytest.mark.regression
     def test_robustness_to_malformed_inputs(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13572, PZ-13769: Security - Robustness to Malformed Inputs.
@@ -201,6 +204,9 @@ class TestMalformedInputHandling:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_malformed_input_handling_summary():
     """
     Summary test for malformed input handling tests.

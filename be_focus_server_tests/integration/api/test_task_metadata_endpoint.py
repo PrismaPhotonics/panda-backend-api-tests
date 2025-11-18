@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.critical
 @pytest.mark.skip(reason="Future API structure - GET /metadata/{task_id} endpoint not yet deployed to staging. "
                           "Use GET /metadata/{job_id} tests instead")
+@pytest.mark.regression
 class TestTaskMetadataEndpoint:
     """
     Test suite for GET /metadata/{task_id} endpoint.
@@ -62,6 +63,8 @@ class TestTaskMetadataEndpoint:
     
     @pytest.mark.xray("PZ-14760")
     @pytest.mark.xray("PZ-13563")
+
+    @pytest.mark.regression
     def test_task_metadata_valid_request(
         self,
         focus_server_api: FocusServerAPI
@@ -154,6 +157,9 @@ class TestTaskMetadataEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14761")
+
+    
+    @pytest.mark.regression
     def test_task_metadata_consumer_not_running(
         self,
         focus_server_api: FocusServerAPI
@@ -230,6 +236,8 @@ class TestTaskMetadataEndpoint:
     
     @pytest.mark.xray("PZ-14762")
     @pytest.mark.xray("PZ-13563")
+
+    @pytest.mark.regression
     def test_task_metadata_invalid_task_id(
         self,
         focus_server_api: FocusServerAPI
@@ -287,6 +295,9 @@ class TestTaskMetadataEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14763")
+
+    
+    @pytest.mark.regression
     def test_task_metadata_consistency(
         self,
         focus_server_api: FocusServerAPI
@@ -389,6 +400,8 @@ class TestTaskMetadataEndpoint:
     
     @pytest.mark.xray("PZ-14764")
     @pytest.mark.xray("PZ-14090")
+
+    @pytest.mark.regression
     def test_task_metadata_response_time(
         self,
         focus_server_api: FocusServerAPI
@@ -476,36 +489,4 @@ class TestTaskMetadataEndpoint:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_task_metadata_endpoint_summary():
-    """
-    Summary test for GET /metadata/{task_id} endpoint tests.
-    
-    This test documents which Xray test cases are covered in this module.
-    
-    Covered Xray Tests:
-        ✅ PZ-14760: GET /metadata/{task_id} - Valid Request
-        ✅ PZ-14761: GET /metadata/{task_id} - Consumer Not Running
-        ✅ PZ-14762: GET /metadata/{task_id} - Invalid Task ID
-        ✅ PZ-14763: GET /metadata/{task_id} - Metadata Consistency
-        ✅ PZ-14764: GET /metadata/{task_id} - Response Time
-    
-    Total: 5 tests
-    """
-    logger.info("=" * 80)
-    logger.info("GET /metadata/{task_id} Endpoint Tests - Summary")
-    logger.info("=" * 80)
-    logger.info("Xray Test Coverage:")
-    logger.info("  ✅ PZ-14760: Valid Request")
-    logger.info("  ✅ PZ-14761: Consumer Not Running")
-    logger.info("  ✅ PZ-14762: Invalid Task ID")
-    logger.info("  ✅ PZ-14763: Metadata Consistency")
-    logger.info("  ✅ PZ-14764: Response Time")
-    logger.info("=" * 80)
-    logger.info("Total: 5 Tests")
-    logger.info("=" * 80)
 

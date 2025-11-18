@@ -44,10 +44,10 @@ logger = logging.getLogger(__name__)
 # Test 1: Clean Startup
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.startup
-@pytest.mark.critical
 @pytest.mark.xray("PZ-13873")
+
+
+@pytest.mark.regression
 class TestFocusServerCleanStartup:
     """
     Test Suite: Focus Server Clean Startup
@@ -62,7 +62,8 @@ class TestFocusServerCleanStartup:
     Related: Meeting decision - Clean startup (IN SCOPE)
     """
     
-    def test_focus_server_clean_startup(
+    @pytest.mark.regression
+def test_focus_server_clean_startup(
         self,
         focus_server_api: FocusServerAPI,
         skip_if_waiting_for_fiber
@@ -209,11 +210,10 @@ class TestFocusServerCleanStartup:
 # Test 2: Stability Over Time
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.stability
-@pytest.mark.slow
-@pytest.mark.skip(reason="Very long test (1 hour) - run manually")
 @pytest.mark.xray("PZ-13873")
+
+
+@pytest.mark.regression
 class TestFocusServerStability:
     """
     Test Suite: Focus Server Stability Over Time
@@ -223,7 +223,8 @@ class TestFocusServerStability:
     Related: Meeting decision - Stability over time (IN SCOPE)
     """
     
-    def test_focus_server_stability_over_time(
+    @pytest.mark.regression
+def test_focus_server_stability_over_time(
         self,
         focus_server_api: FocusServerAPI
     ):
@@ -433,10 +434,10 @@ class TestFocusServerStability:
 # Test 3: Predictable Error - No Data Available
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.error_handling
-@pytest.mark.critical
 @pytest.mark.xray("PZ-13873")
+
+
+@pytest.mark.regression
 class TestPredictableErrorNoData:
     """
     Test Suite: Predictable Error Handling - No Data
@@ -446,7 +447,8 @@ class TestPredictableErrorNoData:
     Related: Meeting decision - Predictable error handling (IN SCOPE)
     """
     
-    def test_predictable_error_no_data_available(
+    @pytest.mark.regression
+def test_predictable_error_no_data_available(
         self,
         focus_server_api: FocusServerAPI
     ):
@@ -544,9 +546,10 @@ class TestPredictableErrorNoData:
 # Test 4: Predictable Error - Port in Use
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.error_handling
 @pytest.mark.xray("PZ-13873")
+
+
+@pytest.mark.regression
 class TestPredictableErrorPortInUse:
     """
     Test Suite: Predictable Error Handling - Port in Use
@@ -556,7 +559,8 @@ class TestPredictableErrorPortInUse:
     Related: Meeting decision - Predictable error handling (IN SCOPE)
     """
     
-    def test_predictable_error_port_in_use(
+    @pytest.mark.regression
+def test_predictable_error_port_in_use(
         self,
         focus_server_api: FocusServerAPI,
         skip_if_waiting_for_fiber
@@ -638,10 +642,10 @@ class TestPredictableErrorPortInUse:
 # Test 5: Proper Rollback on Failure
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.rollback
-@pytest.mark.critical
 @pytest.mark.xray("PZ-13873")
+
+
+@pytest.mark.regression
 class TestProperRollback:
     """
     Test Suite: Proper Rollback on Job Creation Failure
@@ -651,7 +655,8 @@ class TestProperRollback:
     Related: Meeting decision - Proper rollback/cleanup (IN SCOPE)
     """
     
-    def test_proper_rollback_on_job_creation_failure(
+    @pytest.mark.regression
+def test_proper_rollback_on_job_creation_failure(
         self,
         focus_server_api: FocusServerAPI,
         skip_if_waiting_for_fiber

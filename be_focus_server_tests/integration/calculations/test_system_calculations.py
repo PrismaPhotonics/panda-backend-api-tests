@@ -24,12 +24,18 @@ from src.models.focus_server_models import (
 )
 
 
-@pytest.mark.integration
 @pytest.mark.calculations
+
+
+
+@pytest.mark.regression
 class TestFrequencyCalculations(BaseTest):
     """Test frequency-related calculations."""
     
     @pytest.mark.xray("PZ-14060")
+
+    
+    @pytest.mark.regression
     def test_frequency_resolution_calculation(self, focus_server_api):
         """
         Test: Frequency Resolution = PRR / NFFT
@@ -87,6 +93,9 @@ class TestFrequencyCalculations(BaseTest):
                     )
     
     @pytest.mark.xray("PZ-14061")
+
+    
+    @pytest.mark.regression
     def test_frequency_bins_count_calculation(self, focus_server_api):
         """
         Test: frequencies_amount = NFFT / 2 + 1
@@ -136,6 +145,9 @@ class TestFrequencyCalculations(BaseTest):
                 )
     
     @pytest.mark.xray("PZ-14062")
+
+    
+    @pytest.mark.regression
     def test_nyquist_frequency_calculation(self, focus_server_api):
         """
         Test: Nyquist Frequency = PRR / 2
@@ -185,12 +197,18 @@ class TestFrequencyCalculations(BaseTest):
             )
 
 
-@pytest.mark.integration
 @pytest.mark.calculations
+
+
+
+@pytest.mark.regression
 class TestTimeCalculations(BaseTest):
     """Test time-related calculations."""
     
     @pytest.mark.xray("PZ-14066")
+
+    
+    @pytest.mark.regression
     def test_lines_dt_calculation(self, focus_server_api):
         """
         Test: lines_dt = (NFFT - Overlap) / PRR
@@ -240,6 +258,9 @@ class TestTimeCalculations(BaseTest):
             )
     
     @pytest.mark.xray("PZ-14067")
+
+    
+    @pytest.mark.regression
     def test_output_rate_calculation(self, focus_server_api):
         """
         Test: output_rate = 1 / lines_dt = PRR / (NFFT - Overlap)
@@ -272,6 +293,9 @@ class TestTimeCalculations(BaseTest):
             f"Output rate {actual_output_rate:.3f} lines/sec seems unreasonable"
     
     @pytest.mark.xray("PZ-14068")
+
+    
+    @pytest.mark.regression
     def test_time_window_duration_calculation(self, focus_server_api):
         """
         Test: time_window_duration = NFFT / PRR
@@ -307,12 +331,18 @@ class TestTimeCalculations(BaseTest):
                 self.logger.info(f"NFFT={nfft}: time_window_duration not in response (expected {expected_duration}s)")
 
 
-@pytest.mark.integration
 @pytest.mark.calculations
+
+
+
+@pytest.mark.regression
 class TestChannelCalculations(BaseTest):
     """Test channel-related calculations."""
     
     @pytest.mark.xray("PZ-14069")
+
+    
+    @pytest.mark.regression
     def test_channel_count_calculation(self, focus_server_api):
         """
         Test: channel_amount = max - min + 1
@@ -348,6 +378,9 @@ class TestChannelCalculations(BaseTest):
                 f"expected {expected_count}, got {actual_count}"
     
     @pytest.mark.xray("PZ-14069")  # SingleChannel mapping - part of channel calculations
+
+    
+    @pytest.mark.regression
     def test_singlechannel_mapping_calculation(self, focus_server_api):
         """
         Test: SingleChannel mapping validation
@@ -389,6 +422,9 @@ class TestChannelCalculations(BaseTest):
             )
     
     @pytest.mark.xray("PZ-14070")
+
+    
+    @pytest.mark.regression
     def test_multichannel_mapping_calculation(self, focus_server_api):
         """
         Test: MultiChannel mapping validation
@@ -454,6 +490,9 @@ class TestChannelCalculations(BaseTest):
                     f"Channel {channel}: expected stream_index={expected_index}, got {actual_index}"
     
     @pytest.mark.xray("PZ-14071")
+
+    
+    @pytest.mark.regression
     def test_stream_amount_calculation(self, focus_server_api):
         """
         Test: stream_amount relationship to channel_amount
@@ -488,12 +527,18 @@ class TestChannelCalculations(BaseTest):
             )
 
 
-@pytest.mark.integration
 @pytest.mark.calculations
+
+
+
+@pytest.mark.regression
 class TestValidationCalculations(BaseTest):
     """Test validation-related calculations."""
     
     @pytest.mark.xray("PZ-14072")
+
+    
+    @pytest.mark.regression
     def test_fft_window_size_validation(self, focus_server_api):
         """
         Test: NFFT must be power of 2
@@ -534,6 +579,9 @@ class TestValidationCalculations(BaseTest):
             self.logger.info(f"NFFT={nfft} rejected as expected: {exc_info.value}")
     
     @pytest.mark.xray("PZ-14073")
+
+    
+    @pytest.mark.regression
     def test_overlap_percentage_validation(self, focus_server_api):
         """
         Test: Overlap validation
@@ -565,13 +613,18 @@ class TestValidationCalculations(BaseTest):
         )
 
 
-@pytest.mark.integration
-@pytest.mark.calculations
 @pytest.mark.performance
+
+
+
+@pytest.mark.regression
 class TestPerformanceCalculations(BaseTest):
     """Test performance-related calculations (informational)."""
     
     @pytest.mark.xray("PZ-14078")
+
+    
+    @pytest.mark.regression
     def test_data_rate_calculation(self, focus_server_api):
         """
         Test: Data rate estimation
@@ -613,6 +666,9 @@ class TestPerformanceCalculations(BaseTest):
         assert data_rate_mb < 100, f"Data rate {data_rate_mb:.1f} MB/s seems unreasonably high"
     
     @pytest.mark.xray("PZ-14079")
+
+    
+    @pytest.mark.regression
     def test_memory_usage_estimation(self, focus_server_api):
         """
         Test: Memory usage estimation
@@ -656,6 +712,9 @@ class TestPerformanceCalculations(BaseTest):
             )
     
     @pytest.mark.xray("PZ-14080")
+
+    
+    @pytest.mark.regression
     def test_spectrogram_dimensions_calculation(self, focus_server_api):
         """
         Test: Spectrogram dimensions for historic mode

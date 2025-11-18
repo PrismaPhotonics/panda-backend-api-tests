@@ -44,10 +44,10 @@ SSL_VERIFY = False
 # Test Class: Health Check - Valid Responses
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestHealthCheckValidResponses:
     """Test suite for valid health check responses with SLA validation."""
     
@@ -57,6 +57,8 @@ class TestHealthCheckValidResponses:
         (500, 200),  # Updated from 200ms to 500ms (more realistic SLA)
         (1000, 200),
     ])
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_ack_health_check_valid_response(self, max_time_ms, expected_status):
         """
         Test PZ-14026: Health check returns valid response with SLA.
@@ -123,15 +125,19 @@ class TestHealthCheckValidResponses:
 # Test Class: Health Check - Invalid Methods
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
 @pytest.mark.negative
+
+
+@pytest.mark.regression
 class TestHealthCheckInvalidMethods:
     """Test suite for invalid HTTP methods on health check endpoint."""
     
     @pytest.mark.xray("PZ-14027")
     @pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH"])
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_ack_rejects_invalid_methods(self, method):
         """
         Test PZ-14027: Health check rejects invalid HTTP methods.
@@ -193,11 +199,10 @@ class TestHealthCheckInvalidMethods:
 # Test Class: Health Check - Concurrent Requests
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
-@pytest.mark.performance
 @pytest.mark.concurrent
+
+
+@pytest.mark.regression
 class TestHealthCheckConcurrentRequests:
     """Test suite for concurrent health check requests."""
     
@@ -207,7 +212,10 @@ class TestHealthCheckConcurrentRequests:
         (50, 500, 1000),  # Updated from 300ms to 500ms (more realistic SLA)
         (100, 500, 1500),
     ])
-    def test_ack_concurrent_requests(self, num_requests, expected_avg_ms, expected_p95_ms):
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
+def test_ack_concurrent_requests(self, num_requests, expected_avg_ms, expected_p95_ms):
         """
         Test PZ-14028: Health check handles concurrent requests.
         
@@ -300,10 +308,10 @@ class TestHealthCheckConcurrentRequests:
 # Test Class: Health Check - Various Headers
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
 @pytest.mark.edge_case
+
+
+@pytest.mark.regression
 class TestHealthCheckVariousHeaders:
     """Test suite for health check with various HTTP headers."""
     
@@ -313,7 +321,10 @@ class TestHealthCheckVariousHeaders:
         ("Accept", "application/json", 200),
         ("X-Requested-With", "XMLHttpRequest", 200),
     ])
-    def test_ack_with_various_headers(self, header_name, header_value, expected_status):
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
+def test_ack_with_various_headers(self, header_name, header_value, expected_status):
         """
         Test PZ-14029: Health check with various headers.
         
@@ -361,11 +372,10 @@ class TestHealthCheckVariousHeaders:
 # Test Class: Health Check - Security Headers
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
-@pytest.mark.security
 @pytest.mark.fuzzing
+
+
+@pytest.mark.regression
 class TestHealthCheckSecurityHeaders:
     """Test suite for security header validation on health check endpoint."""
     
@@ -375,7 +385,10 @@ class TestHealthCheckSecurityHeaders:
         ("Referer", "../../../etc/passwd"),
         ("X-Forwarded-For", "' OR '1'='1"),
     ])
-    def test_ack_security_headers_validation(self, header_name, malicious_value):
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
+def test_ack_security_headers_validation(self, header_name, malicious_value):
         """
         Test PZ-14030: Health check security headers validation.
         
@@ -433,14 +446,20 @@ class TestHealthCheckSecurityHeaders:
 # Test Class: Health Check - Response Structure
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
 @pytest.mark.validation
+
+
+@pytest.mark.regression
 class TestHealthCheckResponseStructure:
     """Test suite for health check response structure validation."""
     
     @pytest.mark.xray("PZ-14031")
+
+    
+    @pytest.mark.regression
+
+    
+    @pytest.mark.smoke
     def test_ack_response_structure_validation(self):
         """
         Test PZ-14031: Health check response structure validation.
@@ -495,15 +514,20 @@ class TestHealthCheckResponseStructure:
 # Test Class: Health Check - SSL/TLS
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
-@pytest.mark.ssl
 @pytest.mark.edge_case
+
+
+@pytest.mark.regression
 class TestHealthCheckSSL:
     """Test suite for health check with SSL/TLS."""
     
     @pytest.mark.xray("PZ-14032")
+
+    
+    @pytest.mark.regression
+
+    
+    @pytest.mark.smoke
     def test_ack_with_ssl_tls(self):
         """
         Test PZ-14032: Health check with SSL/TLS.
@@ -550,16 +574,20 @@ class TestHealthCheckSSL:
 # Test Class: Health Check - Load Testing
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.health_check
-@pytest.mark.performance
-@pytest.mark.load
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestHealthCheckLoadTesting:
     """Test suite for health check load testing."""
     
     @pytest.mark.xray("PZ-14033")
+
+    
+    @pytest.mark.regression
+
+    
+    @pytest.mark.smoke
     def test_ack_load_testing(self):
         """
         Test PZ-14033: Health check load testing.
@@ -656,6 +684,12 @@ class TestHealthCheckLoadTesting:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
+
+
+@pytest.mark.smoke
 def test_health_check_summary():
     """
     Summary test for health check endpoint tests.

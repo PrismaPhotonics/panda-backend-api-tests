@@ -43,12 +43,17 @@ logger = logging.getLogger(__name__)
 # NFFT Configuration Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestNFFTConfiguration:
     """Test suite for NFFT parameter validation and configuration."""
     
     @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_valid_nfft_power_of_2(self, focus_server_api):
         """Test: Configure with valid NFFT (power of 2).
         
@@ -75,6 +80,10 @@ class TestNFFTConfiguration:
         assert hasattr(response, 'job_id') and response.job_id
         logger.info("✅ NFFT=256 configuration successful")
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_nfft_variations(self, focus_server_api):
         """Test: Various valid NFFT values."""
         nfft_values = [128, 256, 512, 1024, 2048, 4096]
@@ -103,6 +112,9 @@ class TestNFFTConfiguration:
         logger.info(f"✅ All {len(nfft_values)} NFFT values tested successfully")
     
     @pytest.mark.xray("PZ-13901")
+
+    
+    @pytest.mark.regression
     def test_nfft_non_power_of_2(self, focus_server_api):
         """Test: Configure with non-power-of-2 NFFT (with warning).
         
@@ -137,12 +149,17 @@ class TestNFFTConfiguration:
 # Frequency Range Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestFrequencyRangeConfiguration:
     """Test suite for frequency range configuration."""
     
     @pytest.mark.xray("PZ-14100")
+
+    
+    @pytest.mark.regression
     def test_frequency_range_within_nyquist(self, focus_server_api, live_metadata):
         """Test: Frequency range within Nyquist limit.
         
@@ -182,6 +199,9 @@ class TestFrequencyRangeConfiguration:
         logger.info(f"✅ Frequency range [0, {freq_max}] configured successfully")
     
     @pytest.mark.xray("PZ-13819", "PZ-13904")
+
+    
+    @pytest.mark.regression
     def test_frequency_range_variations(self, focus_server_api):
         """Test: Various frequency ranges.
         
@@ -222,12 +242,15 @@ class TestFrequencyRangeConfiguration:
 # Configuration Compatibility Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestConfigurationCompatibility:
     """Test suite for configuration parameter compatibility."""
     
-    def test_configuration_resource_estimation(self, focus_server_api):
+    @pytest.mark.regression
+def test_configuration_resource_estimation(self, focus_server_api):
         """Test: Estimate resource usage for configuration."""
         logger.info("Test: Configuration resource estimation")
         
@@ -252,6 +275,9 @@ class TestConfigurationCompatibility:
         logger.info("✅ Configuration compatible")
     
     @pytest.mark.xray("PZ-13905")
+
+    
+    @pytest.mark.regression
     def test_high_throughput_configuration(self, focus_server_api):
         """Test: Configuration with high throughput.
         
@@ -289,6 +315,9 @@ class TestConfigurationCompatibility:
         logger.info("✅ High throughput configuration accepted")
     
     @pytest.mark.xray("PZ-13906")
+
+    
+    @pytest.mark.regression
     def test_low_throughput_configuration(self, focus_server_api):
         """Test: Configuration with low throughput.
         
@@ -327,12 +356,17 @@ class TestConfigurationCompatibility:
 # Error Handling Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestSpectrogramPipelineErrors:
     """Test suite for spectrogram pipeline error handling."""
     
     @pytest.mark.xray("PZ-13874")
+
+    
+    @pytest.mark.regression
     def test_zero_nfft(self, focus_server_api):
         """Test: Configure with NFFT=0.
         
@@ -347,6 +381,8 @@ class TestSpectrogramPipelineErrors:
     
     @pytest.mark.xray("PZ-13875")
     @pytest.mark.xray("PZ-13555")
+
+    @pytest.mark.regression
     def test_negative_nfft(self, focus_server_api):
         """Test: Configure with negative NFFT."""
         logger.info("Test: Negative NFFT")

@@ -28,10 +28,10 @@ logger = logging.getLogger(__name__)
 # Test Class: E2E Configure to gRPC
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.e2e
-@pytest.mark.grpc
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestConfigureMetadataGRPCFlow:
     """
     Test suite for end-to-end flow from configuration to gRPC streaming.
@@ -52,6 +52,8 @@ class TestConfigureMetadataGRPCFlow:
     
     @pytest.mark.xray("PZ-13570")
     @pytest.mark.xray("PZ-13873")
+
+    @pytest.mark.regression
     def test_e2e_configure_metadata_grpc_flow(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13570: E2E - Configure → Metadata → gRPC (mock).
@@ -231,6 +233,9 @@ class TestConfigureMetadataGRPCFlow:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_e2e_flow_summary():
     """
     Summary test for E2E flow tests.

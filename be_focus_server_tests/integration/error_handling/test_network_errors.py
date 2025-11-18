@@ -23,10 +23,11 @@ from src.core.exceptions import APIError, InfrastructureError
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.error_handling
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestNetworkErrors:
     """
     Test suite for network error handling.
@@ -37,6 +38,9 @@ class TestNetworkErrors:
     """
     
     @pytest.mark.xray("PZ-14783")
+
+    
+    @pytest.mark.regression
     def test_network_timeout(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14783: Error Handling - Network Timeout.
@@ -130,6 +134,9 @@ class TestNetworkErrors:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14784")
+
+    
+    @pytest.mark.regression
     def test_connection_refused(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14784: Error Handling - Connection Refused.

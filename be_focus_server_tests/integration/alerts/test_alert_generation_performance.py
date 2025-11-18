@@ -5,13 +5,12 @@ Integration Tests - Alerts: Performance Scenarios
 Tests for performance metrics and requirements in alert generation.
 
 Tests Covered (Xray):
-    - PZ-15040: Alert Generation - Response Time
-    - PZ-15041: Alert Generation - Throughput
-    - PZ-15042: Alert Generation - Latency
-    - PZ-15043: Alert Generation - Resource Usage
-    - PZ-15044: Alert Generation - End-to-End Performance
-    - PZ-15045: Alert Generation - RabbitMQ Performance
-    - PZ-15046: Alert Generation - MongoDB Performance (SKIPPED - alerts not stored in MongoDB)
+    - PZ-14958: Alert Generation - Response Time
+    - PZ-14959: Alert Generation - Throughput
+    - PZ-14960: Alert Generation - Latency
+    - PZ-14961: Alert Generation - Resource Usage
+    - PZ-14962: Alert Generation - End-to-End Performance
+    - PZ-14963: Alert Generation - RabbitMQ Performance
 
 Author: QA Automation Architect
 Date: 2025-11-13
@@ -73,29 +72,29 @@ def _get_rabbitmq_connection_manager(config_manager):
     )
 
 
-@pytest.mark.integration
-@pytest.mark.alerts
-@pytest.mark.api
-@pytest.mark.performance
 @pytest.mark.slow
+
+
+
+@pytest.mark.regression
 class TestAlertGenerationPerformance:
     """
     Test suite for performance scenarios in alert generation.
     
     Tests covered:
-        - PZ-15040: Response Time
-        - PZ-15041: Throughput
-        - PZ-15042: Latency
-        - PZ-15043: Resource Usage
-        - PZ-15044: End-to-End Performance
-        - PZ-15045: RabbitMQ Performance
-        - PZ-15046: MongoDB Performance
+        - PZ-14958: Response Time
+        - PZ-14959: Throughput
+        - PZ-14960: Latency
+        - PZ-14961: Resource Usage
+        - PZ-14962: End-to-End Performance
+        - PZ-14963: RabbitMQ Performance
     """
     
-    @pytest.mark.xray("PZ-15040")
+    @pytest.mark.xray("PZ-14958")
+    @pytest.mark.regression
     def test_alert_response_time(self, config_manager):
         """
-        Test PZ-15040: Alert Generation - Response Time.
+        Test PZ-14958: Alert Generation - Response Time.
         
         Objective:
             Verify that alert generation response time meets requirements.
@@ -112,7 +111,7 @@ class TestAlertGenerationPerformance:
             - P99 < 500ms
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Response Time (PZ-15040)")
+        logger.info("TEST: Alert Generation - Response Time (PZ-14958)")
         logger.info("=" * 80)
         
         num_alerts = 100
@@ -169,10 +168,11 @@ class TestAlertGenerationPerformance:
         
         logger.info("✅ TEST PASSED: Response time meets requirements")
     
-    @pytest.mark.xray("PZ-15041")
+    @pytest.mark.xray("PZ-14959")
+    @pytest.mark.regression
     def test_alert_throughput(self, config_manager):
         """
-        Test PZ-15041: Alert Generation - Throughput.
+        Test PZ-14959: Alert Generation - Throughput.
         
         Objective:
             Verify that alert generation throughput meets requirements.
@@ -187,7 +187,7 @@ class TestAlertGenerationPerformance:
             - >= 100 alerts/second
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Throughput (PZ-15041)")
+        logger.info("TEST: Alert Generation - Throughput (PZ-14959)")
         logger.info("=" * 80)
         
         num_alerts = 1000
@@ -236,10 +236,11 @@ class TestAlertGenerationPerformance:
         
         logger.info("✅ TEST PASSED: Throughput meets requirements")
     
-    @pytest.mark.xray("PZ-15042")
+    @pytest.mark.xray("PZ-14960")
+    @pytest.mark.regression
     def test_alert_latency(self, config_manager):
         """
-        Test PZ-15042: Alert Generation - Latency.
+        Test PZ-14960: Alert Generation - Latency.
         
         Objective:
             Verify that alert generation latency (time from creation to processing)
@@ -256,7 +257,7 @@ class TestAlertGenerationPerformance:
             - P95 < 100ms
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Latency (PZ-15042)")
+        logger.info("TEST: Alert Generation - Latency (PZ-14960)")
         logger.info("=" * 80)
         
         num_alerts = 100
@@ -312,10 +313,11 @@ class TestAlertGenerationPerformance:
         
         logger.info("✅ TEST PASSED: Latency meets requirements")
     
-    @pytest.mark.xray("PZ-15043")
+    @pytest.mark.xray("PZ-14961")
+    @pytest.mark.regression
     def test_resource_usage(self, config_manager):
         """
-        Test PZ-15043: Alert Generation - Resource Usage.
+        Test PZ-14961: Alert Generation - Resource Usage.
         
         Objective:
             Verify that alert generation does not cause excessive resource usage.
@@ -332,7 +334,7 @@ class TestAlertGenerationPerformance:
             - Memory usage increase < 500MB
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Resource Usage (PZ-15043)")
+        logger.info("TEST: Alert Generation - Resource Usage (PZ-14961)")
         logger.info("=" * 80)
         
         process = psutil.Process(os.getpid())
@@ -396,10 +398,11 @@ class TestAlertGenerationPerformance:
         
         logger.info("✅ TEST PASSED: Resource usage is acceptable")
     
-    @pytest.mark.xray("PZ-15044")
+    @pytest.mark.xray("PZ-14962")
+    @pytest.mark.regression
     def test_end_to_end_performance(self, config_manager):
         """
-        Test PZ-15044: Alert Generation - End-to-End Performance.
+        Test PZ-14962: Alert Generation - End-to-End Performance.
         
         Objective:
             Verify end-to-end performance from alert creation to storage.
@@ -417,7 +420,7 @@ class TestAlertGenerationPerformance:
             - P95 < 500ms
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - End-to-End Performance (PZ-15044)")
+        logger.info("TEST: Alert Generation - End-to-End Performance (PZ-14962)")
         logger.info("=" * 80)
         
         num_alerts = 100
@@ -477,11 +480,12 @@ class TestAlertGenerationPerformance:
         
         logger.info("✅ TEST PASSED: End-to-end performance meets requirements")
     
-    @pytest.mark.xray("PZ-15045")
+    @pytest.mark.xray("PZ-14963")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
+    @pytest.mark.regression
     def test_rabbitmq_performance(self, config_manager):
         """
-        Test PZ-15045: Alert Generation - RabbitMQ Performance.
+        Test PZ-14963: Alert Generation - RabbitMQ Performance.
         
         Objective:
             Verify RabbitMQ performance in alert processing.
@@ -497,7 +501,7 @@ class TestAlertGenerationPerformance:
             - Consume time < 50ms
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - RabbitMQ Performance (PZ-15045)")
+        logger.info("TEST: Alert Generation - RabbitMQ Performance (PZ-14963)")
         logger.info("=" * 80)
         
         num_alerts = 100
@@ -573,6 +577,8 @@ class TestAlertGenerationPerformance:
     
     @pytest.mark.xray("PZ-15046")
     @pytest.mark.skip(reason="Alerts are NOT stored in MongoDB - this test is invalid")
+
+    @pytest.mark.regression
     def test_mongodb_performance(self, config_manager):
         """
         Test PZ-15046: Alert Generation - MongoDB Performance.

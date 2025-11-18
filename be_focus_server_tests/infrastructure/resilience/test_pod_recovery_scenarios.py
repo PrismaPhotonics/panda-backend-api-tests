@@ -55,6 +55,7 @@ def mongodb_manager(config_manager, k8s_manager):
 
 
 @pytest.fixture
+@pytest.mark.regression
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -73,10 +74,10 @@ def test_config():
 # Test Class: Pod Recovery Scenarios
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.resilience
-@pytest.mark.kubernetes
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestPodRecoveryScenarios:
     """
     Test suite for pod recovery scenarios.
@@ -88,6 +89,9 @@ class TestPodRecoveryScenarios:
     """
     
     @pytest.mark.xray("PZ-14742")
+
+    
+    @pytest.mark.regression
     def test_recovery_order_validation(
         self,
         k8s_manager: KubernetesManager,
@@ -262,6 +266,9 @@ class TestPodRecoveryScenarios:
             raise
     
     @pytest.mark.xray("PZ-14743")
+
+    
+    @pytest.mark.regression
     def test_cascading_recovery_scenarios(
         self,
         k8s_manager: KubernetesManager,
@@ -407,6 +414,9 @@ class TestPodRecoveryScenarios:
             raise
     
     @pytest.mark.xray("PZ-14744")
+
+    
+    @pytest.mark.regression
     def test_recovery_time_measurement(
         self,
         k8s_manager: KubernetesManager,
@@ -539,6 +549,9 @@ class TestPodRecoveryScenarios:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_pod_recovery_scenarios_summary():
     """Summary test for pod recovery scenarios tests."""
     logger.info("=" * 80)

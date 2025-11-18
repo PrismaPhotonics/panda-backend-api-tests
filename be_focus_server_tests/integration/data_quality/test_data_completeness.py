@@ -25,9 +25,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.data_quality
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestDataCompleteness:
     """
     Test suite for data completeness testing.
@@ -38,6 +40,9 @@ class TestDataCompleteness:
     """
     
     @pytest.mark.xray("PZ-14811")
+
+    
+    @pytest.mark.regression
     def test_timestamp_accuracy(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14811: Data Quality - Timestamp Accuracy.
@@ -114,6 +119,9 @@ class TestDataCompleteness:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14812")
+
+    
+    @pytest.mark.regression
     def test_data_completeness(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14812: Data Quality - Data Completeness.

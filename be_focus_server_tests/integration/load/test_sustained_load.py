@@ -23,10 +23,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.load
-@pytest.mark.api
 @pytest.mark.slow
+
+
+
+@pytest.mark.regression
 class TestSustainedLoad:
     """
     Test suite for sustained load testing.
@@ -37,7 +38,9 @@ class TestSustainedLoad:
     
     @pytest.mark.xray("PZ-14801")
     @pytest.mark.xray("PZ-14800")
-    def test_sustained_load_1_hour(self, focus_server_api: FocusServerAPI):
+
+    @pytest.mark.regression
+    def test_api_sustained_load_1_hour(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14801: Load - Sustained Load - 1 Hour.
         

@@ -24,9 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.performance
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestNetworkLatency:
     """
     Test suite for network latency impact.
@@ -37,6 +39,9 @@ class TestNetworkLatency:
     """
     
     @pytest.mark.xray("PZ-14798")
+
+    
+    @pytest.mark.regression
     def test_network_latency_impact(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14798: Performance - Network Latency Impact.
@@ -131,6 +136,8 @@ class TestNetworkLatency:
     @pytest.mark.xray("PZ-14799")
     @pytest.mark.xray("PZ-14090")
     @pytest.mark.skip(reason="GET /waterfall/{task_id}/{row_count} endpoint not yet implemented in backend")
+
+    @pytest.mark.regression
     def test_end_to_end_latency(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14799: Performance - End-to-End Latency.

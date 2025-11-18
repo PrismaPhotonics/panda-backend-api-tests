@@ -24,9 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.data_quality
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestDataConsistency:
     """
     Test suite for data consistency testing.
@@ -38,6 +40,8 @@ class TestDataConsistency:
     
     @pytest.mark.xray("PZ-14808")
     @pytest.mark.skip(reason="GET /waterfall/{task_id}/{row_count} endpoint not yet implemented in backend")
+
+    @pytest.mark.regression
     def test_waterfall_data_consistency(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14808: Data Quality - Waterfall Data Consistency.
@@ -150,6 +154,9 @@ class TestDataConsistency:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14809")
+
+    
+    @pytest.mark.regression
     def test_metadata_consistency(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14809: Data Quality - Metadata Consistency.

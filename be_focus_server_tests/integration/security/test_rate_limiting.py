@@ -23,10 +23,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.security
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestRateLimiting:
     """
     Test suite for rate limiting security.
@@ -36,6 +37,9 @@ class TestRateLimiting:
     """
     
     @pytest.mark.xray("PZ-14777")
+
+    
+    @pytest.mark.regression
     def test_rate_limiting(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14777: Security - Rate Limiting.

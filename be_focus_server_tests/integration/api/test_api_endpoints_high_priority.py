@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 # Test Class: GET /channels Endpoint (PZ-13419)
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.smoke
+
+
+@pytest.mark.regression
 class TestChannelsEndpoint:
     """
     Test suite for PZ-13419: GET /channels - Enabled Channels
@@ -38,6 +38,8 @@ class TestChannelsEndpoint:
     """
     
     @pytest.mark.xray("PZ-13895", "PZ-13762", "PZ-13560")
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_get_channels_endpoint_success(self, focus_server_api):
         """
         Test PZ-13419.1: GET /channels returns enabled channels list.
@@ -124,6 +126,10 @@ class TestChannelsEndpoint:
     
     @pytest.mark.xray("PZ-13896")
     @pytest.mark.xray("PZ-14790")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_get_channels_endpoint_response_time(self, focus_server_api):
         """
         Test PZ-13419.2: GET /channels response time.
@@ -164,6 +170,10 @@ class TestChannelsEndpoint:
     
     @pytest.mark.xray("PZ-13897")
     @pytest.mark.xray("PZ-14809")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_get_channels_endpoint_multiple_calls_consistency(self, focus_server_api):
         """
         Test PZ-13419.3: GET /channels returns consistent results.
@@ -218,6 +228,10 @@ class TestChannelsEndpoint:
     
     @pytest.mark.xray("PZ-13898")
     @pytest.mark.xray("PZ-13762")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_get_channels_endpoint_channel_ids_sequential(self, focus_server_api):
         """
         Test PZ-13419.4: Verify channel IDs are reasonable.
@@ -290,6 +304,10 @@ class TestChannelsEndpoint:
     
     @pytest.mark.xray("PZ-13899")
     @pytest.mark.xray("PZ-13895")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_get_channels_endpoint_enabled_status(self, focus_server_api):
         """
         Test PZ-13419.5: Verify enabled/disabled status if present.
@@ -353,28 +371,4 @@ class TestChannelsEndpoint:
             logger.info("ℹ️ No enabled/status field found (all returned channels assumed enabled)")
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_api_endpoints_high_priority_summary():
-    """
-    Summary test for API endpoints (high priority tests).
-    
-    This test documents which Xray test cases are covered in this module.
-    
-    Covered Xray Tests:
-        ✅ PZ-13419: GET /channels Endpoint (5 tests)
-    
-    Total: 5 high-priority API endpoint tests
-    """
-    logger.info("=" * 80)
-    logger.info("API Endpoints (High Priority) - Summary")
-    logger.info("=" * 80)
-    logger.info("Xray Test Coverage:")
-    logger.info("  ✅ PZ-13419: GET /channels - 5 tests")
-    logger.info("=" * 80)
-    logger.info("Total: 5 High Priority Tests")
-    logger.info("=" * 80)
 

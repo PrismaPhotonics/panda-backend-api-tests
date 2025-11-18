@@ -1,0 +1,326 @@
+﻿=== PowerPoint Content Analysis ===
+File: panda_system_weekly___1_.pptx
+Total Slides: 20
+
+--- Slide 1 ---
+  Panda GUI
+  System Sync
+
+--- Slide 2 ---
+  End of November – Pre-Fat
+  Spotlight on each team
+  Cloud
+  Edge
+  QA
+  Agenda
+
+--- Slide 3 ---
+  Requirements for pre-FAT
+  Basic system stability – allowing ~3 hours of demo time
+  Ready features deployed
+  Demo “script” and known-issues list
+  24/11 – Freezing for a week to allow QA on the planned features
+  Pre-FAT
+
+--- Slide 4 ---
+  New version released
+  QA Impressions; Bugs, UX, etc.
+  Next version
+  Updated release date?
+  Content?
+  Cloud Team
+
+--- Slide 5 ---
+  Migration to ULTRA and new Infra
+  HW status
+  Edge Team
+
+--- Slide 6 ---
+  Bug Status
+  Automation status
+  התלוננות על מאיה שלא נותנת לכם למצוא באגים בשקט
+  QA Team
+
+--- Slide 7 ---
+  2025
+  2026
+  New Infra
+  Panda BE
+  Storage &amp; Network Infra
+  ULTRA Compliance
+  Tools &amp; Observability (Stretch Goal)
+  Web
+  Today
+  Sep
+  Oct
+  Nov
+  Dec
+  Jan
+  25 days
+  Sep 1 - Oct 5
+  Install new version on Kfar Saba machine
+  4 days
+  Oct 21 - Oct 26
+  From Deploy → Data Flow (Lab, Staging)
+  8 days
+  Oct 26 - Nov 5
+  Storage topology &amp; config
+  16 days
+  Nov 9 - Dec 1
+  Network config
+  4 days
+  Dec 3 - Dec 8
+  Automatic network config
+  14 days
+  Dec 4 - Dec 23
+  Performance testing
+  10 days
+  Oct 27 - Nov 9
+  Ultra setup (1000 PRR, 32-bit)
+  10 days
+  Nov 9 - Nov 23
+  Algo version integration
+  11 days
+  Nov 10 - Nov 24
+  Ultra 1:4 Decimation
+  3 days
+  Dec 8 - Dec 10
+  Backoffice
+  2 days
+  Dec 11 - Dec 14
+  K8s Dashboard
+  2 days
+  Dec 15 - Dec 16
+  Helm Dashboard
+  7 days
+  Dec 17 - Dec 25
+  Drift Mgmt. tool
+  2 days
+  Dec 28 - Dec 30
+  Patch mechanism tool
+  6 days
+  Dec 31 - Jan 7
+  Grafana Dashboard
+  47 days
+  Sep 1 - Nov 4
+  Release 1 - Grouping and Queries
+  41 days
+  Nov 5 - Dec 31
+  Release 2 - Fixes and UX req
+  Content Freeze
+  Nov 10, 2025
+  Pre-Fat
+  Nov 30, 2025
+  Code Freeze
+  Dec 31, 2025
+  FAT
+  Jan 29, 2026
+  D3 Timeline
+
+--- Slide 8 ---
+  Issues?
+  Blockers?
+  Anything at all…..
+  Your Input
+  0523389980
+
+--- Slide 9 ---
+  Our Theme Song
+
+--- Slide 10 ---
+  Drop 3 - The Adjusted Scope
+
+--- Slide 11 ---
+  2024
+  2025
+  Today
+  Oct
+  Nov
+  Dec
+  2025
+  Feb
+  Mar
+  48 days
+  10 days
+  62 days
+  13 days
+  22 days
+  41 days
+  49 days
+  100%
+  100%
+  100%
+  100%
+  100%
+  100%
+  100%
+  Oct 25 - Dec 31
+  Dev Env and Infra
+  Nov 24 - Dec 8
+  Washer Integration
+  Oct 6 - Dec 31
+  Alert Mgmt.
+  Feb 11 - Feb 27
+  QA Cycle + Full System Test
+  Nov 7 - Dec 8
+  Research Templates
+  Oct 15 - Dec 10
+  Research Features
+  Oct 13 - Dec 19
+  QA Process Def
+  75 days
+  Oct 20 - Jan 31
+  100%
+  Roubustness
+  30 days
+  Dec 29 - Feb 7
+  100%
+  RL`s Logic Full Implement
+  30 days
+  Dec 25 - Feb 4
+  100%
+  Communication loss handling
+  14 days
+  Dec 12 - Dec 31
+  100%
+  Cycle 1 - Research App Test
+  13 days
+  Jan 1 - Jan 19
+  100%
+  Cycle 2 - Full test
+  Pre-FAT
+  Jan 19
+  FAT
+  Mar 9
+  Drop 2 Timeline -
+
+--- Slide 12 ---
+  Dec MS – Resource Ownership
+  Owned by – Navot
+  Aided by – Ohad, Idan
+  Owned by – Yuval
+  Robustness
+  UI features
+  Infra
+  Washer
+  Research Capabilities
+  Owned by – Omri
+  Aided by – Noga
+  Owned by – Dima
+  Aided by – Nir, Kosta
+  Owned by – Benny
+  Aided by – Oded
+
+--- Slide 13 ---
+  Where Do We Want to Be this week?
+  Versions integrations
+  Deploy and QA on staging machine
+  BE
+  Noga
+  Web
+  App
+
+--- Slide 14 ---
+  Positives
+  The customer wants to move forward with site installation and SAT!
+  The customer sees how much more value there is in Drop 2
+  The customer was impressed with our data visualization vs SES
+  We reached the deadline on time and with a quality product
+  What was the outcome of the FAT?
+  Negatives
+  There was a lack of customer and expectations management
+  There were several bugs discovered, which required us to fix in an immediate fashion
+  We were tested on scenarios we did not know were relevant (high stress)
+  We lacked a full characterization of the performance envelope and system limitations
+
+--- Slide 15 ---
+  Post-installation issues surfaced — not seen during development or QA
+  → Stability gaps emerged only in A1 field conditions
+  Reproducing issues in-house has been difficult
+  → Limits our ability to debug and resolve effectively
+  All issues originate from Interrogator + Analyzer
+  → Suggests broader system gaps, rather than isolated bugs
+  2 Main Driving Factors
+  No QA coverage on the Interrogator and Analyzer units + Panda Backend
+  Increased complexity from hardening
+  Implication - Inability to complete SAT
+  Leading To…………..
+  Context
+
+--- Slide 16 ---
+  The team worked hard, both day and night,
+  Building Panda with all their might.
+  They passed the test, no flaw in sight,
+  Their teamwork strong, their code just right!
+  🐼🎉
+  Grateful for each and every hand,
+  Together we’ve built something grand!
+  ❤
+  Now on to the next, with a push and a shove,
+  With our eyes on the goal –  Monkey Dove! 			🐒🕊️
+  Thank You Panda Team!
+
+--- Slide 17 ---
+  Today
+  FAT
+  Full feature freeze
+  Internal FAT with CS
+  Noga Version drop
+  Must MS Approval Date post Deploy
+
+--- Slide 18 ---
+  Delete all geo-fenced areas
+  Delete all alerts
+  Insert ~5 specific alerts (Maya to provide)
+  Delete all templates
+  Create ~4 specific templates (Maya to create)
+  Make sure
+  user_settings.json
+  is as defined
+  PZ-9640
+  Grey BIT status
+  Move to Sequoia
+  Client documentation
+  Checklist for FAT
+
+--- Slide 19 ---
+  New Staging HW discussion
+  For a new staging HW,
+  we can significantly reduce the storage capacity (and therefore, cost).
+  SR650
+  1TB RAM
+  2x CPU (56 cores per CPU)
+  2x L40 Nvidia (48GB VRAM, 18k Cuda cores per GPU)
+  2x NVMe 480GB
+  3.5TB SATA SSD
+  SR250
+  1 CPU (6 cores)
+  32GB
+  2x NVMe 480GB
+  Storage:
+  2 controllers
+  5 raid drawers
+  60X20TB disks - prod; 60X 10TB disk - staging
+  Existing HW:
+
+--- Slide 20 ---
+  Sun
+  Mon
+  Tue
+  Wed
+  Thu
+  Fri
+  Sat
+  Bug fixes
+  Client Playground Time
+  Bug Status
+  Bug Status
+  New Build + System Prep for Client
+  External
+  Bug Status
+  Dev and QA Control Routine
+  15:00
+  Bug fixes
+
+=== Presentation Metadata ===
+

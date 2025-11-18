@@ -27,6 +27,7 @@ from src.core.base_test import InfrastructureTest
 from src.core.exceptions import DatabaseError, InfrastructureError
 
 
+@pytest.mark.regression
 class TestMongoDBDataQuality(InfrastructureTest):
     """
     MongoDB Data Quality Tests.
@@ -202,6 +203,8 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.mongodb
     @pytest.mark.data_quality
     @pytest.mark.xray("PZ-13809")
+
+    @pytest.mark.regression
     def test_required_collections_exist(self):
         """
         Verify that all required MongoDB collections exist.
@@ -316,6 +319,8 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.data_quality
     @pytest.mark.schema
     @pytest.mark.xray("PZ-13811")
+
+    @pytest.mark.regression
     def test_recording_schema_validation(self):
         """
         Verify recording collection documents have required fields and correct types.
@@ -456,6 +461,8 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.data_quality
     @pytest.mark.data_integrity
     @pytest.mark.xray("PZ-13812", "PZ-13685")
+
+    @pytest.mark.regression
     def test_recordings_have_all_required_metadata(self):
         """
         Scan all recordings and verify none have missing metadata.
@@ -698,6 +705,8 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.performance
     @pytest.mark.jira("PZ-13983")  # Bug: MongoDB Indexes Missing
     @pytest.mark.xray("PZ-13686")
+
+    @pytest.mark.regression
     def test_mongodb_indexes_exist_and_optimal(self):
         """
         Verify MongoDB indexes exist on critical fields and are optimal.
@@ -840,6 +849,8 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.data_quality
     @pytest.mark.soft_delete
     @pytest.mark.xray("PZ-13812")
+
+    @pytest.mark.regression
     def test_deleted_recordings_marked_properly(self):
         """
         T-DATA-001: Verify deleted recordings are marked with deleted=True.
@@ -984,6 +995,8 @@ class TestMongoDBDataQuality(InfrastructureTest):
     @pytest.mark.data_integrity
     @pytest.mark.data_lifecycle
     @pytest.mark.xray("PZ-13705")
+
+    @pytest.mark.regression
     def test_historical_vs_live_recordings(self):
         """
         T-DATA-002: Verify distinction between Historical and Live recordings.

@@ -9,6 +9,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 
+@pytest.mark.regression
 class TestButtonInteractions:
     """
     Verify all buttons are clickable and functional
@@ -19,6 +20,8 @@ class TestButtonInteractions:
     
     @pytest.mark.ui
     @pytest.mark.generated
+
+    @pytest.mark.regression
     def test_button_interactions(self, page: Page):
         """
         Test Steps:

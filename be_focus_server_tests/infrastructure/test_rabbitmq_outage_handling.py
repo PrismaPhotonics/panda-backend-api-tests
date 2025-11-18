@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 # Test Class: RabbitMQ Outage Handling
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.rabbitmq
-@pytest.mark.resilience
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestRabbitMQOutageHandling:
     """
     Test suite for RabbitMQ outage handling and resilience.
@@ -51,6 +51,9 @@ class TestRabbitMQOutageHandling:
     """
     
     @pytest.mark.xray("PZ-13768")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_outage_handling(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13768: Integration - RabbitMQ Outage Handling.
@@ -172,6 +175,9 @@ class TestRabbitMQOutageHandling:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_rabbitmq_outage_handling_summary():
     """
     Summary test for RabbitMQ outage handling tests.

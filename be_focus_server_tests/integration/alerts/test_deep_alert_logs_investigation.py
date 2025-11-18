@@ -29,11 +29,11 @@ from config.config_manager import ConfigManager
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.alerts
-@pytest.mark.api
-@pytest.mark.investigation
 @pytest.mark.slow
+
+
+
+@pytest.mark.regression
 class TestDeepAlertLogsInvestigation:
     """
     Deep investigation test suite for alert logs.
@@ -51,6 +51,9 @@ class TestDeepAlertLogsInvestigation:
     """
     
     @pytest.mark.xray("PZ-15051")
+
+    
+    @pytest.mark.regression
     def test_deep_investigate_alert_logs(self, config_manager):
         """
         PZ-15051: Deep Alert Logs Investigation.

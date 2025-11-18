@@ -85,10 +85,10 @@ def valid_historic_config():
 # Test 1: Port Availability Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.prelaunch
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestPortAvailabilityValidation:
     """
     Test Suite: Port Availability Pre-Launch Validation
@@ -100,6 +100,8 @@ class TestPortAvailabilityValidation:
     """
     
     @pytest.mark.xray("PZ-14018")
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_port_availability_before_job_creation(
         self,
         focus_server_api: FocusServerAPI,
@@ -206,10 +208,10 @@ class TestPortAvailabilityValidation:
 # Test 2-3: Data Availability Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.prelaunch
 @pytest.mark.xray("PZ-13547")
+
+
+@pytest.mark.regression
 class TestDataAvailabilityValidation:
     """
     Test Suite: Data Availability Validation
@@ -223,6 +225,9 @@ class TestDataAvailabilityValidation:
     """
     
     @pytest.mark.xray("PZ-13547", "PZ-13873", "PZ-13561")
+
+    
+    @pytest.mark.regression
     def test_data_availability_live_mode(
         self,
         focus_server_api: FocusServerAPI,
@@ -275,6 +280,9 @@ class TestDataAvailabilityValidation:
                     pass
     
     @pytest.mark.xray("PZ-13548", "PZ-13863")
+
+    
+    @pytest.mark.regression
     def test_data_availability_historic_mode(
         self,
         focus_server_api: FocusServerAPI,
@@ -346,9 +354,10 @@ class TestDataAvailabilityValidation:
 # Test 4-5: Time Range Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.prelaunch
+
+
+@pytest.mark.regression
 class TestTimeRangeValidation:
     """
     Test Suite: Time Range Validation
@@ -359,6 +368,9 @@ class TestTimeRangeValidation:
     """
     
     @pytest.mark.xray("PZ-14089")
+
+    
+    @pytest.mark.regression
     def test_time_range_validation_future_timestamps(
         self,
         focus_server_api: FocusServerAPI
@@ -437,6 +449,9 @@ class TestTimeRangeValidation:
         logger.info(f"{'='*80}\n")
     
     @pytest.mark.xray("PZ-13869")
+
+    
+    @pytest.mark.regression
     def test_time_range_validation_reversed_range(
         self,
         focus_server_api: FocusServerAPI
@@ -506,9 +521,10 @@ class TestTimeRangeValidation:
 # Test 6-9: Configuration Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.prelaunch
+
+
+@pytest.mark.regression
 class TestConfigurationValidation:
     """
     Test Suite: Configuration Parameter Validation
@@ -521,6 +537,8 @@ class TestConfigurationValidation:
     
     @pytest.mark.xray("PZ-13876", "PZ-13554")
     @pytest.mark.xray("PZ-13876")
+
+    @pytest.mark.regression
     def test_config_validation_channels_out_of_range(
         self,
         focus_server_api: FocusServerAPI
@@ -589,6 +607,8 @@ class TestConfigurationValidation:
     
     @pytest.mark.xray("PZ-13877", "PZ-13903", "PZ-13555")
     @pytest.mark.xray("PZ-13877")
+
+    @pytest.mark.regression
     def test_config_validation_frequency_exceeds_nyquist(
         self,
         focus_server_api: FocusServerAPI
@@ -661,6 +681,9 @@ class TestConfigurationValidation:
         logger.info(f"{'='*80}\n")
     
     @pytest.mark.xray("PZ-13874", "PZ-13875", "PZ-13901")
+
+    
+    @pytest.mark.regression
     def test_config_validation_invalid_nfft(
         self,
         focus_server_api: FocusServerAPI
@@ -723,6 +746,9 @@ class TestConfigurationValidation:
         logger.info(f"{'='*80}\n")
     
     @pytest.mark.xray("PZ-13878")
+
+    
+    @pytest.mark.regression
     def test_config_validation_invalid_view_type(
         self,
         focus_server_api: FocusServerAPI
@@ -785,9 +811,10 @@ class TestConfigurationValidation:
 # Test 10: Error Message Clarity
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.prelaunch
+
+
+@pytest.mark.regression
 class TestErrorMessageClarity:
     """
     Test Suite: Error Message Clarity
@@ -798,6 +825,9 @@ class TestErrorMessageClarity:
     """
     
     @pytest.mark.xray("PZ-13878")
+
+    
+    @pytest.mark.regression
     def test_prelaunch_validation_error_messages_clarity(
         self,
         focus_server_api: FocusServerAPI

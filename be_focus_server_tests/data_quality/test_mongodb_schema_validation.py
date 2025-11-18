@@ -29,9 +29,10 @@ logger = logging.getLogger(__name__)
 # Test Class: MongoDB Data Quality
 # ===================================================================
 
-@pytest.mark.data_quality
-@pytest.mark.mongodb
 @pytest.mark.integration
+
+
+@pytest.mark.regression
 class TestMongoDBDataQuality:
     """
     Test suite for MongoDB data quality validation.
@@ -45,6 +46,9 @@ class TestMongoDBDataQuality:
     """
     
     @pytest.mark.xray("PZ-13598")
+
+    
+    @pytest.mark.regression
     def test_mongodb_data_quality_general(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13598: MongoDB Data Quality (general check).
@@ -100,6 +104,9 @@ class TestMongoDBDataQuality:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-13683")
+
+    
+    @pytest.mark.regression
     def test_recording_collection_schema_validation(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13683: Recording Collection Schema Validation.
@@ -172,6 +179,8 @@ class TestMongoDBDataQuality:
     
     @pytest.mark.xray("PZ-13686")
     @pytest.mark.xray("PZ-14812")
+
+    @pytest.mark.regression
     def test_metadata_collection_schema_validation(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13686: Metadata Collection Schema Validation.
@@ -229,29 +238,4 @@ class TestMongoDBDataQuality:
         logger.info("✅ TEST PASSED: Metadata Collection Schema Valid")
         logger.info("=" * 80)
 
-
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_mongodb_schema_validation_summary():
-    """
-    Summary test for MongoDB schema validation tests.
-    
-    Xray Tests Covered:
-        - PZ-13598: MongoDB Data Quality (general)
-        - PZ-13683: Recording Collection Schema
-        - PZ-13686: Metadata Collection Schema
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("MongoDB Schema Validation Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13598: MongoDB Data Quality general check")
-    logger.info("  2. PZ-13683: Recording Collection Schema")
-    logger.info("  3. PZ-13686: Metadata Collection Schema")
-    logger.info("=" * 80)
 

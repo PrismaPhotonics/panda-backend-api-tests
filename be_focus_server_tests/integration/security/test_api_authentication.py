@@ -24,10 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.security
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestAPIAuthentication:
     """
     Test suite for API authentication security.
@@ -39,6 +40,9 @@ class TestAPIAuthentication:
     """
     
     @pytest.mark.xray("PZ-14771")
+
+    
+    @pytest.mark.regression
     def test_api_authentication_required(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14771: Security - API Authentication Required.
@@ -115,6 +119,9 @@ class TestAPIAuthentication:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14772")
+
+    
+    @pytest.mark.regression
     def test_invalid_authentication_token(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14772: Security - Invalid Authentication Token.
@@ -197,6 +204,9 @@ class TestAPIAuthentication:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14773")
+
+    
+    @pytest.mark.regression
     def test_expired_authentication_token(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14773: Security - Expired Authentication Token.

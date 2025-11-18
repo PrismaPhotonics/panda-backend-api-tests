@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 # PZ Integration Verification Tests
 # =================================================================
 
-@pytest.mark.integration
-@pytest.mark.infrastructure
-@pytest.mark.pz
 @pytest.mark.xray("PZ-13873")
+
+
+@pytest.mark.regression
 def test_pz_repository_available(pz_integration):
     """
     Test that PZ repository is available and accessible.
@@ -57,10 +57,11 @@ def test_pz_repository_available(pz_integration):
         pytest.fail(f"PZ repository verification failed: {e}")
 
 
-@pytest.mark.integration
-@pytest.mark.infrastructure
-@pytest.mark.pz
 @pytest.mark.xray("PZ-13873")
+
+
+
+@pytest.mark.regression
 def test_pz_microservices_listing(pz_integration):
     """
     Test that we can list all available microservices in PZ.
@@ -127,10 +128,11 @@ def test_pz_microservices_listing(pz_integration):
         pytest.fail(f"Microservices listing failed: {e}")
 
 
-@pytest.mark.integration
-@pytest.mark.infrastructure
-@pytest.mark.pz
 @pytest.mark.xray("PZ-13873")
+
+
+
+@pytest.mark.regression
 def test_pz_focus_server_access(pz_integration):
     """
     Test that we can access Focus Server microservice specifically.
@@ -182,10 +184,11 @@ def test_pz_focus_server_access(pz_integration):
         pytest.fail(f"Focus Server access failed: {e}")
 
 
-@pytest.mark.integration
-@pytest.mark.infrastructure
-@pytest.mark.pz
 @pytest.mark.xray("PZ-13873")
+
+
+
+@pytest.mark.regression
 def test_pz_version_info(pz_integration):
     """
     Test that we can retrieve PZ repository version information.
@@ -223,11 +226,11 @@ def test_pz_version_info(pz_integration):
         pytest.fail(f"Version info retrieval failed: {e}")
 
 
-@pytest.mark.integration
-@pytest.mark.infrastructure
-@pytest.mark.pz
-@pytest.mark.slow
 @pytest.mark.xray("PZ-13873")
+
+
+
+@pytest.mark.regression
 def test_pz_import_capability(pz_integration):
     """
     Test that we can dynamically import modules from PZ repository.
@@ -278,10 +281,10 @@ def test_pz_import_capability(pz_integration):
 # PZ Integration Summary
 # =================================================================
 
-@pytest.mark.integration
-@pytest.mark.infrastructure
-@pytest.mark.pz
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_pz_integration_summary(pz_integration):
     """
     Comprehensive PZ integration summary test.

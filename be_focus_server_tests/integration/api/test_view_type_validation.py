@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 # Test Class: View Type Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.view_type
+
+
+@pytest.mark.regression
 class TestViewTypeValidation:
     """
     Test suite for view_type configuration validation.
@@ -46,6 +46,9 @@ class TestViewTypeValidation:
     """
     
     @pytest.mark.xray("PZ-14094")
+
+    
+    @pytest.mark.regression
     def test_invalid_view_type_string(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13913: View Type with string value should be rejected.
@@ -102,6 +105,9 @@ class TestViewTypeValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14093")
+
+    
+    @pytest.mark.regression
     def test_invalid_view_type_out_of_range(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13914: View Type with invalid integer value should be rejected.
@@ -170,6 +176,8 @@ class TestViewTypeValidation:
     
     @pytest.mark.xray("PZ-13878")
     @pytest.mark.xray("PZ-13873")
+
+    @pytest.mark.regression
     def test_valid_view_types(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13878: Valid view_type values should be accepted.
@@ -230,28 +238,4 @@ class TestViewTypeValidation:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_view_type_validation_summary():
-    """
-    Summary test for view_type validation tests.
-    
-    Xray Tests Covered:
-        - PZ-13913: Invalid View Type - String Value
-        - PZ-13914: Invalid View Type - Out of Range
-        - PZ-13878: Valid View Types
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("View Type Validation Test Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13913: Invalid view_type - string value")
-    logger.info("  2. PZ-13914: Invalid view_type - out of range integer")
-    logger.info("  3. PZ-13878: Valid view_type values (0, 1, 2)")
-    logger.info("=" * 80)
 

@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.critical
 @pytest.mark.skip(reason="Future API structure - POST /config/{task_id} endpoint not yet deployed to staging. "
                           "Use POST /configure tests instead (test_configure_endpoint.py)")
+@pytest.mark.regression
 class TestConfigTaskEndpoint:
     """
     Test suite for POST /config/{task_id} endpoint.
@@ -61,6 +62,8 @@ class TestConfigTaskEndpoint:
     
     @pytest.mark.xray("PZ-14750")
     @pytest.mark.xray("PZ-13547")
+
+    @pytest.mark.regression
     def test_config_task_valid_configuration(
         self,
         focus_server_api: FocusServerAPI
@@ -140,6 +143,8 @@ class TestConfigTaskEndpoint:
     
     @pytest.mark.xray("PZ-14751")
     @pytest.mark.xray("PZ-13879")
+
+    @pytest.mark.regression
     def test_config_task_invalid_task_id(
         self,
         focus_server_api: FocusServerAPI
@@ -213,6 +218,8 @@ class TestConfigTaskEndpoint:
     
     @pytest.mark.xray("PZ-14752")
     @pytest.mark.xray("PZ-13879")
+
+    @pytest.mark.regression
     def test_config_task_missing_required_fields(
         self,
         focus_server_api: FocusServerAPI
@@ -294,6 +301,9 @@ class TestConfigTaskEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14753")
+
+    
+    @pytest.mark.regression
     def test_config_task_invalid_sensor_range(
         self,
         focus_server_api: FocusServerAPI
@@ -369,6 +379,9 @@ class TestConfigTaskEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14754")
+
+    
+    @pytest.mark.regression
     def test_config_task_invalid_frequency_range(
         self,
         focus_server_api: FocusServerAPI
@@ -444,36 +457,4 @@ class TestConfigTaskEndpoint:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_config_task_endpoint_summary():
-    """
-    Summary test for POST /config/{task_id} endpoint tests.
-    
-    This test documents which Xray test cases are covered in this module.
-    
-    Covered Xray Tests:
-        ✅ PZ-14750: POST /config/{task_id} - Valid Configuration
-        ✅ PZ-14751: POST /config/{task_id} - Invalid Task ID
-        ✅ PZ-14752: POST /config/{task_id} - Missing Required Fields
-        ✅ PZ-14753: POST /config/{task_id} - Invalid Sensor Range
-        ✅ PZ-14754: POST /config/{task_id} - Invalid Frequency Range
-    
-    Total: 5 tests
-    """
-    logger.info("=" * 80)
-    logger.info("POST /config/{task_id} Endpoint Tests - Summary")
-    logger.info("=" * 80)
-    logger.info("Xray Test Coverage:")
-    logger.info("  ✅ PZ-14750: Valid Configuration")
-    logger.info("  ✅ PZ-14751: Invalid Task ID")
-    logger.info("  ✅ PZ-14752: Missing Required Fields")
-    logger.info("  ✅ PZ-14753: Invalid Sensor Range")
-    logger.info("  ✅ PZ-14754: Invalid Frequency Range")
-    logger.info("=" * 80)
-    logger.info("Total: 5 Tests")
-    logger.info("=" * 80)
 

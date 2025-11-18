@@ -24,10 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.security
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestInputValidation:
     """
     Test suite for input validation security.
@@ -39,6 +40,9 @@ class TestInputValidation:
     """
     
     @pytest.mark.xray("PZ-14774")
+
+    
+    @pytest.mark.regression
     def test_sql_injection_prevention(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14774: Security - SQL Injection Prevention.
@@ -123,6 +127,9 @@ class TestInputValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14775")
+
+    
+    @pytest.mark.regression
     def test_xss_prevention(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14775: Security - XSS Prevention.
@@ -202,6 +209,9 @@ class TestInputValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14788")
+
+    
+    @pytest.mark.regression
     def test_input_sanitization(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14788: Security - Input Sanitization.

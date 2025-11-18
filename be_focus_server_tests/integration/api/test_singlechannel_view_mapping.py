@@ -113,8 +113,10 @@ def singlechannel_payload_channel_100() -> Dict[str, Any]:
 # Happy Path Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestSingleChannelViewHappyPath:
     """
     Test suite for SingleChannel view happy path scenarios.
@@ -124,6 +126,8 @@ class TestSingleChannelViewHappyPath:
     
     @pytest.mark.xray("PZ-13861")
     @pytest.mark.xray("PZ-13862")
+
+    @pytest.mark.regression
     def test_configure_singlechannel_mapping(self, focus_server_api, singlechannel_payload_channel_7):
         """
         Test: SingleChannel view returns exactly one stream with correct 1:1 mapping.
@@ -245,6 +249,8 @@ class TestSingleChannelViewHappyPath:
     
     @pytest.mark.xray("PZ-13814", "PZ-13832")
     @pytest.mark.xray("PZ-13814")
+
+    @pytest.mark.regression
     def test_configure_singlechannel_channel_1(self, focus_server_api, singlechannel_payload_channel_1):
         """
         Test: SingleChannel view for channel 1 (first channel).
@@ -283,6 +289,9 @@ class TestSingleChannelViewHappyPath:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13815", "PZ-13833")
+
+    
+    @pytest.mark.regression
     def test_configure_singlechannel_channel_100(self, focus_server_api, singlechannel_payload_channel_100):
         """
         Test: SingleChannel view for channel 100 (high channel number).
@@ -321,6 +330,9 @@ class TestSingleChannelViewHappyPath:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13818")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_vs_multichannel_comparison(self, focus_server_api):
         """
         Test: Compare SingleChannel vs MultiChannel behavior.
@@ -409,8 +421,10 @@ class TestSingleChannelViewHappyPath:
 # Edge Cases Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestSingleChannelViewEdgeCases:
     """
     Test suite for SingleChannel view edge cases.
@@ -420,6 +434,8 @@ class TestSingleChannelViewEdgeCases:
     
     @pytest.mark.xray("PZ-13823", "PZ-13852")
     @pytest.mark.jira("PZ-13669")  # Bug: SingleChannel Accepts min != max
+
+    @pytest.mark.regression
     def test_singlechannel_with_min_not_equal_max_should_fail(self, focus_server_api):
         """
         Test: SingleChannel with min != max should fail validation.
@@ -481,6 +497,8 @@ class TestSingleChannelViewEdgeCases:
     
     @pytest.mark.xray("PZ-13824")
     @pytest.mark.xray("PZ-13836")
+
+    @pytest.mark.regression
     def test_singlechannel_with_zero_channel(self, focus_server_api):
         """
         Test: SingleChannel with channel 0 (boundary test).
@@ -530,6 +548,9 @@ class TestSingleChannelViewEdgeCases:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13819", "PZ-13854")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_with_different_frequency_ranges(self, focus_server_api):
         """
         Test: SingleChannel with various frequency ranges.
@@ -587,8 +608,10 @@ class TestSingleChannelViewEdgeCases:
 # Error Handling Tests
 # ===================================================================
 
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestSingleChannelViewErrorHandling:
     """
     Test suite for SingleChannel view error handling.
@@ -597,6 +620,9 @@ class TestSingleChannelViewErrorHandling:
     """
     
     @pytest.mark.xray("PZ-13857")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_with_invalid_nfft(self, focus_server_api):
         """
         Test: SingleChannel with invalid NFFT value.
@@ -634,6 +660,9 @@ class TestSingleChannelViewErrorHandling:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13822")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_rejects_invalid_nfft_value(self, focus_server_api):
         """
         Test: SingleChannel Rejects Invalid NFFT Value.
@@ -728,6 +757,9 @@ class TestSingleChannelViewErrorHandling:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-13821", "PZ-13855")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_with_invalid_height(self, focus_server_api):
         """
         Test: SingleChannel with invalid display height.
@@ -763,6 +795,9 @@ class TestSingleChannelViewErrorHandling:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13820")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_with_invalid_frequency_range(self, focus_server_api):
         """
         Test: SingleChannel with invalid frequency range (min > max).
@@ -801,9 +836,10 @@ class TestSingleChannelViewErrorHandling:
 # Backend Consistency Tests (as suggested by developer)
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestSingleChannelBackendConsistency:
     """
     Test suite for backend channel process consistency.
@@ -814,6 +850,9 @@ class TestSingleChannelBackendConsistency:
     """
     
     @pytest.mark.xray("PZ-13817")
+
+    
+    @pytest.mark.regression
     def test_same_channel_multiple_requests_consistent_mapping(self, focus_server_api):
         """
         Test: Same channel in multiple requests should have consistent mapping.
@@ -920,6 +959,9 @@ class TestSingleChannelBackendConsistency:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-13816")
+
+    
+    @pytest.mark.regression
     def test_different_channels_different_mappings(self, focus_server_api):
         """
         Test: Different channels should each map to stream index 0 in SINGLECHANNEL.
@@ -995,6 +1037,8 @@ class TestSingleChannelBackendConsistency:
     
     @pytest.mark.xray("PZ-13834")
     @pytest.mark.xray("PZ-13819")
+
+    @pytest.mark.regression
     def test_singlechannel_middle_channel(self, focus_server_api):
         """
         Test: SingleChannel with middle channel (edge case).
@@ -1040,6 +1084,9 @@ class TestSingleChannelBackendConsistency:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13835", "PZ-13836", "PZ-13837")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_invalid_channels(self, focus_server_api):
         """
         Test: SingleChannel with invalid channel IDs.
@@ -1093,6 +1140,9 @@ class TestSingleChannelBackendConsistency:
         logger.info("\n✅ TEST PASSED: Invalid channels handled")
     
     @pytest.mark.xray("PZ-13853")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_data_consistency(self, focus_server_api):
         """
         Test: SingleChannel data consistency check.
@@ -1140,6 +1190,9 @@ class TestSingleChannelBackendConsistency:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13858")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_rapid_reconfiguration(self, focus_server_api):
         """
         Test: SingleChannel rapid reconfiguration.
@@ -1184,6 +1237,8 @@ class TestSingleChannelBackendConsistency:
     
     @pytest.mark.xray("PZ-13859")
     @pytest.mark.slow
+
+    @pytest.mark.regression
     def test_singlechannel_polling_stability(self, focus_server_api):
         """
         Test: SingleChannel polling stability.
@@ -1231,6 +1286,9 @@ class TestSingleChannelBackendConsistency:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13860")
+
+    
+    @pytest.mark.regression
     def test_singlechannel_metadata_consistency(self, focus_server_api):
         """
         Test: SingleChannel metadata consistency.
@@ -1273,6 +1331,8 @@ class TestSingleChannelBackendConsistency:
     @pytest.mark.slow
     @pytest.mark.e2e
     @pytest.mark.xray("PZ-13873")
+
+    @pytest.mark.regression
     def test_singlechannel_complete_e2e_flow(self, focus_server_api):
         """
         Test: SingleChannel complete end-to-end flow.
@@ -1358,32 +1418,6 @@ class TestSingleChannelBackendConsistency:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Test Execution Summary
-# ===================================================================
-
-def test_module_summary():
-    """
-    Module summary for test reporting.
-    
-    This test always passes and provides a summary of the test module.
-    """
-    logger.info("\n" + "=" * 80)
-    logger.info("TEST MODULE SUMMARY: SingleChannel View Mapping")
-    logger.info("=" * 80)
-    logger.info("Test Coverage:")
-    logger.info("  ✅ Happy Path: SingleChannel mapping validation")
-    logger.info("  ✅ Edge Cases: Boundary conditions and unusual inputs")
-    logger.info("  ✅ Error Handling: Invalid inputs and validation")
-    logger.info("  ✅ Backend Consistency: Same channel process verification")
-    logger.info("")
-    logger.info("Key Validations:")
-    logger.info("  • stream_amount = 1 for SINGLECHANNEL")
-    logger.info("  • channel_to_stream_index contains exactly 1 entry")
-    logger.info("  • Correct 1:1 mapping (requested channel -> stream 0)")
-    logger.info("  • No extra channels or stray mappings")
-    logger.info("  • Backend consistency across multiple requests")
-    logger.info("=" * 80)
     
     assert True  # Always pass
 

@@ -1,0 +1,169 @@
+# Jira Integration Configuration
+# ==============================
+#
+# Configuration for Jira API integration
+# Supports both Jira Cloud and Jira Server/Data Center
+
+jira:
+  # Jira Server URL (required)
+  # Examples:
+  #   Cloud: https://your-company.atlassian.net
+  #   Server: https://jira.your-company.com
+  #   Data Center: https://jira.your-company.com
+  base_url: "https://prismaphotonics.atlassian.net"  # Prisma Photonics Jira Cloud
+  
+  # Authentication
+  # Use API Token for Jira Cloud (recommended)
+  # For Jira Server/Data Center, use username/password or API token
+  api_token: "${ATLASSIAN_API_TOKEN}"
+  
+  # Alternative: Username and Password (for Jira Server/Data Center)
+  # Only use if API token doesn't work
+  username: null  # Optional: Set if using username/password auth
+  password: null  # Optional: Set if using username/password auth
+  
+  # Email for API token authentication (required for Cloud)
+  email: "roy.avrahami@prismaphotonics.com"  # Required for Jira Cloud API token auth
+  
+  # Project Configuration
+  project_key: "PZ"  # Default project key (e.g., PZ, TEST, etc.)
+  
+  # API Settings
+  api_version: "2"  # Jira REST API version (usually 2)
+  timeout: 30  # Request timeout in seconds
+  max_results: 100  # Maximum results per search query
+  
+  # SSL Settings
+  verify_ssl: true  # Set to false for self-signed certificates
+  ssl_cert_path: null  # Optional: Path to SSL certificate file
+
+# Confluence Integration Configuration
+# ====================================
+confluence:
+  # Confluence Server URL (uses same base_url as Jira)
+  base_url: "https://prismaphotonics.atlassian.net"  # Prisma Photonics Confluence Cloud
+  
+  # Authentication
+  # Use API Token for Confluence Cloud (recommended)
+  api_token: "${ATLASSIAN_API_TOKEN}"
+  
+  # Email for API token authentication (required for Cloud)
+  email: "roy.avrahami@prismaphotonics.com"  # Required for Confluence Cloud API token auth
+
+# Default Issue Fields
+# =====================
+# Default values for issue creation
+defaults:
+  # Issue Type
+  issue_type: "Task"  # Common types: Task, Bug, Story, Epic, Sub-task
+  
+  # Priority
+  priority: "Medium"  # Common priorities: Lowest, Low, Medium, High, Highest
+  
+  # Labels (comma-separated)
+  labels: []  # Default labels: ["automation", "qa"]
+  
+  # Components (comma-separated component names)
+  components: []
+  
+  # Assignee (Jira username or account ID)
+  assignee: null  # Set to assign to specific user
+  
+  # Reporter (Jira username or account ID)
+  reporter: null  # Set to specify reporter (defaults to authenticated user)
+  
+  # Environment
+  environment: "staging"  # Default environment for issues
+
+# Custom Fields Mapping
+# ======================
+# Map custom field names to their IDs
+# Use Jira API to discover custom field IDs: /rest/api/2/field
+custom_fields:
+  # Example custom fields (update with your actual field IDs)
+  # story_points: "customfield_10016"
+  # sprint: "customfield_10020"
+  # epic_link: "customfield_10014"
+  # test_plan: "customfield_10100"
+
+# Issue Creation Templates
+# ========================
+templates:
+  # Bug Template
+  bug:
+    issue_type: "Bug"
+    priority: "High"
+    labels: ["bug", "automation"]
+  
+  # Task Template
+  task:
+    issue_type: "Task"
+    priority: "Medium"
+    labels: ["automation", "qa"]
+  
+  # Story Template
+  story:
+    issue_type: "Story"
+    priority: "Medium"
+    labels: ["automation", "feature"]
+  
+  # Epic Template
+  epic:
+    issue_type: "Epic"
+    priority: "Medium"
+    labels: ["automation", "epic"]
+  
+  # Sub-task Template
+  sub_task:
+    issue_type: "Sub-task"
+    priority: "Medium"
+    labels: ["automation", "sub-task"]
+
+# Search Filters
+# ==============
+# Predefined JQL queries for common searches
+filters:
+  # My Open Issues
+  my_open: "assignee = currentUser() AND status != Done"
+  
+  # All Open Issues in Project
+  project_open: "project = {project_key} AND status != Done"
+  
+  # Bugs in Project
+  project_bugs: "project = {project_key} AND issuetype = Bug AND status != Done"
+  
+  # High Priority Issues
+  high_priority: "project = {project_key} AND priority = High AND status != Done"
+  
+  # Issues Created This Week
+  this_week: "project = {project_key} AND created >= startOfWeek()"
+  
+  # Issues Updated Today
+  updated_today: "project = {project_key} AND updated >= startOfDay()"
+
+# Workflow Settings
+# ================
+workflow:
+  # Status transitions
+  transitions:
+    # Common transitions (update based on your workflow)
+    to_in_progress: "In Progress"
+    to_review: "In Review"
+    to_done: "Done"
+    to_closed: "Closed"
+  
+  # Resolution values
+  resolutions:
+    done: "Done"
+    fixed: "Fixed"
+    won_t_do: "Won't Do"
+    duplicate: "Duplicate"
+    cannot_reproduce: "Cannot Reproduce"
+
+# Logging
+# =======
+logging:
+  enabled: true
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_file: "logs/jira_client.log"
+

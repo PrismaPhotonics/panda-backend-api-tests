@@ -5,14 +5,13 @@ Integration Tests - Alerts: Negative Scenarios
 Tests for error handling and negative scenarios in alert generation.
 
 Tests Covered (Xray):
-    - PZ-15010: Alert Generation - Invalid Class ID
-    - PZ-15011: Alert Generation - Invalid Severity
-    - PZ-15012: Alert Generation - Invalid DOF Range
-    - PZ-15013: Alert Generation - Missing Required Fields
-    - PZ-15014: Alert Generation - RabbitMQ Connection Failure
-    - PZ-15015: Alert Generation - MongoDB Connection Failure (SKIPPED - alerts not stored in MongoDB)
-    - PZ-15016: Alert Generation - Invalid Alert ID Format
-    - PZ-15017: Alert Generation - Duplicate Alert IDs
+    - PZ-14938: Alert Generation - Invalid Class ID
+    - PZ-14939: Alert Generation - Invalid Severity
+    - PZ-14940: Alert Generation - Invalid DOF Range
+    - PZ-14941: Alert Generation - Missing Required Fields
+    - PZ-14942: Alert Generation - RabbitMQ Connection Failure
+    - PZ-14943: Alert Generation - Invalid Alert ID Format
+    - PZ-14944: Alert Generation - Duplicate Alert IDs
 
 Author: QA Automation Architect
 Date: 2025-11-13
@@ -41,29 +40,30 @@ from be_focus_server_tests.integration.alerts.alert_test_helpers import (
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.alerts
-@pytest.mark.api
 @pytest.mark.negative
+
+
+
+@pytest.mark.regression
 class TestAlertGenerationNegative:
     """
     Test suite for negative alert generation scenarios.
     
     Tests covered:
-        - PZ-15010: Invalid Class ID
-        - PZ-15011: Invalid Severity
-        - PZ-15012: Invalid DOF Range
-        - PZ-15013: Missing Required Fields
-        - PZ-15014: RabbitMQ Connection Failure
-        - PZ-15015: MongoDB Connection Failure
-        - PZ-15016: Invalid Alert ID Format
-        - PZ-15017: Duplicate Alert IDs
+        - PZ-14938: Invalid Class ID
+        - PZ-14939: Invalid Severity
+        - PZ-14940: Invalid DOF Range
+        - PZ-14941: Missing Required Fields
+        - PZ-14942: RabbitMQ Connection Failure
+        - PZ-14943: Invalid Alert ID Format
+        - PZ-14944: Duplicate Alert IDs
     """
     
-    @pytest.mark.xray("PZ-15010")
+    @pytest.mark.xray("PZ-14938")
+    @pytest.mark.regression
     def test_invalid_class_id(self, config_manager):
         """
-        Test PZ-15010: Alert Generation - Invalid Class ID.
+        Test PZ-14938: Alert Generation - Invalid Class ID.
         
         Objective:
             Verify that alerts with invalid class IDs are rejected.
@@ -77,7 +77,7 @@ class TestAlertGenerationNegative:
             Alert is rejected with appropriate error message (400/422 status code).
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Invalid Class ID (PZ-15010)")
+        logger.info("TEST: Alert Generation - Invalid Class ID (PZ-14938)")
         logger.info("=" * 80)
         
         invalid_class_ids = [0, 1, 100, 105, 999, -1]
@@ -112,10 +112,11 @@ class TestAlertGenerationNegative:
         assert rejected_count > 0, f"None of the invalid class IDs were rejected. Expected at least some rejections."
         logger.info(f"✅ TEST PASSED: {rejected_count}/{len(invalid_class_ids)} invalid class IDs rejected")
     
-    @pytest.mark.xray("PZ-15011")
+    @pytest.mark.xray("PZ-14939")
+    @pytest.mark.regression
     def test_invalid_severity(self, config_manager):
         """
-        Test PZ-15011: Alert Generation - Invalid Severity.
+        Test PZ-14939: Alert Generation - Invalid Severity.
         
         Objective:
             Verify that alerts with invalid severity levels are rejected.
@@ -129,7 +130,7 @@ class TestAlertGenerationNegative:
             Alert is rejected with appropriate error message (400/422 status code).
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Invalid Severity (PZ-15011)")
+        logger.info("TEST: Alert Generation - Invalid Severity (PZ-14939)")
         logger.info("=" * 80)
         
         invalid_severities = [0, 4, 5, -1, 100]
@@ -163,10 +164,11 @@ class TestAlertGenerationNegative:
         assert rejected_count > 0, f"None of the invalid severities were rejected. Expected at least some rejections."
         logger.info(f"✅ TEST PASSED: {rejected_count}/{len(invalid_severities)} invalid severities rejected")
     
-    @pytest.mark.xray("PZ-15012")
+    @pytest.mark.xray("PZ-14940")
+    @pytest.mark.regression
     def test_invalid_dof_range(self, config_manager):
         """
-        Test PZ-15012: Alert Generation - Invalid DOF Range.
+        Test PZ-14940: Alert Generation - Invalid DOF Range.
         
         Objective:
             Verify that alerts with invalid DOF (Distance on Fiber) values
@@ -182,7 +184,7 @@ class TestAlertGenerationNegative:
             Invalid DOF values are rejected or handled appropriately (400/422 status code).
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Invalid DOF Range (PZ-15012)")
+        logger.info("TEST: Alert Generation - Invalid DOF Range (PZ-14940)")
         logger.info("=" * 80)
         
         # Test negative DOF values
@@ -218,10 +220,11 @@ class TestAlertGenerationNegative:
         assert rejected_count > 0, f"None of the invalid DOF values were rejected. Expected at least some rejections."
         logger.info(f"✅ TEST PASSED: {rejected_count}/{len(invalid_dofs)} invalid DOF values rejected")
     
-    @pytest.mark.xray("PZ-15013")
+    @pytest.mark.xray("PZ-14941")
+    @pytest.mark.regression
     def test_missing_required_fields(self, config_manager):
         """
-        Test PZ-15013: Alert Generation - Missing Required Fields.
+        Test PZ-14941: Alert Generation - Missing Required Fields.
         
         Objective:
             Verify that alerts with missing required fields are rejected.
@@ -238,7 +241,7 @@ class TestAlertGenerationNegative:
             Alerts with missing required fields are rejected (400 Bad Request).
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Missing Required Fields (PZ-15013)")
+        logger.info("TEST: Alert Generation - Missing Required Fields (PZ-14941)")
         logger.info("=" * 80)
         
         # Test missing alertsAmount
@@ -313,11 +316,12 @@ class TestAlertGenerationNegative:
             f"Only {rejected_count}/{len(invalid_payloads)} missing fields were rejected. Expected at least 80%."
         logger.info(f"✅ TEST PASSED: {rejected_count}/{len(invalid_payloads)} missing required fields rejected")
     
-    @pytest.mark.xray("PZ-15014")
+    @pytest.mark.xray("PZ-14942")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
+    @pytest.mark.regression
     def test_rabbitmq_connection_failure(self, config_manager):
         """
-        Test PZ-15014: Alert Generation - RabbitMQ Connection Failure.
+        Test PZ-14942: Alert Generation - RabbitMQ Connection Failure.
         
         Objective:
             Verify that system handles RabbitMQ connection failures gracefully.
@@ -332,7 +336,7 @@ class TestAlertGenerationNegative:
             Appropriate error message is returned.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - RabbitMQ Connection Failure (PZ-15014)")
+        logger.info("TEST: Alert Generation - RabbitMQ Connection Failure (PZ-14942)")
         logger.info("=" * 80)
         
         # Attempt connection to invalid host
@@ -363,6 +367,8 @@ class TestAlertGenerationNegative:
     
     @pytest.mark.xray("PZ-15015")
     @pytest.mark.skip(reason="Alerts are NOT stored in MongoDB - this test is invalid")
+
+    @pytest.mark.regression
     def test_mongodb_connection_failure(self, config_manager):
         """
         Test PZ-15015: Alert Generation - MongoDB Connection Failure.
@@ -376,10 +382,11 @@ class TestAlertGenerationNegative:
         """
         pytest.skip("Alerts are NOT stored in MongoDB - this test is invalid")
     
-    @pytest.mark.xray("PZ-15016")
+    @pytest.mark.xray("PZ-14943")
+    @pytest.mark.regression
     def test_invalid_alert_id_format(self, config_manager):
         """
-        Test PZ-15016: Alert Generation - Invalid Alert ID Format.
+        Test PZ-14943: Alert Generation - Invalid Alert ID Format.
         
         Objective:
             Verify that alerts with invalid alert ID formats are rejected or handled appropriately.
@@ -394,7 +401,7 @@ class TestAlertGenerationNegative:
         Note: The API may accept various formats, so we test only clearly invalid cases.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Invalid Alert ID Format (PZ-15016)")
+        logger.info("TEST: Alert Generation - Invalid Alert ID Format (PZ-14943)")
         logger.info("=" * 80)
         
         # Test empty alert ID
@@ -441,10 +448,11 @@ class TestAlertGenerationNegative:
         # Note: API may accept various ID formats, so we just verify it handles them
         logger.info(f"✅ TEST PASSED: Invalid alert ID formats tested ({rejected_count}/{len(invalid_payloads)} rejected)")
     
-    @pytest.mark.xray("PZ-15017")
+    @pytest.mark.xray("PZ-14944")
+    @pytest.mark.regression
     def test_duplicate_alert_ids(self, config_manager):
         """
-        Test PZ-15017: Alert Generation - Duplicate Alert IDs.
+        Test PZ-14944: Alert Generation - Duplicate Alert IDs.
         
         Objective:
             Verify that duplicate alert IDs are handled appropriately.
@@ -459,7 +467,7 @@ class TestAlertGenerationNegative:
             Note: The system may accept duplicate IDs as separate alert events.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Duplicate Alert IDs (PZ-15017)")
+        logger.info("TEST: Alert Generation - Duplicate Alert IDs (PZ-14944)")
         logger.info("=" * 80)
         
         duplicate_id = f"test-duplicate-{int(time.time())}"

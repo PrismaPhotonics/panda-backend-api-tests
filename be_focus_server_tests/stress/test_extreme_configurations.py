@@ -28,9 +28,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Extreme Configuration Values
 # ===================================================================
 
-@pytest.mark.stress
-@pytest.mark.integration
 @pytest.mark.api
+
+
+@pytest.mark.regression
 class TestExtremeConfigurationValues:
     """
     Test suite for extreme configuration values stress testing.
@@ -43,6 +44,8 @@ class TestExtremeConfigurationValues:
     
     @pytest.mark.xray("PZ-13880")
     @pytest.mark.slow
+
+    @pytest.mark.regression
     def test_configuration_with_extreme_values(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13880: Configuration with Extreme Values.
@@ -120,6 +123,9 @@ class TestExtremeConfigurationValues:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_extreme_configurations_summary():
     """
     Summary test for extreme configurations tests.

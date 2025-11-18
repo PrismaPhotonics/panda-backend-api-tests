@@ -5,11 +5,11 @@ Integration Tests - Alerts: Positive Scenarios
 Tests for successful alert generation and processing from Backend.
 
 Tests Covered (Xray):
-    - PZ-15000: Alert Generation - Successful SD Alert
-    - PZ-15001: Alert Generation - Successful SC Alert
-    - PZ-15002: Alert Generation - Multiple Alerts
-    - PZ-15003: Alert Generation - Different Severity Levels
-    - PZ-15004: Alert Generation - Alert Processing via RabbitMQ
+    - PZ-14933: Alert Generation - Successful SD Alert
+    - PZ-14934: Alert Generation - Successful SC Alert
+    - PZ-14935: Alert Generation - Multiple Alerts
+    - PZ-14936: Alert Generation - Different Severity Levels
+    - PZ-14937: Alert Generation - Alert Processing via RabbitMQ
 
 Author: QA Automation Architect
 Date: 2025-11-13
@@ -70,26 +70,28 @@ def _get_rabbitmq_connection_manager(config_manager):
     )
 
 
-@pytest.mark.integration
-@pytest.mark.alerts
-@pytest.mark.api
 @pytest.mark.positive
+
+
+
+@pytest.mark.regression
 class TestAlertGenerationPositive:
     """
     Test suite for positive alert generation scenarios.
     
     Tests covered:
-        - PZ-15000: Successful SD Alert Generation
-        - PZ-15001: Successful SC Alert Generation
-        - PZ-15002: Multiple Alerts Generation
-        - PZ-15003: Different Severity Levels
-        - PZ-15004: Alert Processing via RabbitMQ
+        - PZ-14933: Successful SD Alert Generation
+        - PZ-14934: Successful SC Alert Generation
+        - PZ-14935: Multiple Alerts Generation
+        - PZ-14936: Different Severity Levels
+        - PZ-14937: Alert Processing via RabbitMQ
     """
     
-    @pytest.mark.xray("PZ-15000")
+    @pytest.mark.xray("PZ-14933")
+    @pytest.mark.regression
     def test_successful_sd_alert_generation(self, config_manager):
         """
-        Test PZ-15000: Alert Generation - Successful SD Alert.
+        Test PZ-14933: Alert Generation - Successful SD Alert.
         
         Objective:
             Verify that SD (Spatial Distribution) alerts can be successfully
@@ -104,7 +106,7 @@ class TestAlertGenerationPositive:
             Alert is successfully generated and sent via HTTP API.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Successful SD Alert (PZ-15000)")
+        logger.info("TEST: Alert Generation - Successful SD Alert (PZ-14933)")
         logger.info("=" * 80)
         
         # Alert payload for SD alert
@@ -135,10 +137,11 @@ class TestAlertGenerationPositive:
             logger.error(f"❌ TEST FAILED: {e}")
             raise
     
-    @pytest.mark.xray("PZ-15001")
+    @pytest.mark.xray("PZ-14934")
+    @pytest.mark.regression
     def test_successful_sc_alert_generation(self, config_manager):
         """
-        Test PZ-15001: Alert Generation - Successful SC Alert.
+        Test PZ-14934: Alert Generation - Successful SC Alert.
         
         Objective:
             Verify that SC (Single Channel) alerts can be successfully
@@ -154,7 +157,7 @@ class TestAlertGenerationPositive:
             Alert is successfully generated and processed.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Successful SC Alert (PZ-15001)")
+        logger.info("TEST: Alert Generation - Successful SC Alert (PZ-14934)")
         logger.info("=" * 80)
         
         # Alert payload for SC alert
@@ -185,10 +188,11 @@ class TestAlertGenerationPositive:
             logger.error(f"❌ TEST FAILED: {e}")
             raise
     
-    @pytest.mark.xray("PZ-15002")
+    @pytest.mark.xray("PZ-14935")
+    @pytest.mark.regression
     def test_multiple_alerts_generation(self, config_manager):
         """
-        Test PZ-15002: Alert Generation - Multiple Alerts.
+        Test PZ-14935: Alert Generation - Multiple Alerts.
         
         Objective:
             Verify that multiple alerts can be generated and processed
@@ -205,7 +209,7 @@ class TestAlertGenerationPositive:
             No conflicts or data loss.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Multiple Alerts (PZ-15002)")
+        logger.info("TEST: Alert Generation - Multiple Alerts (PZ-14935)")
         logger.info("=" * 80)
         
         num_alerts = 5
@@ -242,10 +246,11 @@ class TestAlertGenerationPositive:
         
         logger.info(f"✅ TEST PASSED: All {num_alerts} alerts generated and sent successfully")
     
-    @pytest.mark.xray("PZ-15003")
+    @pytest.mark.xray("PZ-14936")
+    @pytest.mark.regression
     def test_different_severity_levels(self, config_manager):
         """
-        Test PZ-15003: Alert Generation - Different Severity Levels.
+        Test PZ-14936: Alert Generation - Different Severity Levels.
         
         Objective:
             Verify that alerts with different severity levels (1, 2, 3)
@@ -261,7 +266,7 @@ class TestAlertGenerationPositive:
             All severity levels are processed correctly.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Different Severity Levels (PZ-15003)")
+        logger.info("TEST: Alert Generation - Different Severity Levels (PZ-14936)")
         logger.info("=" * 80)
         
         severities = [1, 2, 3]
@@ -289,11 +294,12 @@ class TestAlertGenerationPositive:
         
         logger.info("✅ TEST PASSED: All severity levels processed correctly")
     
-    @pytest.mark.xray("PZ-15004")
+    @pytest.mark.xray("PZ-14937")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
+    @pytest.mark.regression
     def test_alert_processing_via_rabbitmq(self, config_manager):
         """
-        Test PZ-15004: Alert Processing via RabbitMQ.
+        Test PZ-14937: Alert Processing via RabbitMQ.
         
         Objective:
             Verify that alerts are correctly processed through RabbitMQ
@@ -309,7 +315,7 @@ class TestAlertGenerationPositive:
             Alert is correctly processed via RabbitMQ.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Processing via RabbitMQ (PZ-15004)")
+        logger.info("TEST: Alert Processing via RabbitMQ (PZ-14937)")
         logger.info("=" * 80)
         
         # Get RabbitMQ configuration

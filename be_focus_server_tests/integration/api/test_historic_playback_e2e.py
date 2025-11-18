@@ -31,11 +31,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Historic Playback E2E
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.historic
-@pytest.mark.e2e
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestHistoricPlaybackCompleteE2E:
     """
     Test suite for complete historic playback end-to-end flow.
@@ -49,6 +48,8 @@ class TestHistoricPlaybackCompleteE2E:
     @pytest.mark.xray("PZ-13872")
     @pytest.mark.slow
     @pytest.mark.xray("PZ-14101")
+
+    @pytest.mark.regression
     def test_historic_playback_complete_e2e_flow(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13872: Historic Playback Complete End-to-End Flow.
@@ -263,24 +264,4 @@ class TestHistoricPlaybackCompleteE2E:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_historic_playback_e2e_summary():
-    """
-    Summary test for historic playback E2E tests.
-    
-    Xray Tests Covered:
-        - PZ-13872: Historic Playback Complete End-to-End Flow
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Historic Playback E2E Test Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13872: Complete E2E Flow (config → poll → validate → complete)")
-    logger.info("=" * 80)
 

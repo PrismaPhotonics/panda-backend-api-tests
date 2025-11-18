@@ -21,6 +21,7 @@ from src.infrastructure.ssh_manager import SSHManager
 from config.config_manager import ConfigManager
 
 
+@pytest.mark.regression
 class TestExternalServicesConnectivity(InfrastructureTest):
     """
     Comprehensive connectivity tests for all external services.
@@ -47,7 +48,8 @@ class TestExternalServicesConnectivity(InfrastructureTest):
         return ConfigManager(current_env)
     
     @pytest.fixture(scope="class")
-    def test_results(self):
+    @pytest.mark.regression
+def test_results(self):
         """
         Store test results for final summary.
         
@@ -70,6 +72,10 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.connectivity
     @pytest.mark.mongodb
     @pytest.mark.xray("PZ-13807")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_mongodb_connection(self, mongodb_manager: MongoDBManager, test_results: Dict[str, Any]):
         """
         Test MongoDB connection and basic operations.
@@ -130,6 +136,8 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.connectivity
     @pytest.mark.mongodb
     @pytest.mark.xray("PZ-13899")
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_mongodb_status_via_kubernetes(self, mongodb_manager: MongoDBManager):
         """
         Test MongoDB status via Kubernetes API.
@@ -176,6 +184,10 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.kubernetes
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_kubernetes_connection(self, kubernetes_manager: KubernetesManager, test_results: Dict[str, Any]):
         """
         Test Kubernetes cluster connection.
@@ -226,6 +238,8 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.connectivity
     @pytest.mark.kubernetes
     @pytest.mark.xray("PZ-13899")
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_kubernetes_list_deployments(self, kubernetes_manager: KubernetesManager):
         """
         Test Kubernetes deployment listing.
@@ -269,6 +283,10 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.connectivity
     @pytest.mark.kubernetes
     @pytest.mark.xray("PZ-13899")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_kubernetes_list_pods(self, kubernetes_manager: KubernetesManager):
         """
         Test Kubernetes pod listing.
@@ -313,6 +331,8 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.integration
     @pytest.mark.connectivity
     @pytest.mark.ssh
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_ssh_connection(self, ssh_manager: SSHManager, test_results: Dict[str, Any]):
         """
         Test SSH connection to k9s environment.
@@ -388,6 +408,10 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.connectivity
     @pytest.mark.ssh
     @pytest.mark.xray("PZ-13900")
+
+    @pytest.mark.regression
+
+    @pytest.mark.smoke
     def test_ssh_network_operations(self, ssh_manager: SSHManager):
         """
         Test SSH network operations.
@@ -444,6 +468,8 @@ class TestExternalServicesConnectivity(InfrastructureTest):
     @pytest.mark.connectivity
     @pytest.mark.summary
     @pytest.mark.xray("PZ-13898")
+
+    @pytest.mark.regression
     def test_all_services_summary(self, test_results: Dict[str, Any]):
         """
         Summary test for all external service connectivity.
@@ -512,6 +538,9 @@ class TestExternalServicesConnectivity(InfrastructureTest):
 # =================================================================
 
 @pytest.mark.xray("PZ-13898")
+
+
+@pytest.mark.regression
 def test_quick_mongodb_ping(mongodb_manager: MongoDBManager):
     """
     Quick MongoDB ping test (standalone, can run independently).
@@ -534,6 +563,10 @@ def test_quick_mongodb_ping(mongodb_manager: MongoDBManager):
 
 
 @pytest.mark.xray("PZ-13899")
+
+
+
+@pytest.mark.regression
 def test_quick_kubernetes_ping(kubernetes_manager: KubernetesManager):
     """
     Quick Kubernetes ping test (standalone, can run independently).
@@ -556,6 +589,10 @@ def test_quick_kubernetes_ping(kubernetes_manager: KubernetesManager):
 
 
 @pytest.mark.xray("PZ-13900")
+
+
+
+@pytest.mark.regression
 def test_quick_ssh_ping(ssh_manager: SSHManager):
     """
     Quick SSH ping test (standalone, can run independently).

@@ -27,9 +27,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.performance
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestResourceUsage:
     """
     Test suite for resource usage performance.
@@ -41,6 +43,9 @@ class TestResourceUsage:
     """
     
     @pytest.mark.xray("PZ-14794")
+
+    
+    @pytest.mark.regression
     def test_large_payload_handling(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14794: Performance - Large Payload Handling.
@@ -107,6 +112,9 @@ class TestResourceUsage:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14795")
+
+    
+    @pytest.mark.regression
     def test_memory_usage_under_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14795: Performance - Memory Usage Under Load.
@@ -195,6 +203,9 @@ class TestResourceUsage:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14796")
+
+    
+    @pytest.mark.regression
     def test_cpu_usage_under_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14796: Performance - CPU Usage Under Load.

@@ -5,12 +5,11 @@ Integration Tests - Alerts: Load Scenarios
 Tests for load and stress scenarios in alert generation.
 
 Tests Covered (Xray):
-    - PZ-15030: Alert Generation - High Volume Load
-    - PZ-15031: Alert Generation - Sustained Load
-    - PZ-15032: Alert Generation - Burst Load
-    - PZ-15033: Alert Generation - Mixed Alert Types Load
-    - PZ-15034: Alert Generation - RabbitMQ Queue Capacity
-    - PZ-15035: Alert Generation - MongoDB Write Load (SKIPPED - alerts not stored in MongoDB)
+    - PZ-14953: Alert Generation - High Volume Load
+    - PZ-14954: Alert Generation - Sustained Load
+    - PZ-14955: Alert Generation - Burst Load
+    - PZ-14956: Alert Generation - Mixed Alert Types Load
+    - PZ-14957: Alert Generation - RabbitMQ Queue Capacity
 
 Author: QA Automation Architect
 Date: 2025-11-13
@@ -70,28 +69,28 @@ def _get_rabbitmq_connection_manager(config_manager):
     )
 
 
-@pytest.mark.integration
-@pytest.mark.alerts
-@pytest.mark.api
-@pytest.mark.load
 @pytest.mark.slow
+
+
+
+@pytest.mark.regression
 class TestAlertGenerationLoad:
     """
     Test suite for load scenarios in alert generation.
     
     Tests covered:
-        - PZ-15030: High Volume Load
-        - PZ-15031: Sustained Load
-        - PZ-15032: Burst Load
-        - PZ-15033: Mixed Alert Types Load
-        - PZ-15034: RabbitMQ Queue Capacity
-        - PZ-15035: MongoDB Write Load
+        - PZ-14953: High Volume Load
+        - PZ-14954: Sustained Load
+        - PZ-14955: Burst Load
+        - PZ-14956: Mixed Alert Types Load
+        - PZ-14957: RabbitMQ Queue Capacity
     """
     
-    @pytest.mark.xray("PZ-15030")
+    @pytest.mark.xray("PZ-14953")
+    @pytest.mark.regression
     def test_high_volume_load(self, config_manager):
         """
-        Test PZ-15030: Alert Generation - High Volume Load.
+        Test PZ-14953: Alert Generation - High Volume Load.
         
         Objective:
             Verify that system can handle high volume of alerts
@@ -109,7 +108,7 @@ class TestAlertGenerationLoad:
             No system degradation.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - High Volume Load (PZ-15030)")
+        logger.info("TEST: Alert Generation - High Volume Load (PZ-14953)")
         logger.info("=" * 80)
         
         num_alerts = 1000
@@ -167,10 +166,11 @@ class TestAlertGenerationLoad:
         
         logger.info("✅ TEST PASSED: High volume load handled successfully")
     
-    @pytest.mark.xray("PZ-15031")
+    @pytest.mark.xray("PZ-14954")
+    @pytest.mark.regression
     def test_sustained_load(self, config_manager):
         """
-        Test PZ-15031: Alert Generation - Sustained Load.
+        Test PZ-14954: Alert Generation - Sustained Load.
         
         Objective:
             Verify that system can handle sustained load over extended period
@@ -186,7 +186,7 @@ class TestAlertGenerationLoad:
             No memory leaks or performance degradation.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Sustained Load (PZ-15031)")
+        logger.info("TEST: Alert Generation - Sustained Load (PZ-14954)")
         logger.info("=" * 80)
         
         duration_seconds = 600  # 10 minutes
@@ -241,10 +241,11 @@ class TestAlertGenerationLoad:
         
         logger.info("✅ TEST PASSED: Sustained load handled successfully")
     
-    @pytest.mark.xray("PZ-15032")
+    @pytest.mark.xray("PZ-14955")
+    @pytest.mark.regression
     def test_burst_load(self, config_manager):
         """
-        Test PZ-15032: Alert Generation - Burst Load.
+        Test PZ-14955: Alert Generation - Burst Load.
         
         Objective:
             Verify that system can handle sudden burst of alerts
@@ -260,7 +261,7 @@ class TestAlertGenerationLoad:
             All alerts are processed.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Burst Load (PZ-15032)")
+        logger.info("TEST: Alert Generation - Burst Load (PZ-14955)")
         logger.info("=" * 80)
         
         burst_size = 500
@@ -318,10 +319,11 @@ class TestAlertGenerationLoad:
         
         logger.info("✅ TEST PASSED: Burst load handled successfully")
     
-    @pytest.mark.xray("PZ-15033")
+    @pytest.mark.xray("PZ-14956")
+    @pytest.mark.regression
     def test_mixed_alert_types_load(self, config_manager):
         """
-        Test PZ-15033: Alert Generation - Mixed Alert Types Load.
+        Test PZ-14956: Alert Generation - Mixed Alert Types Load.
         
         Objective:
             Verify that system can handle mixed alert types (SD, SC, different severities)
@@ -336,7 +338,7 @@ class TestAlertGenerationLoad:
             All alert types are processed correctly under load.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - Mixed Alert Types Load (PZ-15033)")
+        logger.info("TEST: Alert Generation - Mixed Alert Types Load (PZ-14956)")
         logger.info("=" * 80)
         
         num_alerts = 500
@@ -401,11 +403,12 @@ class TestAlertGenerationLoad:
         
         logger.info("✅ TEST PASSED: Mixed alert types load handled successfully")
     
-    @pytest.mark.xray("PZ-15034")
+    @pytest.mark.xray("PZ-14957")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
+    @pytest.mark.regression
     def test_rabbitmq_queue_capacity(self, config_manager):
         """
-        Test PZ-15034: Alert Generation - RabbitMQ Queue Capacity.
+        Test PZ-14957: Alert Generation - RabbitMQ Queue Capacity.
         
         Objective:
             Verify that RabbitMQ queues can handle high volume of alerts
@@ -422,7 +425,7 @@ class TestAlertGenerationLoad:
             No message loss.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Alert Generation - RabbitMQ Queue Capacity (PZ-15034)")
+        logger.info("TEST: Alert Generation - RabbitMQ Queue Capacity (PZ-14957)")
         logger.info("=" * 80)
         
         # Get RabbitMQ configuration
@@ -495,6 +498,8 @@ class TestAlertGenerationLoad:
     
     @pytest.mark.xray("PZ-15035")
     @pytest.mark.skip(reason="Alerts are NOT stored in MongoDB - this test is invalid")
+
+    @pytest.mark.regression
     def test_mongodb_write_load(self, config_manager):
         """
         Test PZ-15035: Alert Generation - MongoDB Write Load.

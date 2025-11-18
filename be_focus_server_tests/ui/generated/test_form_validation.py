@@ -9,6 +9,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 
+@pytest.mark.regression
 class TestFormValidation:
     """
     Verify form field validation
@@ -19,6 +20,8 @@ class TestFormValidation:
     
     @pytest.mark.ui
     @pytest.mark.generated
+
+    @pytest.mark.regression
     def test_form_validation(self, page: Page):
         """
         Test Steps:

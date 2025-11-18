@@ -24,10 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.error_handling
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestHTTPErrorCodes:
     """
     Test suite for HTTP error code handling.
@@ -39,6 +40,9 @@ class TestHTTPErrorCodes:
     """
     
     @pytest.mark.xray("PZ-14780")
+
+    
+    @pytest.mark.regression
     def test_500_internal_server_error(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14780: Error Handling - 500 Internal Server Error.
@@ -140,6 +144,9 @@ class TestHTTPErrorCodes:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14781")
+
+    
+    @pytest.mark.regression
     def test_503_service_unavailable(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14781: Error Handling - 503 Service Unavailable.
@@ -225,6 +232,9 @@ class TestHTTPErrorCodes:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14782")
+
+    
+    @pytest.mark.regression
     def test_504_gateway_timeout(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14782: Error Handling - 504 Gateway Timeout.

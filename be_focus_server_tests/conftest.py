@@ -344,7 +344,7 @@ def focus_server_api(config_manager: ConfigManager):
                     logger.warning("⚠️  CI environment detected - Focus Server not available, skipping health check")
                     pytest.skip("Focus Server not available in CI environment")
             
-        is_healthy = api_client.health_check()
+            is_healthy = api_client.health_check()
         except Exception as health_error:
             logger.warning(f"Focus Server API health check failed: {health_error}")
             # In CI, skip instead of failing

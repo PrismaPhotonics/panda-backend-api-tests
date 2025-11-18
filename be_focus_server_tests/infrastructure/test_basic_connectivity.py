@@ -46,11 +46,9 @@ logger = logging.getLogger(__name__)
 # MongoDB Direct Connectivity Tests
 # =================================================================
 
-@pytest.mark.integration
-@pytest.mark.connectivity
-@pytest.mark.mongodb
-@pytest.mark.skipif(not PYMONGO_AVAILABLE, reason="pymongo not installed")
 @pytest.mark.xray("PZ-13898")
+@pytest.mark.regression
+@pytest.mark.smoke
 def test_mongodb_direct_connection(current_env):
     """
     Test direct MongoDB connection without Kubernetes dependency.
@@ -127,11 +125,11 @@ def test_mongodb_direct_connection(current_env):
 # Kubernetes Direct Connectivity Tests
 # =================================================================
 
-@pytest.mark.integration
-@pytest.mark.connectivity
-@pytest.mark.kubernetes
-@pytest.mark.skipif(not K8S_AVAILABLE, reason="kubernetes client not installed")
 @pytest.mark.xray("PZ-13899")
+
+
+@pytest.mark.regression
+@pytest.mark.smoke
 def test_kubernetes_direct_connection():
     """
     Test direct Kubernetes connection.
@@ -232,11 +230,11 @@ def test_kubernetes_direct_connection():
 # SSH Direct Connectivity Tests
 # =================================================================
 
-@pytest.mark.integration
-@pytest.mark.connectivity
-@pytest.mark.ssh
-@pytest.mark.skipif(not SSH_AVAILABLE, reason="paramiko not installed")
 @pytest.mark.xray("PZ-13900")
+
+
+@pytest.mark.regression
+@pytest.mark.smoke
 def test_ssh_direct_connection(current_env):
     """
     Test direct SSH connection to k9s environment.
@@ -367,9 +365,13 @@ def test_ssh_direct_connection(current_env):
 # Comprehensive Connectivity Summary
 # =================================================================
 
-@pytest.mark.integration
-@pytest.mark.connectivity
 @pytest.mark.summary
+
+
+@pytest.mark.regression
+
+
+@pytest.mark.smoke
 def test_connectivity_summary():
     """
     Run all connectivity tests and provide a summary.

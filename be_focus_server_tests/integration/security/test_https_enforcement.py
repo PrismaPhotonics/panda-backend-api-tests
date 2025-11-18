@@ -21,10 +21,11 @@ from src.core.exceptions import APIError
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.security
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestHTTPSEnforcement:
     """
     Test suite for HTTPS enforcement security.
@@ -35,6 +36,8 @@ class TestHTTPSEnforcement:
     
     @pytest.mark.xray("PZ-14778")
     @pytest.mark.xray("PZ-13572")
+
+    @pytest.mark.regression
     def test_https_enforcement(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14778: Security - HTTPS Enforcement.

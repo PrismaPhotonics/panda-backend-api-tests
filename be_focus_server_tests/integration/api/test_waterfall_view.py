@@ -27,9 +27,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Waterfall View
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.view_type
+
+
+@pytest.mark.regression
 class TestWaterfallView:
     """
     Test suite for Waterfall view type handling.
@@ -42,6 +43,8 @@ class TestWaterfallView:
     
     @pytest.mark.xray("PZ-13557")
     @pytest.mark.jira("PZ-13238")  # Bug: Waterfall configuration fails when optional fields omitted
+
+    @pytest.mark.regression
     def test_waterfall_view_handling(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13557: API - Waterfall View Handling.
@@ -150,24 +153,4 @@ class TestWaterfallView:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_waterfall_view_summary():
-    """
-    Summary test for Waterfall view tests.
-    
-    Xray Tests Covered:
-        - PZ-13557: Waterfall view handling
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Waterfall View Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13557: Waterfall view configuration and response")
-    logger.info("=" * 80)
 

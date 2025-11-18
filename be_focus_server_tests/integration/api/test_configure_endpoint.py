@@ -37,9 +37,10 @@ logger = logging.getLogger(__name__)
 # Test Class: POST /configure Endpoint - Current Working Structure
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestConfigureEndpoint:
     """
     Test suite for POST /configure endpoint (CURRENT working structure).
@@ -61,6 +62,8 @@ class TestConfigureEndpoint:
     
     @pytest.mark.xray("PZ-14750")
     @pytest.mark.xray("PZ-13547")
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_configure_valid_configuration(
         self,
         focus_server_api: FocusServerAPI
@@ -144,6 +147,8 @@ class TestConfigureEndpoint:
     
     @pytest.mark.xray("PZ-14751")
     @pytest.mark.xray("PZ-13879")
+
+    @pytest.mark.regression
     def test_configure_missing_required_fields(
         self,
         focus_server_api: FocusServerAPI
@@ -221,6 +226,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14752")
+
+    
+    @pytest.mark.regression
     def test_configure_invalid_channel_range(
         self,
         focus_server_api: FocusServerAPI
@@ -295,6 +303,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14753")
+
+    
+    @pytest.mark.regression
     def test_configure_invalid_frequency_range(
         self,
         focus_server_api: FocusServerAPI
@@ -369,6 +380,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14754")
+
+    
+    @pytest.mark.regression
     def test_configure_invalid_view_type(
         self,
         focus_server_api: FocusServerAPI
@@ -436,6 +450,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14755")
+
+    
+    @pytest.mark.regression
     def test_configure_frequency_above_nyquist(
         self,
         focus_server_api: FocusServerAPI
@@ -522,6 +539,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14756")
+
+    
+    @pytest.mark.regression
     def test_configure_channel_count_exceeds_maximum(
         self,
         focus_server_api: FocusServerAPI
@@ -585,6 +605,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14757")
+
+    
+    @pytest.mark.regression
     def test_configure_invalid_nfft_selection(
         self,
         focus_server_api: FocusServerAPI
@@ -652,6 +675,9 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14758")
+
+    
+    @pytest.mark.regression
     def test_configure_invalid_time_range_historic(
         self,
         focus_server_api: FocusServerAPI
@@ -724,6 +750,8 @@ class TestConfigureEndpoint:
     
     @pytest.mark.xray("PZ-14759")
     @pytest.mark.xray("PZ-14790")
+
+    @pytest.mark.regression
     def test_configure_response_time_performance(
         self,
         focus_server_api: FocusServerAPI
@@ -800,46 +828,4 @@ class TestConfigureEndpoint:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_configure_endpoint_summary():
-    """
-    Summary test for POST /configure endpoint tests.
-    
-    This test documents which Xray test cases are covered in this module.
-    
-    Covered Xray Tests:
-        ✅ PZ-14750: POST /configure - Valid Configuration
-        ✅ PZ-14751: POST /configure - Missing Required Fields
-        ✅ PZ-14752: POST /configure - Invalid Channel Range
-        ✅ PZ-14753: POST /configure - Invalid Frequency Range
-        ✅ PZ-14754: POST /configure - Invalid View Type
-        ✅ PZ-14755: POST /configure - Frequency Above Nyquist
-        ✅ PZ-14756: POST /configure - Channel Count Exceeds Maximum
-        ✅ PZ-14757: POST /configure - Invalid NFFT Selection
-        ✅ PZ-14758: POST /configure - Invalid Time Range (Historic)
-        ✅ PZ-14759: POST /configure - Response Time Performance
-    
-    Total: 10 tests
-    """
-    logger.info("=" * 80)
-    logger.info("POST /configure Endpoint Tests - Summary")
-    logger.info("=" * 80)
-    logger.info("Xray Test Coverage:")
-    logger.info("  ✅ PZ-14750: Valid Configuration")
-    logger.info("  ✅ PZ-14751: Missing Required Fields")
-    logger.info("  ✅ PZ-14752: Invalid Channel Range")
-    logger.info("  ✅ PZ-14753: Invalid Frequency Range")
-    logger.info("  ✅ PZ-14754: Invalid View Type")
-    logger.info("  ✅ PZ-14755: Frequency Above Nyquist")
-    logger.info("  ✅ PZ-14756: Channel Count Exceeds Maximum")
-    logger.info("  ✅ PZ-14757: Invalid NFFT Selection")
-    logger.info("  ✅ PZ-14758: Invalid Time Range (Historic)")
-    logger.info("  ✅ PZ-14759: Response Time Performance")
-    logger.info("=" * 80)
-    logger.info("Total: 10 Tests")
-    logger.info("=" * 80)
 

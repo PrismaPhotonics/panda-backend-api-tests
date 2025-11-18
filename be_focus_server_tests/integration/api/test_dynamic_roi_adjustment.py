@@ -177,9 +177,10 @@ def configured_task_for_roi(focus_server_api):
 # Happy Path Tests
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.rabbitmq
+
+
+@pytest.mark.regression
 class TestDynamicROIHappyPath:
     """
     Test suite for dynamic ROI adjustment happy path scenarios.
@@ -190,6 +191,8 @@ class TestDynamicROIHappyPath:
     @pytest.mark.xray("PZ-13787")
     @pytest.mark.xray("PZ-13784")
     @pytest.mark.xray("PZ-13785")
+
+    @pytest.mark.regression
     def test_send_roi_change_command(self, baby_analyzer_mq_client):
         """
         Test: Successfully send ROI change command via RabbitMQ.
@@ -220,7 +223,8 @@ class TestDynamicROIHappyPath:
         
         logger.info(f"✅ ROI change command sent: [{new_start}, {new_end}]")
     
-    def test_roi_change_with_validation(self, baby_analyzer_mq_client):
+    @pytest.mark.regression
+def test_roi_change_with_validation(self, baby_analyzer_mq_client):
         """
         Test: Send ROI change with safety validation.
         
@@ -267,6 +271,8 @@ class TestDynamicROIHappyPath:
     
     @pytest.mark.xray("PZ-13788")
     @pytest.mark.xray("PZ-13786")
+
+    @pytest.mark.regression
     def test_multiple_roi_changes_sequence(self, baby_analyzer_mq_client):
         """
         Test: Send sequence of ROI changes.
@@ -300,6 +306,8 @@ class TestDynamicROIHappyPath:
     
     @pytest.mark.xray("PZ-13789")
     @pytest.mark.xray("PZ-13787")
+
+    @pytest.mark.regression
     def test_roi_expansion(self, baby_analyzer_mq_client):
         """
         Test: Expand ROI (increase sensor range).
@@ -332,6 +340,8 @@ class TestDynamicROIHappyPath:
     @pytest.mark.xray("PZ-13790")
     @pytest.mark.xray("PZ-13788")
     @pytest.mark.xray("PZ-13789")
+
+    @pytest.mark.regression
     def test_roi_shrinking(self, baby_analyzer_mq_client):
         """
         Test: Shrink ROI (decrease sensor range).
@@ -361,6 +371,10 @@ class TestDynamicROIHappyPath:
         
         logger.info(f"✅ ROI shrunk from [{current_start}, {current_end}] to [{new_start}, {new_end}]")
     
+    @pytest.mark.xray("PZ-13791")
+
+    
+    @pytest.mark.regression
     def test_roi_shift(self, baby_analyzer_mq_client):
         """
         Test: Shift ROI (move without changing size).
@@ -391,20 +405,16 @@ class TestDynamicROIHappyPath:
         baby_analyzer_mq_client.send_roi_change(start=new_start, end=new_end)
         
         logger.info(f"✅ ROI shifted from [{current_start}, {current_end}] to [{new_start}, {new_end}]")
-    
-    @pytest.mark.xray("PZ-13791")
-    def test_roi_shift(self, baby_analyzer_mq_client):
-        """Already implemented above - duplicate marker."""
-        pass
 
 
 # ===================================================================
 # Edge Cases Tests
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.rabbitmq
+
+
+@pytest.mark.regression
 class TestROIEdgeCases:
     """
     Test suite for ROI adjustment edge cases.
@@ -414,6 +424,8 @@ class TestROIEdgeCases:
     
     @pytest.mark.xray("PZ-13792")
     @pytest.mark.xray("PZ-13796")
+
+    @pytest.mark.regression
     def test_roi_with_zero_start(self, baby_analyzer_mq_client):
         """
         Test: ROI starting at sensor 0.
@@ -434,6 +446,8 @@ class TestROIEdgeCases:
     
     @pytest.mark.xray("PZ-13793")
     @pytest.mark.xray("PZ-13795")
+
+    @pytest.mark.regression
     def test_roi_with_large_range(self, baby_analyzer_mq_client):
         """
         Test: ROI with very large range.
@@ -454,6 +468,9 @@ class TestROIEdgeCases:
         logger.info("✅ ROI with large range sent successfully")
     
     @pytest.mark.xray("PZ-13794")
+
+    
+    @pytest.mark.regression
     def test_roi_with_small_range(self, baby_analyzer_mq_client):
         """
         Test: ROI with very small range (1 sensor).
@@ -472,6 +489,8 @@ class TestROIEdgeCases:
     
     @pytest.mark.xray("PZ-13795")
     @pytest.mark.xray("PZ-13797")
+
+    @pytest.mark.regression
     def test_unsafe_roi_change(self, baby_analyzer_mq_client):
         """
         Test: Unsafe ROI change (exceeds 50% limit).
@@ -520,9 +539,10 @@ class TestROIEdgeCases:
 # Error Handling Tests
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.rabbitmq
+
+
+@pytest.mark.regression
 class TestROIErrorHandling:
     """
     Test suite for ROI adjustment error handling.
@@ -532,6 +552,8 @@ class TestROIErrorHandling:
     
     @pytest.mark.xray("PZ-13796")
     @pytest.mark.xray("PZ-13792")
+
+    @pytest.mark.regression
     def test_roi_with_negative_start(self, baby_analyzer_mq_client):
         """
         Test: ROI with negative start index.
@@ -554,6 +576,8 @@ class TestROIErrorHandling:
     
     @pytest.mark.xray("PZ-13797")
     @pytest.mark.xray("PZ-13793")
+
+    @pytest.mark.regression
     def test_roi_with_negative_end(self, baby_analyzer_mq_client):
         """
         Test: ROI with negative end index.
@@ -576,6 +600,8 @@ class TestROIErrorHandling:
     
     @pytest.mark.xray("PZ-13798")
     @pytest.mark.xray("PZ-13791")
+
+    @pytest.mark.regression
     def test_roi_with_reversed_range(self, baby_analyzer_mq_client):
         """
         Test: ROI with end < start.
@@ -598,6 +624,8 @@ class TestROIErrorHandling:
     
     @pytest.mark.xray("PZ-13799")
     @pytest.mark.xray("PZ-13790")
+
+    @pytest.mark.regression
     def test_roi_with_equal_start_end(self, baby_analyzer_mq_client):
         """
         Test: ROI with start == end (no sensors).
@@ -622,9 +650,10 @@ class TestROIErrorHandling:
 # Data Size Tests
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
 @pytest.mark.roi
+
+
+@pytest.mark.regression
 class TestROIDataSize:
     """
     Test suite for verifying data size consistency between different ROIs.
@@ -642,7 +671,8 @@ class TestROIDataSize:
         ROI_TEST_CASES,
         ids=[case[0] for case in ROI_TEST_CASES]  # Use test_id as test name
     )
-    def test_roi_change_should_not_affect_other_config_parameters(
+    @pytest.mark.regression
+def test_roi_change_should_not_affect_other_config_parameters(
         self, 
         focus_server_api,
         test_id,
@@ -909,7 +939,8 @@ class TestROIDataSize:
         CONFIG_TEST_CASES,
         ids=[case[0] for case in CONFIG_TEST_CASES]  # Use test_id as test name
     )
-    def test_roi_change_with_different_configs_should_not_affect_other_params(
+    @pytest.mark.regression
+def test_roi_change_with_different_configs_should_not_affect_other_params(
         self,
         focus_server_api,
         config_test_id,
@@ -1040,7 +1071,8 @@ class TestROIDataSize:
         
         logger.info(f"✅ TEST PASSED ({config_test_id}): Config params remained constant")
     
-    def test_different_rois_should_produce_same_data_size(self, focus_server_api):
+    @pytest.mark.regression
+def test_different_rois_should_produce_same_data_size(self, focus_server_api):
         """
         Test: Different ROIs should produce the same data size.
         

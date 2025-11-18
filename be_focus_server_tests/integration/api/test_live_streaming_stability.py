@@ -28,11 +28,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Live Streaming Stability
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.live
-@pytest.mark.stability
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestLiveStreamingStability:
     """
     Test suite for live streaming stability.
@@ -45,6 +44,8 @@ class TestLiveStreamingStability:
     
     @pytest.mark.xray("PZ-13800")
     @pytest.mark.xray("PZ-13570")
+
+    @pytest.mark.regression
     def test_live_streaming_stability(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13800: Live Streaming Stability.
@@ -143,24 +144,4 @@ class TestLiveStreamingStability:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_live_streaming_stability_summary():
-    """
-    Summary test for live streaming stability tests.
-    
-    Xray Tests Covered:
-        - PZ-13800: Live Streaming Stability
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("Live Streaming Stability Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13800: Live streaming stability over 5 minutes")
-    logger.info("=" * 80)
 

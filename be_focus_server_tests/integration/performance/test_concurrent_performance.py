@@ -24,9 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.performance
 @pytest.mark.api
+
+
+
+@pytest.mark.regression
 class TestConcurrentPerformance:
     """
     Test suite for concurrent requests performance.
@@ -36,6 +38,9 @@ class TestConcurrentPerformance:
     """
     
     @pytest.mark.xray("PZ-14793")
+
+    
+    @pytest.mark.regression
     def test_concurrent_requests_performance(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14793: Performance - Concurrent Requests Performance.

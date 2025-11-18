@@ -384,15 +384,15 @@ def cleanup_jobs(api: FocusServerAPI, job_ids: List[str]):
 # Test 1: Baseline Performance
 # ===================================================================
 
-@pytest.mark.load
-@pytest.mark.baseline
-@pytest.mark.jira("PZ-13986", "PZ-13268")  # Bugs: 200 Jobs Capacity Issue, CNI IP Exhaustion
-@pytest.mark.xray("PZ-13986")
 @pytest.mark.xray("PZ-14088")
+
+
+@pytest.mark.regression
 class TestBaselinePerformance:
     """Baseline performance test - single job."""
     
-    def test_single_job_baseline(self, focus_server_api, standard_config_payload):
+    @pytest.mark.regression
+def test_single_job_baseline(self, focus_server_api, standard_config_payload):
         """
         Baseline performance test for a single job.
         
@@ -435,15 +435,15 @@ class TestBaselinePerformance:
 # Test 2: Linear Load Test
 # ===================================================================
 
-@pytest.mark.load
-@pytest.mark.linear
-@pytest.mark.jira("PZ-13986", "PZ-13268")  # Bugs: 200 Jobs Capacity Issue, CNI IP Exhaustion
-@pytest.mark.xray("PZ-13986")
 @pytest.mark.xray("PZ-14088")
+
+
+@pytest.mark.regression
 class TestLinearLoad:
     """Linear load test - finding breaking point."""
     
-    def test_linear_load_progression(self, focus_server_api, lightweight_config_payload):
+    @pytest.mark.regression
+def test_linear_load_progression(self, focus_server_api, lightweight_config_payload):
         """
         Linear load test: 5 → 10 → 20 → 50 jobs.
         
@@ -531,14 +531,15 @@ class TestLinearLoad:
 # Test 3: Stress Test
 # ===================================================================
 
-@pytest.mark.load
-@pytest.mark.stress
-@pytest.mark.slow
 @pytest.mark.jira("PZ-13986", "PZ-13268")  # Bugs: 200 Jobs Capacity Issue, CNI IP Exhaustion
+
+
+@pytest.mark.regression
 class TestStressLoad:
     """Stress test - pushing system to the limit."""
     
-    def test_extreme_concurrent_load(self, focus_server_api, lightweight_config_payload):
+    @pytest.mark.regression
+def test_extreme_concurrent_load(self, focus_server_api, lightweight_config_payload):
         """
         Extreme load test: 100 concurrent jobs.
         
@@ -589,14 +590,15 @@ class TestStressLoad:
 # Test 4: Heavy Configuration Stress Test
 # ===================================================================
 
-@pytest.mark.load
-@pytest.mark.stress
-@pytest.mark.slow
 @pytest.mark.jira("PZ-13986")  # Bug: 200 Jobs Capacity Issue
+
+
+@pytest.mark.regression
 class TestHeavyConfigurationStress:
     """Stress test with heavy configuration."""
     
-    def test_heavy_config_concurrent(self, focus_server_api, heavy_config_payload):
+    @pytest.mark.regression
+def test_heavy_config_concurrent(self, focus_server_api, heavy_config_payload):
         """
         Heavy configuration test (200 channels, NFFT 2048) with concurrent jobs.
         
@@ -640,14 +642,15 @@ class TestHeavyConfigurationStress:
 # Test 5: Recovery Test
 # ===================================================================
 
-@pytest.mark.load
-@pytest.mark.recovery
-@pytest.mark.jira("PZ-13986")  # Bug: 200 Jobs Capacity Issue
 @pytest.mark.xray("PZ-14088")
+
+
+@pytest.mark.regression
 class TestSystemRecovery:
     """System recovery test after load."""
     
-    def test_recovery_after_stress(self, focus_server_api, standard_config_payload):
+    @pytest.mark.regression
+def test_recovery_after_stress(self, focus_server_api, standard_config_payload):
         """
         Check that system recovers after heavy load.
         
@@ -718,101 +721,13 @@ class TestSystemRecovery:
 
 
 # ===================================================================
-# Test 6: Sustained Load Test (Soak Test)
-# ===================================================================
-
-@pytest.mark.load
-@pytest.mark.soak
-@pytest.mark.slow
-@pytest.mark.skip(reason="Very long test - run manually")
-class TestSustainedLoad:
-    """Sustained load test - soak test."""
-    
-    def test_sustained_load_1_hour(self, focus_server_api, standard_config_payload):
-        """
-        Sustained load test: 10 jobs for 1 hour.
-        
-        Goal: Detect memory leaks or resource leaks.
-        """
-        logger.info("\n" + "="*70)
-        logger.info("TEST: Sustained Load - 1 Hour Soak Test")
-        logger.info("="*70)
-        logger.warning("⚠️ This test will run for approximately 1 hour!")
-        
-        duration_seconds = 3600  # 1 hour
-        num_jobs = MEDIUM_LOAD_JOBS
-        interval_seconds = 60  # Create jobs every 60 seconds
-        
-        start_time = datetime.now()
-        iteration = 0
-        all_results = []
-        
-        while (datetime.now() - start_time).total_seconds() < duration_seconds:
-            iteration += 1
-            logger.info(f"\n--- Iteration {iteration} ---")
-            
-            job_metrics, system_metrics = create_concurrent_jobs(
-                focus_server_api,
-                standard_config_payload,
-                num_jobs=num_jobs,
-                max_workers=10
-            )
-            
-            summary = job_metrics.get_summary()
-            system_summary = system_metrics.get_summary()
-            
-            all_results.append({
-                'iteration': iteration,
-                'timestamp': datetime.now(),
-                'success_rate': summary['success_rate'],
-                'cpu_max': system_summary['cpu']['max'],
-                'memory_max': system_summary['memory']['max']
-            })
-            
-            logger.info(f"Iteration {iteration}: "
-                       f"Success {summary['success_rate']:.1%}, "
-                       f"CPU {system_summary['cpu']['max']:.1f}%, "
-                       f"Memory {system_summary['memory']['max']:.1f}%")
-            
-            # Check for degradation
-            if summary['success_rate'] < SUCCESS_RATE_ACCEPTABLE:
-                logger.error(f"❌ Success rate dropped below acceptable level!")
-                break
-            
-            # Wait before next iteration
-            time.sleep(interval_seconds)
-        
-        # Analyze results
-        logger.info("\n" + "="*70)
-        logger.info("SOAK TEST - SUMMARY")
-        logger.info("="*70)
-        
-        memory_trend = [r['memory_max'] for r in all_results]
-        cpu_trend = [r['cpu_max'] for r in all_results]
-        success_trend = [r['success_rate'] for r in all_results]
-        
-        logger.info(f"Total iterations: {len(all_results)}")
-        logger.info(f"Average success rate: {statistics.mean(success_trend):.1%}")
-        logger.info(f"Memory trend: {memory_trend[0]:.1f}% → {memory_trend[-1]:.1f}%")
-        logger.info(f"CPU trend: {cpu_trend[0]:.1f}% → {cpu_trend[-1]:.1f}%")
-        
-        # Check for memory leak
-        memory_increase = memory_trend[-1] - memory_trend[0]
-        if memory_increase > 10:
-            logger.warning(f"⚠️ Possible memory leak detected: +{memory_increase:.1f}%")
-        
-        assert statistics.mean(success_trend) >= SUCCESS_RATE_GOOD, \
-            "Sustained load should maintain 90%+ success rate"
-
-
-# ===================================================================
 # Test 7: 200 Concurrent Jobs - Target Capacity (NEW - PZ-13756)
 # ===================================================================
 
-@pytest.mark.load
-@pytest.mark.capacity
-@pytest.mark.critical
 @pytest.mark.xray("PZ-14088")
+
+
+@pytest.mark.regression
 class Test200ConcurrentJobsCapacity:
     """
     Target capacity test - 200 concurrent jobs.
@@ -829,6 +744,8 @@ class Test200ConcurrentJobsCapacity:
     
     @pytest.mark.xray("PZ-14088")
     @pytest.mark.xray("PZ-13986")
+
+    @pytest.mark.regression
     def test_200_concurrent_jobs_target_capacity(
         self, 
         focus_server_api, 

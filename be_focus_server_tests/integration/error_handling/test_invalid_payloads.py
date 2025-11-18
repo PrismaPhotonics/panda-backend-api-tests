@@ -25,10 +25,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.error_handling
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestInvalidPayloads:
     """
     Test suite for invalid payload error handling.
@@ -40,6 +41,9 @@ class TestInvalidPayloads:
     """
     
     @pytest.mark.xray("PZ-14785")
+
+    
+    @pytest.mark.regression
     def test_invalid_json_payload(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14785: Error Handling - Invalid JSON Payload.
@@ -134,6 +138,9 @@ class TestInvalidPayloads:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14786")
+
+    
+    @pytest.mark.regression
     def test_malformed_request(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14786: Error Handling - Malformed Request.
@@ -224,6 +231,9 @@ class TestInvalidPayloads:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14787")
+
+    
+    @pytest.mark.regression
     def test_error_message_format(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14787: Error Handling - Error Message Format.

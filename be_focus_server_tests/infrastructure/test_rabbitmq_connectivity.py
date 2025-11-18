@@ -32,10 +32,10 @@ except ImportError:
 # Test Class: RabbitMQ Connectivity
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.connectivity
-@pytest.mark.rabbitmq
 @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
+
+
+@pytest.mark.regression
 class TestRabbitMQConnectivity:
     """
     Test suite for RabbitMQ connectivity.
@@ -47,6 +47,8 @@ class TestRabbitMQConnectivity:
     """
     
     @pytest.mark.xray("PZ-13602")
+    @pytest.mark.regression
+    @pytest.mark.smoke
     def test_rabbitmq_connection(self, config_manager):
         """
         Test PZ-13602: RabbitMQ Connection.
@@ -139,6 +141,12 @@ class TestRabbitMQConnectivity:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
+
+
+@pytest.mark.smoke
 def test_rabbitmq_connectivity_summary():
     """
     Summary test for RabbitMQ connectivity tests.

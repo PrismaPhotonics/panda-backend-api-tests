@@ -110,11 +110,10 @@ def valid_historic_config_payload() -> Dict[str, Any]:
 # Test Class: Missing Required Fields (PZ-13879)
 # ===================================================================
 
-@pytest.mark.xray("PZ-13879")
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.documents_current_behavior
+
+
+@pytest.mark.regression
 class TestMissingRequiredFields:
     """
     Test suite for PZ-13879: Integration – Missing Required Fields
@@ -128,6 +127,9 @@ class TestMissingRequiredFields:
     """
     
     @pytest.mark.xray("PZ-14099")
+
+    
+    @pytest.mark.regression
     def test_missing_channels_field(self, focus_server_api):
         """
         Test PZ-13879.1: Configuration missing 'channels' field.
@@ -176,6 +178,9 @@ class TestMissingRequiredFields:
             assert "channels" in str(e).lower()
     
     @pytest.mark.xray("PZ-14098")
+
+    
+    @pytest.mark.regression
     def test_missing_frequency_range_field(self, focus_server_api):
         """
         Test PZ-13879.2: Configuration missing 'frequencyRange' field.
@@ -222,6 +227,9 @@ class TestMissingRequiredFields:
             # Server may return 500 error for missing optional but logically required field
     
     @pytest.mark.xray("PZ-14097")
+
+    
+    @pytest.mark.regression
     def test_missing_nfft_field(self, focus_server_api):
         """
         Test PZ-13879.3: Configuration missing 'nfftSelection' field.
@@ -268,6 +276,9 @@ class TestMissingRequiredFields:
             # Server may return 500 error for missing optional but logically required field
     
     @pytest.mark.xray("PZ-14095")
+
+    
+    @pytest.mark.regression
     def test_missing_display_time_axis_duration(self, focus_server_api):
         """
         Test PZ-13879.4: Configuration missing 'displayTimeAxisDuration' field.
@@ -318,11 +329,10 @@ class TestMissingRequiredFields:
 # Test Class: Invalid Canvas/Display Info (PZ-13878)
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
-@pytest.mark.documents_current_behavior
 @pytest.mark.server_bug
+
+
+@pytest.mark.regression
 class TestInvalidCanvasInfo:
     """
     Test suite for PZ-13878: Integration – Invalid Canvas Info
@@ -331,6 +341,10 @@ class TestInvalidCanvasInfo:
     Validates proper validation of canvasInfo parameters.
     """
     
+    @pytest.mark.xray("PZ-13878")
+
+    
+    @pytest.mark.regression
     def test_invalid_canvas_height_negative(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13878.1: canvasInfo with negative height.
@@ -368,6 +382,10 @@ class TestInvalidCanvasInfo:
             logger.info(f"✅ Pydantic validation caught invalid height: {e}")
             assert "height" in str(e).lower() or "positive" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13878")
+
+    
+    @pytest.mark.regression
     def test_invalid_canvas_height_zero(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13878.2: canvasInfo with zero height.
@@ -404,6 +422,10 @@ class TestInvalidCanvasInfo:
             logger.info(f"✅ Pydantic validation caught invalid height: {e}")
             assert "height" in str(e).lower() or "positive" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13878")
+
+    
+    @pytest.mark.regression
     def test_missing_canvas_height_key(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13878.3: canvasInfo without height key.
@@ -442,11 +464,10 @@ class TestInvalidCanvasInfo:
 # Test Class: Invalid Ranges (PZ-13877, PZ-13876)
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
-@pytest.mark.documents_current_behavior
 @pytest.mark.server_bug
+
+
+@pytest.mark.regression
 class TestInvalidRanges:
     """
     Test suite for invalid range validation.
@@ -458,6 +479,10 @@ class TestInvalidRanges:
     Priority: HIGH
     """
     
+    @pytest.mark.xray("PZ-13877")
+
+    
+    @pytest.mark.regression
     def test_invalid_frequency_range_min_greater_than_max(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13877: frequencyRange where min > max.
@@ -493,6 +518,10 @@ class TestInvalidRanges:
             logger.info(f"✅ Pydantic validation caught invalid frequency range: {e}")
             assert "frequency" in str(e).lower() or ">" in str(e).lower() or "max" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13877")
+
+    
+    @pytest.mark.regression
     def test_frequency_range_exceeds_nyquist_limit(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13877.3: Frequency range exceeding Nyquist limit for dataset.
@@ -546,6 +575,10 @@ class TestInvalidRanges:
             logger.info(f"✅ Pydantic validation caught frequency limit violation: {e}")
             assert "frequency" in str(e).lower() or "limit" in str(e).lower() or "1000" in str(e)
     
+    @pytest.mark.xray("PZ-13876")
+
+    
+    @pytest.mark.regression
     def test_invalid_channel_range_min_greater_than_max(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13876: channels where min > max.
@@ -580,6 +613,10 @@ class TestInvalidRanges:
             logger.info(f"✅ Pydantic validation caught invalid channel range: {e}")
             assert "channel" in str(e).lower() or ">" in str(e).lower() or "max" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13877")
+
+    
+    @pytest.mark.regression
     def test_frequency_range_equal_min_max(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13877.2: frequencyRange where min == max (edge case).
@@ -618,6 +655,9 @@ class TestInvalidRanges:
             assert ">" in str(e).lower() or "frequency" in str(e).lower() or "max" in str(e).lower()
     
     @pytest.mark.xray("PZ-13878")
+
+    
+    @pytest.mark.regression
     def test_channel_range_equal_min_max(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13878: channels where min == max (edge case).
@@ -653,6 +693,10 @@ class TestInvalidRanges:
         
         logger.info("✅ Channel range min==max accepted for SINGLECHANNEL view")
     
+    @pytest.mark.xray("PZ-13876")
+
+    
+    @pytest.mark.regression
     def test_channel_range_exceeds_maximum(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13876.3: Channel count exceeds maximum (2222).
@@ -693,6 +737,10 @@ class TestInvalidRanges:
             logger.info(f"✅ Validation caught channel count exceeds max: {e}")
             assert "2222" in str(e) or "maximum" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13876")
+
+    
+    @pytest.mark.regression
     def test_channel_range_at_maximum(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13876.4: Channel count exactly at maximum (2222).
@@ -728,10 +776,10 @@ class TestInvalidRanges:
 # Test Class: Valid Configuration (PZ-13873)
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.smoke
+
+
+@pytest.mark.regression
 class TestValidConfigurationAllParameters:
     """
     Test suite for PZ-13873: Integration - Valid Configuration - All Parameters
@@ -741,6 +789,10 @@ class TestValidConfigurationAllParameters:
     is properly accepted and processed.
     """
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_valid_configuration_all_parameters(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13873: Valid configuration with all parameters.
@@ -791,6 +843,10 @@ class TestValidConfigurationAllParameters:
         assert hasattr(response, 'stream_port'), "Response should contain stream_port"
         logger.info(f"✅ Response contains stream info: {response.stream_url}:{response.stream_port}")
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_valid_configuration_multiple_sensors(self, focus_server_api):
         """
         Test PZ-13873.2: Valid configuration with multiple channels.
@@ -827,6 +883,10 @@ class TestValidConfigurationAllParameters:
         assert hasattr(response, 'status') or hasattr(response, 'job_id')
         logger.info("✅ Multiple channels configuration accepted")
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_valid_configuration_single_sensor(self, focus_server_api):
         """
         Test PZ-13873.3: Valid configuration with narrow channel range.
@@ -863,6 +923,10 @@ class TestValidConfigurationAllParameters:
         assert hasattr(response, 'status') or hasattr(response, 'job_id')
         logger.info("✅ Narrow channel range configuration accepted")
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_valid_configuration_various_nfft_values(self, focus_server_api):
         """
         Test PZ-13873.4: Valid configurations with various NFFT values.
@@ -906,6 +970,10 @@ class TestValidConfigurationAllParameters:
             
             logger.info(f"✅ NFFT={nfft} accepted")
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_invalid_nfft_exceeds_maximum(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13873.5: NFFT value exceeding maximum (2048).
@@ -942,6 +1010,10 @@ class TestValidConfigurationAllParameters:
             logger.info(f"✅ Pydantic validation caught NFFT exceeds max: {e}")
             assert "2048" in str(e) or "maximum" in str(e).lower()
     
+    @pytest.mark.xray("PZ-13873")
+
+    
+    @pytest.mark.regression
     def test_invalid_nfft_not_power_of_2(self, focus_server_api, valid_config_payload):
         """
         Test PZ-13873.6: NFFT value not power of 2 - REJECT policy.
@@ -985,10 +1057,10 @@ class TestValidConfigurationAllParameters:
 # Test Class: Live Mode Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.documents_current_behavior
+
+
+@pytest.mark.regression
 class TestLiveModeValidation:
     """
     Test suite for Live Mode validation.
@@ -1002,7 +1074,8 @@ class TestLiveModeValidation:
     Priority: HIGH
     """
     
-    def test_live_mode_valid_configuration(self, focus_server_api, valid_config_payload):
+    @pytest.mark.regression
+def test_live_mode_valid_configuration(self, focus_server_api, valid_config_payload):
         """
         Test: Valid Live Mode configuration (both times null).
         
@@ -1031,6 +1104,9 @@ class TestLiveModeValidation:
         logger.info(f"✅ Live Mode configuration accepted: job_id={response.job_id}")
     
     @pytest.mark.xray("PZ-13909")
+
+    
+    @pytest.mark.regression
     def test_live_mode_with_only_start_time(self, focus_server_api, valid_config_payload):
         """
         Test: Ambiguous mode - only start_time provided.
@@ -1070,6 +1146,9 @@ class TestLiveModeValidation:
             logger.info(f"Server/Pydantic caught ambiguous mode: {e}")
     
     @pytest.mark.xray("PZ-13907")
+
+    
+    @pytest.mark.regression
     def test_live_mode_with_only_end_time(self, focus_server_api, valid_config_payload):
         """
         Test: Ambiguous mode - only end_time provided.
@@ -1113,10 +1192,10 @@ class TestLiveModeValidation:
 # Test Class: Historic Mode Validation
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.documents_current_behavior
+
+
+@pytest.mark.regression
 class TestHistoricModeValidation:
     """
     Test suite for Historic Mode validation.
@@ -1132,6 +1211,9 @@ class TestHistoricModeValidation:
     """
     
     @pytest.mark.xray("PZ-13548")
+
+    
+    @pytest.mark.regression
     def test_historic_mode_valid_configuration(self, focus_server_api, valid_historic_config_payload):
         """
         Test: Valid Historic Mode configuration.
@@ -1178,6 +1260,9 @@ class TestHistoricModeValidation:
                 raise
     
     @pytest.mark.xray("PZ-13552")
+
+    
+    @pytest.mark.regression
     def test_historic_mode_with_equal_times(self, focus_server_api, valid_historic_config_payload):
         """
         Test: Historic Mode with start_time == end_time.
@@ -1220,6 +1305,9 @@ class TestHistoricModeValidation:
     # REMOVED: test_historic_mode_with_inverted_range - duplicate of test_prelaunch_validations.py::test_time_range_validation_reversed_range
     
     @pytest.mark.xray("PZ-13552")
+
+    
+    @pytest.mark.regression
     def test_historic_mode_with_negative_time(self, focus_server_api, valid_historic_config_payload):
         """
         Test: Historic Mode with negative timestamp.
@@ -1260,10 +1348,10 @@ class TestHistoricModeValidation:
 # They are marked with @pytest.mark.xfail because the server currently
 # does NOT implement proper validation.
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.requirement
+
+
+@pytest.mark.regression
 class TestInvalidCanvasInfo_Requirements:
     """
     📋 REQUIREMENT TESTS - How server SHOULD behave
@@ -1279,6 +1367,8 @@ class TestInvalidCanvasInfo_Requirements:
     
     @pytest.mark.xfail(reason="Server does not validate negative height (BUG)", strict=False)
     @pytest.mark.xray("PZ-13878")
+
+    @pytest.mark.regression
     def test_requirement_negative_height_must_be_rejected(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject negative height with 400 Bad Request.
@@ -1318,6 +1408,8 @@ class TestInvalidCanvasInfo_Requirements:
     
     @pytest.mark.xfail(reason="Server does not validate zero height (BUG)", strict=False)
     @pytest.mark.xray("PZ-13878")
+
+    @pytest.mark.regression
     def test_requirement_zero_height_must_be_rejected(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject zero height with 400 Bad Request.
@@ -1356,10 +1448,11 @@ class TestInvalidCanvasInfo_Requirements:
         logger.info("✅ REQUIREMENT: Zero height properly rejected")
 
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.requirement
+
+
+
+@pytest.mark.regression
 class TestNFFT_Requirements:
     """
     📋 REQUIREMENT TESTS - NFFT Validation
@@ -1374,6 +1467,8 @@ class TestNFFT_Requirements:
     
     @pytest.mark.xfail(reason="Server does not validate NFFT power of 2 (BUG)", strict=False)
     @pytest.mark.xray("PZ-13873")
+
+    @pytest.mark.regression
     def test_requirement_nfft_must_be_power_of_2(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject NFFT values that are not power of 2.
@@ -1415,6 +1510,8 @@ class TestNFFT_Requirements:
     
     @pytest.mark.xfail(reason="Server does not enforce NFFT max=2048 (BUG)", strict=False)
     @pytest.mark.xray("PZ-13873")
+
+    @pytest.mark.regression
     def test_requirement_nfft_max_2048(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject NFFT > 2048.
@@ -1454,10 +1551,11 @@ class TestNFFT_Requirements:
         logger.info("✅ REQUIREMENT: NFFT > 2048 properly rejected")
 
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.requirement
+
+
+
+@pytest.mark.regression
 class TestModeValidation_Requirements:
     """
     📋 REQUIREMENT TESTS - Mode Detection and Validation
@@ -1472,6 +1570,8 @@ class TestModeValidation_Requirements:
     
     @pytest.mark.xfail(reason="Server does not validate ambiguous mode (only start_time)", strict=False)
     @pytest.mark.xray("PZ-13552")
+
+    @pytest.mark.regression
     def test_requirement_reject_only_start_time(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject configs with only start_time.
@@ -1511,6 +1611,8 @@ class TestModeValidation_Requirements:
     
     @pytest.mark.xfail(reason="Server does not validate ambiguous mode (only end_time)", strict=False)
     @pytest.mark.xray("PZ-13552")
+
+    @pytest.mark.regression
     def test_requirement_reject_only_end_time(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject configs with only end_time.
@@ -1549,10 +1651,11 @@ class TestModeValidation_Requirements:
         logger.info("✅ REQUIREMENT: Ambiguous mode (only end) properly rejected")
 
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.requirement
+
+
+
+@pytest.mark.regression
 class TestFrequencyValidation_Requirements:
     """
     📋 REQUIREMENT TESTS - Dynamic Frequency Validation
@@ -1568,6 +1671,8 @@ class TestFrequencyValidation_Requirements:
     
     @pytest.mark.xfail(reason="Server does not validate frequency vs Nyquist limit (BUG)", strict=False)
     @pytest.mark.xray("PZ-13555")
+
+    @pytest.mark.regression
     def test_requirement_frequency_must_not_exceed_nyquist(self, focus_server_api, valid_config_payload):
         """
         ✅ REQUIREMENT: Server MUST reject frequencies exceeding Nyquist limit.
@@ -1610,79 +1715,4 @@ class TestFrequencyValidation_Requirements:
         logger.info("✅ REQUIREMENT: Frequency > Nyquist properly rejected")
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_config_validation_high_priority_summary():
-    """
-    Summary test for configuration validation (high priority tests).
-    
-    ⚠️  IMPORTANT: This module contains TWO types of tests:
-    
-    1. 📋 DOCUMENTS CURRENT BEHAVIOR (27 tests)
-       - Shows how server currently behaves (including bugs)
-       - Marked with @pytest.mark.documents_current_behavior
-       - These tests PASS
-    
-    2. ✅ DOCUMENTS REQUIREMENTS (7 tests)
-       - Shows how server SHOULD behave per requirements
-       - Marked with @pytest.mark.requirement + @pytest.mark.xfail
-       - These tests currently FAIL (expected)
-    
-    Xray Test Coverage:
-        ✅ PZ-13879: Missing Required Fields (4 tests)
-        ✅ PZ-13878: Invalid Canvas Info (3 tests + 2 requirement tests)
-        ✅ PZ-13877: Invalid Frequency Range (3 tests + 1 requirement test)
-        ✅ PZ-13876: Invalid Channel Range (4 tests)
-        ✅ PZ-13873: Valid Configuration (6 tests + 2 requirement tests)
-        ✅ NEW: Live Mode Validation (3 tests)
-        ✅ NEW: Historic Mode Validation (4 tests)
-        ✅ NEW: Mode Detection Requirements (2 requirement tests)
-    
-    Total: 34 tests (27 current behavior + 7 requirements)
-    Modes: Live (realtime) + Historic (playback)
-    API: POST /configure (Old API - pzlinux:10.7.122)
-    Model: ConfigureRequest (displayInfo, channels, view_type, start_time, end_time)
-    """
-    logger.info("=" * 80)
-    logger.info("Configuration Validation (High Priority) - Summary")
-    logger.info("=" * 80)
-    logger.info("")
-    logger.info("📋 CURRENT BEHAVIOR TESTS (documents what IS):")
-    logger.info("  ✅ PZ-13879: Missing Required Fields - 4 tests")
-    logger.info("  ✅ PZ-13878: Invalid Display Info - 3 tests")
-    logger.info("  ✅ PZ-13877: Invalid Frequency Range - 3 tests")
-    logger.info("  ✅ PZ-13876: Invalid Channel Range - 4 tests")
-    logger.info("  ✅ PZ-13873: Valid Configuration - 6 tests")
-    logger.info("  ✅ NEW: Live Mode Validation - 3 tests")
-    logger.info("  ✅ NEW: Historic Mode Validation - 4 tests")
-    logger.info("  📊 Subtotal: 27 tests (marked @documents_current_behavior)")
-    logger.info("")
-    logger.info("✅ REQUIREMENT TESTS (documents what SHOULD BE):")
-    logger.info("  🔴 Height validation (negative, zero) - 2 tests [XFAIL]")
-    logger.info("  🔴 NFFT validation (power of 2, max 2048) - 2 tests [XFAIL]")
-    logger.info("  🔴 Frequency vs Nyquist validation - 1 test [XFAIL]")
-    logger.info("  🔴 Mode detection (ambiguous modes) - 2 tests [XFAIL]")
-    logger.info("  📊 Subtotal: 7 tests (marked @requirement + @xfail)")
-    logger.info("")
-    logger.info("=" * 80)
-    logger.info("📊 TOTAL: 34 Tests")
-    logger.info("   - 27 Document Current Behavior (PASS)")
-    logger.info("   - 7 Document Requirements (XFAIL - expected to fail)")
-    logger.info("")
-    logger.info("🔧 API: POST /configure")
-    logger.info("📦 Model: ConfigureRequest (displayInfo, channels, view_type, start_time, end_time)")
-    logger.info("🏷️  Server: pzlinux:10.7.122 (Old API)")
-    logger.info("")
-    logger.info("🎯 Modes Tested:")
-    logger.info("   🔴 Live Mode: start_time=null, end_time=null (real-time streaming)")
-    logger.info("   📼 Historic Mode: both times required (playback from storage)")
-    logger.info("=" * 80)
-    logger.info("")
-    logger.info("⚠️  FOR BACKEND DEVELOPERS:")
-    logger.info("   Run tests with: pytest -m requirement --runxfail")
-    logger.info("   These will show you what validation needs to be implemented")
-    logger.info("=" * 80)
 

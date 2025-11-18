@@ -33,10 +33,11 @@ from src.utils.validators import validate_waterfall_response
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.data_quality
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestNegativeAmplitudeValues:
     """
     Test suite for detecting negative amplitude values in waterfall data.
@@ -46,6 +47,9 @@ class TestNegativeAmplitudeValues:
     """
     
     @pytest.mark.skip(reason="GET /waterfall/{task_id}/{row_count} endpoint not yet implemented in backend")
+
+    
+    @pytest.mark.regression
     def test_detect_negative_amplitude_values(self, focus_server_api: FocusServerAPI):
         """
         Test: Detect negative amplitude values in waterfall data.
@@ -230,6 +234,9 @@ class TestNegativeAmplitudeValues:
         logger.info("=" * 80)
     
     @pytest.mark.skip(reason="GET /waterfall/{task_id}/{row_count} endpoint not yet implemented in backend")
+
+    
+    @pytest.mark.regression
     def test_validate_waterfall_response_amplitude_ranges(self, focus_server_api: FocusServerAPI):
         """
         Test: Validate waterfall response amplitude ranges.

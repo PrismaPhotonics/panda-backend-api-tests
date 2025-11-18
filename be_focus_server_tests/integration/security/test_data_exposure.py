@@ -23,10 +23,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.security
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestDataExposure:
     """
     Test suite for data exposure prevention security.
@@ -39,6 +40,8 @@ class TestDataExposure:
     @pytest.mark.xray("PZ-14779")
     @pytest.mark.xray("PZ-13572")
     @pytest.mark.xray("PZ-13572")
+
+    @pytest.mark.regression
     def test_data_exposure_prevention(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14779: Security - Data Exposure Prevention.
@@ -165,7 +168,8 @@ class TestDataExposure:
         logger.info("✅ All data exposure prevention checks passed")
         logger.info("=" * 80)
     
-    def test_error_message_security(self, focus_server_api: FocusServerAPI):
+    @pytest.mark.regression
+def test_error_message_security(self, focus_server_api: FocusServerAPI):
         """
         Test: Security - Error Message Security.
         

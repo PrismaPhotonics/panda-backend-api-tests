@@ -41,10 +41,10 @@ except ImportError:
 # Test Class: MongoDB Connection Tests
 # ===================================================================
 
-@pytest.mark.data_quality
-@pytest.mark.mongodb
-@pytest.mark.infrastructure
 @pytest.mark.skipif(not PYMONGO_AVAILABLE, reason="pymongo not installed")
+
+
+@pytest.mark.regression
 class TestMongoDBConnection:
     """
     Test suite for MongoDB connection validation.
@@ -58,6 +58,9 @@ class TestMongoDBConnection:
     """
     
     @pytest.mark.xray("PZ-13806")
+
+    
+    @pytest.mark.regression
     def test_mongodb_direct_tcp_connection(self, config_manager):
         """
         Test PZ-13806: MongoDB Direct TCP Connection and Authentication.
@@ -107,6 +110,9 @@ class TestMongoDBConnection:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13807")
+
+    
+    @pytest.mark.regression
     def test_mongodb_connection_using_focus_config(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13807: MongoDB Connection Using Focus Server Config.
@@ -143,6 +149,9 @@ class TestMongoDBConnection:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13808")
+
+    
+    @pytest.mark.regression
     def test_mongodb_quick_response_time(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13808: MongoDB Quick Response Time Test.
@@ -181,9 +190,10 @@ class TestMongoDBConnection:
 # Test Class: MongoDB Collections and Indexes
 # ===================================================================
 
-@pytest.mark.data_quality
-@pytest.mark.mongodb
 @pytest.mark.schema
+
+
+@pytest.mark.regression
 class TestMongoDBCollectionsAndIndexes:
     """
     Test suite for MongoDB collections and indexes validation.
@@ -196,6 +206,9 @@ class TestMongoDBCollectionsAndIndexes:
     """
     
     @pytest.mark.xray("PZ-13809")
+
+    
+    @pytest.mark.regression
     def test_required_mongodb_collections_exist(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13809: Verify Required MongoDB Collections Exist.
@@ -233,6 +246,9 @@ class TestMongoDBCollectionsAndIndexes:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13810")
+
+    
+    @pytest.mark.regression
     def test_critical_mongodb_indexes_exist(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13810: Verify Critical MongoDB Indexes Exist.
@@ -286,9 +302,10 @@ class TestMongoDBCollectionsAndIndexes:
 # Test Class: MongoDB Schema Validation
 # ===================================================================
 
-@pytest.mark.data_quality
-@pytest.mark.mongodb
 @pytest.mark.schema
+
+
+@pytest.mark.regression
 class TestMongoDBSchemaValidation:
     """
     Test suite for MongoDB document schema validation.
@@ -302,6 +319,8 @@ class TestMongoDBSchemaValidation:
     
     @pytest.mark.xray("PZ-13811", "PZ-13684")
     @pytest.mark.xray("PZ-13811")
+
+    @pytest.mark.regression
     def test_recordings_document_schema_validation(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13811, PZ-13684: Validate Recordings Document Schema.
@@ -348,6 +367,8 @@ class TestMongoDBSchemaValidation:
     
     @pytest.mark.xray("PZ-13812", "PZ-13685")
     @pytest.mark.xray("PZ-13685")
+
+    @pytest.mark.regression
     def test_recordings_metadata_completeness(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13812, PZ-13685: Verify Recordings Have Complete Metadata.
@@ -391,37 +412,4 @@ class TestMongoDBSchemaValidation:
         logger.info(f"✅ All {len(docs)} documents have complete metadata")
         logger.info("✅ TEST PASSED")
 
-
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_mongodb_indexes_schema_summary():
-    """
-    Summary test for MongoDB indexes and schema tests.
-    
-    Xray Tests Covered:
-        - PZ-13806: Direct TCP Connection
-        - PZ-13807: Focus Config Connection
-        - PZ-13808: Response Time
-        - PZ-13809: Collections Exist
-        - PZ-13810: Indexes Exist
-        - PZ-13811: Schema Validation
-        - PZ-13812: Metadata Completeness
-    
-    This test always passes and serves as documentation.
-    """
-    logger.info("=" * 80)
-    logger.info("MongoDB Indexes and Schema Tests Suite Summary")
-    logger.info("=" * 80)
-    logger.info("Tests in this module:")
-    logger.info("  1. PZ-13806: Direct TCP Connection")
-    logger.info("  2. PZ-13807: Focus Config Connection")
-    logger.info("  3. PZ-13808: Response Time < 100ms")
-    logger.info("  4. PZ-13809: Required Collections")
-    logger.info("  5. PZ-13810: Critical Indexes")
-    logger.info("  6. PZ-13811: Document Schema")
-    logger.info("  7. PZ-13812: Metadata Completeness")
-    logger.info("=" * 80)
 

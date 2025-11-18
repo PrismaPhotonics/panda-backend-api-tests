@@ -34,10 +34,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Configuration Endpoint Latency
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.performance
-@pytest.mark.latency
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestConfigurationEndpointLatency:
     """
     Test suite for configuration endpoint latency requirements.
@@ -98,6 +98,9 @@ class TestConfigurationEndpointLatency:
         return latencies
     
     @pytest.mark.xray("PZ-14092")
+
+    
+    @pytest.mark.regression
     def test_config_endpoint_p95_latency(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13920: Configuration endpoint P95 latency < 500ms.
@@ -151,6 +154,9 @@ class TestConfigurationEndpointLatency:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14091")
+
+    
+    @pytest.mark.regression
     def test_config_endpoint_p99_latency(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13921: Configuration endpoint P99 latency < 1000ms.
@@ -203,6 +209,9 @@ class TestConfigurationEndpointLatency:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14090")
+
+    
+    @pytest.mark.regression
     def test_job_creation_time(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13922: Job creation time < 2 seconds.
@@ -289,6 +298,9 @@ class TestConfigurationEndpointLatency:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_latency_requirements_summary():
     """
     Summary test for performance latency requirements.

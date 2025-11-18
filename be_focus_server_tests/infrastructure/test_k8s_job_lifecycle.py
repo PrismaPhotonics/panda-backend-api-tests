@@ -112,6 +112,8 @@ def find_pods_by_job_id(k8s_manager: KubernetesManager, job_id: str, namespace: 
 
 @pytest.fixture
 @pytest.mark.xray("PZ-13899")
+
+@pytest.mark.regression
 def test_job_config():
     """
     Standard configuration for K8s job lifecycle tests.
@@ -135,11 +137,10 @@ def test_job_config():
 # Test 1: Job Creation → Pod Spawn
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.kubernetes
-@pytest.mark.job_lifecycle
-@pytest.mark.critical
 @pytest.mark.xray("PZ-13899")
+
+
+@pytest.mark.regression
 class TestK8sJobCreation:
     """
     Test Suite: Kubernetes Job Creation and Pod Spawn
@@ -150,7 +151,8 @@ class TestK8sJobCreation:
     Related: Meeting decision - K8s Job lifecycle (IN SCOPE)
     """
     
-    def test_k8s_job_creation_triggers_pod_spawn(
+    @pytest.mark.regression
+def test_k8s_job_creation_triggers_pod_spawn(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,
@@ -299,10 +301,10 @@ class TestK8sJobCreation:
 # Test 2: Resource Allocation
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.kubernetes
-@pytest.mark.resources
 @pytest.mark.xray("PZ-13899")
+
+
+@pytest.mark.regression
 class TestK8sResourceAllocation:
     """
     Test Suite: Kubernetes Resource Allocation
@@ -315,7 +317,8 @@ class TestK8sResourceAllocation:
     Related: Meeting decision - Resource allocation (IN SCOPE)
     """
     
-    def test_k8s_job_resource_allocation(
+    @pytest.mark.regression
+def test_k8s_job_resource_allocation(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,
@@ -393,10 +396,10 @@ class TestK8sResourceAllocation:
 # Test 3: Port Exposure
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.kubernetes
-@pytest.mark.networking
 @pytest.mark.xray("PZ-13899")
+
+
+@pytest.mark.regression
 class TestK8sPortExposure:
     """
     Test Suite: Kubernetes Port Exposure
@@ -409,7 +412,8 @@ class TestK8sPortExposure:
     Related: Meeting decision - Port exposure (IN SCOPE)
     """
     
-    def test_k8s_job_port_exposure(
+    @pytest.mark.regression
+def test_k8s_job_port_exposure(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,
@@ -495,11 +499,10 @@ class TestK8sPortExposure:
 # Test 4: Job Cancellation and Cleanup
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.kubernetes
-@pytest.mark.cleanup
-@pytest.mark.critical
 @pytest.mark.xray("PZ-13899")
+
+
+@pytest.mark.regression
 class TestK8sJobCancellation:
     """
     Test Suite: Kubernetes Job Cancellation and Cleanup
@@ -513,7 +516,8 @@ class TestK8sJobCancellation:
     Related: Meeting decision - Proper rollback/cleanup (IN SCOPE)
     """
     
-    def test_k8s_job_cancellation_and_cleanup(
+    @pytest.mark.regression
+def test_k8s_job_cancellation_and_cleanup(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,
@@ -643,10 +647,10 @@ class TestK8sJobCancellation:
 # Test 5: Observability
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.kubernetes
-@pytest.mark.observability
 @pytest.mark.xray("PZ-13899")
+
+
+@pytest.mark.regression
 class TestK8sJobObservability:
     """
     Test Suite: Kubernetes Job Observability
@@ -660,7 +664,8 @@ class TestK8sJobObservability:
     Related: Meeting decision - Observability (IN SCOPE)
     """
     
-    def test_k8s_job_observability(
+    @pytest.mark.regression
+def test_k8s_job_observability(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,

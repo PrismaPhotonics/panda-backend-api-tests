@@ -18,6 +18,10 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 
 
 @pytest.mark.jira("PZ-13640")  # Bug: Slow Response During MongoDB Outage (15s vs 5s SLA)
+
+
+
+@pytest.mark.regression
 class TestMongoDBOutageResilience(InfrastructureTest):
     """
     Test MongoDB outage resilience scenarios.
@@ -158,6 +162,8 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.slow
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
+
+    @pytest.mark.regression
     def test_mongodb_scale_down_outage_returns_503_no_orchestration(self, focus_server_api):
         """
         Test MongoDB scale-down outage returns 503 with no orchestration.
@@ -225,6 +231,8 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.skip(reason="Requires SSH access and iptables manipulation on the node")
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
+
+    @pytest.mark.regression
     def test_mongodb_network_block_outage_returns_503_no_orchestration(self, focus_server_api):
         """
         Test MongoDB network block outage returns 503 with no orchestration.
@@ -293,6 +301,8 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.mongodb_outage
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
+
+    @pytest.mark.regression
     def test_mongodb_outage_no_live_impact(self, focus_server_api):
         """
         Test MongoDB outage should not directly impact live configure requests.
@@ -350,6 +360,8 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.mongodb_outage
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
+
+    @pytest.mark.regression
     def test_mongodb_outage_logging_and_metrics(self, focus_server_api):
         """
         Test MongoDB outage should result in proper logging and metrics.
@@ -405,6 +417,8 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.slow
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
+
+    @pytest.mark.regression
     def test_mongodb_outage_cleanup_and_restore(self, focus_server_api):
         """
         Test MongoDB can be restored after an outage.

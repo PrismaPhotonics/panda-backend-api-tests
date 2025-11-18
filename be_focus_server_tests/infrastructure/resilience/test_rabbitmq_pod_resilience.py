@@ -48,6 +48,7 @@ def k8s_manager(config_manager):
 
 
 @pytest.fixture
+@pytest.mark.regression
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -66,12 +67,10 @@ def test_config():
 # Test Class: RabbitMQ Pod Resilience
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.resilience
-@pytest.mark.kubernetes
-@pytest.mark.rabbitmq
-@pytest.mark.slow
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestRabbitMQPodResilience:
     """
     Test suite for RabbitMQ pod resilience and failure scenarios.
@@ -85,6 +84,9 @@ class TestRabbitMQPodResilience:
     """
     
     @pytest.mark.xray("PZ-14721")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_pod_deletion_recreation(
         self,
         k8s_manager: KubernetesManager,
@@ -227,6 +229,9 @@ class TestRabbitMQPodResilience:
                     logger.warning(f"⚠️  RabbitMQ pod '{new_pod_name}' is not running - may need manual intervention")
     
     @pytest.mark.xray("PZ-14722")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_scale_down_to_zero(
         self,
         k8s_manager: KubernetesManager,
@@ -374,6 +379,9 @@ class TestRabbitMQPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14723")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_pod_restart_during_operations(
         self,
         k8s_manager: KubernetesManager,
@@ -502,6 +510,9 @@ class TestRabbitMQPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14724")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_outage_graceful_degradation(
         self,
         k8s_manager: KubernetesManager,
@@ -609,6 +620,9 @@ class TestRabbitMQPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14725")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_recovery_after_outage(
         self,
         k8s_manager: KubernetesManager,
@@ -707,6 +721,9 @@ class TestRabbitMQPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14726")
+
+    
+    @pytest.mark.regression
     def test_rabbitmq_pod_status_monitoring(
         self,
         k8s_manager: KubernetesManager
@@ -762,6 +779,9 @@ class TestRabbitMQPodResilience:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_rabbitmq_pod_resilience_summary():
     """Summary test for RabbitMQ pod resilience tests."""
     logger.info("=" * 80)

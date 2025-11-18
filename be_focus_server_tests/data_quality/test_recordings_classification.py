@@ -28,9 +28,10 @@ logger = logging.getLogger(__name__)
 # Test Class: Recordings Classification
 # ===================================================================
 
-@pytest.mark.data_quality
-@pytest.mark.mongodb
 @pytest.mark.data_lifecycle
+
+
+@pytest.mark.regression
 class TestRecordingsClassification:
     """
     Test suite for recordings classification and lifecycle.
@@ -42,6 +43,9 @@ class TestRecordingsClassification:
     """
     
     @pytest.mark.xray("PZ-13705")
+
+    
+    @pytest.mark.regression
     def test_historical_vs_live_recordings_classification(self, mongodb_manager: MongoDBManager):
         """
         Test PZ-13705: Historical vs Live Recordings Classification.
@@ -151,6 +155,9 @@ class TestRecordingsClassification:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_recordings_classification_summary():
     """
     Summary test for recordings classification tests.

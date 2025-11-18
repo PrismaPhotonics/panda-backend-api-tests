@@ -24,10 +24,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.load
-@pytest.mark.api
 @pytest.mark.slow
+
+
+
+@pytest.mark.regression
 class TestConcurrentLoad:
     """
     Test suite for concurrent load testing.
@@ -37,6 +38,9 @@ class TestConcurrentLoad:
     """
     
     @pytest.mark.xray("PZ-14800")
+
+    
+    @pytest.mark.regression
     def test_concurrent_job_creation_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14800: Load - Concurrent Job Creation Load.

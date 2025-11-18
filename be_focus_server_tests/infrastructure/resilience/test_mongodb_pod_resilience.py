@@ -68,6 +68,7 @@ def mongodb_manager(config_manager, k8s_manager):
 
 
 @pytest.fixture
+@pytest.mark.regression
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -86,12 +87,10 @@ def test_config():
 # Test Class: MongoDB Pod Resilience
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.resilience
-@pytest.mark.kubernetes
-@pytest.mark.mongodb
-@pytest.mark.slow
 @pytest.mark.critical
+
+
+@pytest.mark.regression
 class TestMongoDBPodResilience:
     """
     Test suite for MongoDB pod resilience and failure scenarios.
@@ -105,6 +104,9 @@ class TestMongoDBPodResilience:
     """
     
     @pytest.mark.xray("PZ-14715")
+
+    
+    @pytest.mark.regression
     def test_mongodb_pod_deletion_recreation(
         self,
         k8s_manager: KubernetesManager,
@@ -250,6 +252,9 @@ class TestMongoDBPodResilience:
                     logger.warning(f"⚠️  MongoDB pod '{new_pod_name}' is not running - may need manual intervention")
     
     @pytest.mark.xray("PZ-14716")
+
+    
+    @pytest.mark.regression
     def test_mongodb_scale_down_to_zero(
         self,
         k8s_manager: KubernetesManager,
@@ -421,6 +426,9 @@ class TestMongoDBPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14717")
+
+    
+    @pytest.mark.regression
     def test_mongodb_pod_restart_during_job_creation(
         self,
         k8s_manager: KubernetesManager,
@@ -566,6 +574,9 @@ class TestMongoDBPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14718")
+
+    
+    @pytest.mark.regression
     def test_mongodb_outage_graceful_degradation(
         self,
         k8s_manager: KubernetesManager,
@@ -686,6 +697,9 @@ class TestMongoDBPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14719")
+
+    
+    @pytest.mark.regression
     def test_mongodb_recovery_after_outage(
         self,
         k8s_manager: KubernetesManager,
@@ -801,6 +815,9 @@ class TestMongoDBPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14720")
+
+    
+    @pytest.mark.regression
     def test_mongodb_pod_status_monitoring(
         self,
         k8s_manager: KubernetesManager,
@@ -877,6 +894,9 @@ class TestMongoDBPodResilience:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_mongodb_pod_resilience_summary():
     """
     Summary test for MongoDB pod resilience tests.

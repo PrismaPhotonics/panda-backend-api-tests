@@ -48,11 +48,10 @@ def k8s_manager(config_manager):
 # Test Class: SEGY Recorder Pod Resilience
 # ===================================================================
 
-@pytest.mark.infrastructure
-@pytest.mark.resilience
-@pytest.mark.kubernetes
-@pytest.mark.segy_recorder
 @pytest.mark.slow
+
+
+@pytest.mark.regression
 class TestSEGYRecorderPodResilience:
     """
     Test suite for SEGY Recorder pod resilience and failure scenarios.
@@ -66,6 +65,9 @@ class TestSEGYRecorderPodResilience:
     """
     
     @pytest.mark.xray("PZ-14733")
+
+    
+    @pytest.mark.regression
     def test_segy_recorder_pod_deletion_recreation(
         self,
         k8s_manager: KubernetesManager
@@ -179,6 +181,9 @@ class TestSEGYRecorderPodResilience:
                     logger.warning(f"⚠️  SEGY Recorder pod '{new_pod_name}' is not running")
     
     @pytest.mark.xray("PZ-14734")
+
+    
+    @pytest.mark.regression
     def test_segy_recorder_scale_down_to_zero(
         self,
         k8s_manager: KubernetesManager
@@ -283,6 +288,9 @@ class TestSEGYRecorderPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14735")
+
+    
+    @pytest.mark.regression
     def test_segy_recorder_pod_restart_during_recording(
         self,
         k8s_manager: KubernetesManager
@@ -363,6 +371,9 @@ class TestSEGYRecorderPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14736")
+
+    
+    @pytest.mark.regression
     def test_segy_recorder_outage_behavior(
         self,
         k8s_manager: KubernetesManager
@@ -449,6 +460,9 @@ class TestSEGYRecorderPodResilience:
             raise
     
     @pytest.mark.xray("PZ-14737")
+
+    
+    @pytest.mark.regression
     def test_segy_recorder_recovery_after_outage(
         self,
         k8s_manager: KubernetesManager
@@ -538,6 +552,9 @@ class TestSEGYRecorderPodResilience:
 # ===================================================================
 
 @pytest.mark.summary
+
+
+@pytest.mark.regression
 def test_segy_recorder_pod_resilience_summary():
     """Summary test for SEGY Recorder pod resilience tests."""
     logger.info("=" * 80)

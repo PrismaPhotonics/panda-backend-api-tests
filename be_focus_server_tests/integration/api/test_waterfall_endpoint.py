@@ -41,10 +41,10 @@ logger = logging.getLogger(__name__)
 # Test Class: GET /waterfall/{task_id}/{row_count} Endpoint
 # ===================================================================
 
-@pytest.mark.integration
-@pytest.mark.api
-@pytest.mark.critical
 @pytest.mark.skip(reason="Future API structure - GET /waterfall/{task_id}/{row_count} endpoint not yet deployed to staging")
+
+
+@pytest.mark.regression
 class TestWaterfallEndpoint:
     """
     Test suite for GET /waterfall/{task_id}/{row_count} endpoint.
@@ -61,6 +61,8 @@ class TestWaterfallEndpoint:
     
     @pytest.mark.xray("PZ-14755")
     @pytest.mark.xray("PZ-13557")
+
+    @pytest.mark.regression
     def test_waterfall_valid_request(
         self,
         focus_server_api: FocusServerAPI
@@ -152,6 +154,8 @@ class TestWaterfallEndpoint:
     
     @pytest.mark.xray("PZ-14756")
     @pytest.mark.xray("PZ-13557")
+
+    @pytest.mark.regression
     def test_waterfall_no_data_available(
         self,
         focus_server_api: FocusServerAPI
@@ -230,6 +234,8 @@ class TestWaterfallEndpoint:
     
     @pytest.mark.xray("PZ-14757")
     @pytest.mark.xray("PZ-13557")
+
+    @pytest.mark.regression
     def test_waterfall_invalid_task_id(
         self,
         focus_server_api: FocusServerAPI
@@ -289,6 +295,8 @@ class TestWaterfallEndpoint:
     
     @pytest.mark.xray("PZ-14758")
     @pytest.mark.xray("PZ-13557")
+
+    @pytest.mark.regression
     def test_waterfall_invalid_row_count(
         self,
         focus_server_api: FocusServerAPI
@@ -373,6 +381,8 @@ class TestWaterfallEndpoint:
     
     @pytest.mark.xray("PZ-14759")
     @pytest.mark.xray("PZ-13557")
+
+    @pytest.mark.regression
     def test_waterfall_baby_analyzer_exited(
         self,
         focus_server_api: FocusServerAPI
@@ -415,36 +425,4 @@ class TestWaterfallEndpoint:
         logger.info("=" * 80)
 
 
-# ===================================================================
-# Module Summary Test
-# ===================================================================
-
-@pytest.mark.summary
-def test_waterfall_endpoint_summary():
-    """
-    Summary test for GET /waterfall/{task_id}/{row_count} endpoint tests.
-    
-    This test documents which Xray test cases are covered in this module.
-    
-    Covered Xray Tests:
-        ✅ PZ-14755: GET /waterfall/{task_id}/{row_count} - Valid Request
-        ✅ PZ-14756: GET /waterfall/{task_id}/{row_count} - No Data Available
-        ✅ PZ-14757: GET /waterfall/{task_id}/{row_count} - Invalid Task ID
-        ✅ PZ-14758: GET /waterfall/{task_id}/{row_count} - Invalid Row Count
-        ✅ PZ-14759: GET /waterfall/{task_id}/{row_count} - Baby Analyzer Exited
-    
-    Total: 5 tests
-    """
-    logger.info("=" * 80)
-    logger.info("GET /waterfall/{task_id}/{row_count} Endpoint Tests - Summary")
-    logger.info("=" * 80)
-    logger.info("Xray Test Coverage:")
-    logger.info("  ✅ PZ-14755: Valid Request")
-    logger.info("  ✅ PZ-14756: No Data Available")
-    logger.info("  ✅ PZ-14757: Invalid Task ID")
-    logger.info("  ✅ PZ-14758: Invalid Row Count")
-    logger.info("  ✅ PZ-14759: Baby Analyzer Exited")
-    logger.info("=" * 80)
-    logger.info("Total: 5 Tests")
-    logger.info("=" * 80)
 

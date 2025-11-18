@@ -22,10 +22,11 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.integration
-@pytest.mark.security
-@pytest.mark.api
 @pytest.mark.critical
+
+
+
+@pytest.mark.regression
 class TestCSRFProtection:
     """
     Test suite for CSRF protection security.
@@ -35,6 +36,9 @@ class TestCSRFProtection:
     """
     
     @pytest.mark.xray("PZ-14776")
+
+    
+    @pytest.mark.regression
     def test_csrf_protection(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14776: Security - CSRF Protection.
