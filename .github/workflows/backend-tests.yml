@@ -1,0 +1,154 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop, master ]
+  pull_request:
+    branches: [ main, develop, master ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        # Install dependencies in stages to avoid resolution conflicts
+        # Stage 1: Core pytest packages
+        pip install --no-cache-dir --prefer-binary \
+          pytest==8.2.0 \
+          pytest-asyncio==0.23.0 \
+          pytest-timeout==2.3.0 \
+          pytest-mock==3.14.0 \
+          pytest-html==4.1.1 \
+          pytest-cov==5.0.0 \
+          pytest-json-report==1.5.0 \
+          pytest-xdist==3.6.0
+        # Stage 2: HTTP and data processing
+        pip install --no-cache-dir --prefer-binary \
+          requests==2.32.3 \
+          httpx==0.27.0 \
+          beautifulsoup4==4.12.3 \
+          pydantic==2.9.0 \
+          pydantic-settings==2.5.0 \
+          orjson==3.10.0 \
+          pyyaml==6.0.1
+        # Stage 3: Infrastructure and utilities
+        pip install --no-cache-dir --prefer-binary \
+          kubernetes==30.1.0 \
+          pymongo==4.10.0 \
+          paramiko==3.5.0 \
+          pika==1.3.2 \
+          structlog==24.4.0 \
+          colorlog==6.8.2 \
+          python-dateutil==2.9.0 \
+          pytz==2024.1 \
+          psutil==5.9.8 \
+          python-dotenv==1.0.1 \
+          netaddr==0.10.1 \
+          jira==3.10.5
+        # Stage 4: Browser automation (optional)
+        pip install --no-cache-dir --prefer-binary \
+          playwright==1.48.0 \
+          pytest-playwright==0.4.3 || true
+        # Stage 5: Reporting and optional packages
+        pip install --no-cache-dir --prefer-binary \
+          allure-pytest==2.13.2 \
+          jinja2==3.1.4 \
+          asyncio-mqtt==0.16.2 \
+          aiofiles==24.1.0 \
+          pytest-xray==0.2.1 || true
+        # Stage 6: Development tools (optional)
+        pip install --no-cache-dir --prefer-binary \
+          black==24.8.0 \
+          flake8==7.1.1 \
+          mypy==1.11.0 \
+          isort==5.13.2 \
+          cryptography==43.0.0 \
+          bandit==1.7.8 \
+          sphinx==8.1.3 \
+          sphinx-rtd-theme==3.0.2 || true
+
+    - name: Create reports directory
+      run: mkdir -p reports
+
+    - name: Check Focus Server availability
+      id: check_focus
+      env:
+        FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+        FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      run: |
+        if [ -z "$FOCUS_BASE_URL" ]; then
+          echo "available=false" >> $GITHUB_OUTPUT
+          echo "FOCUS_BASE_URL secret not configured - tests requiring Focus Server will be skipped"
+        else
+          BASE="${FOCUS_BASE_URL%/}${FOCUS_API_PREFIX}"
+          code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/ack" 2>/dev/null || echo "000")
+          if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "Focus Server is reachable (HTTP $code)"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "Focus Server not reachable (HTTP $code) - tests will be skipped"
+          fi
+        fi
+
+    - name: Run Backend Tests
+      env:
+        CI: true
+        FOCUS_ENV: local
+        FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+        FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+        VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
+        FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
+      run: |
+        pytest be_focus_server_tests/ \
+          --env=local \
+          --skip-health-check \
+          --skip-sanity-check \
+          --override-ini="testpaths=" \
+          --ignore=be_focus_server_tests/load \
+          --ignore=be_focus_server_tests/stress \
+          --ignore-glob=**/integration/load \
+          --ignore-glob=**/test_alert_generation_load.py \
+          --ignore-glob=**/test_alert_generation_performance.py \
+          -m "not load and not stress and not grpc" \
+          -v \
+          --tb=short \
+          --junitxml=reports/junit-backend.xml \
+          --html=reports/backend-report.html \
+          --self-contained-html \
+          --maxfail=10 \
+          --continue-on-collection-errors
+
+    - name: Upload test reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-test-reports
+        path: |
+          reports/junit-backend.xml
+          reports/backend-report.html
+        retention-days: 30
+
