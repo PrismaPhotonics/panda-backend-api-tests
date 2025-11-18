@@ -130,97 +130,69 @@ def test_mongodb_direct_connection(current_env):
 
 @pytest.mark.regression
 @pytest.mark.smoke
-def test_kubernetes_direct_connection():
+def test_kubernetes_direct_connection(current_env):
     """
-    Test direct Kubernetes connection.
+    Test Kubernetes connection using KubernetesManager (supports SSH fallback).
     
     PZ-13899: Infrastructure - Kubernetes Cluster Connection and Pod Health Check
     
+    Args:
+        current_env: Current test environment
+    
     Verification:
-    - Kubernetes API accessibility
+    - Kubernetes API accessibility (via direct API or SSH fallback)
     - Cluster version
     - Node listing
     """
     logger.info("=" * 80)
-    logger.info("Testing Direct Kubernetes Connectivity")
+    logger.info("Testing Kubernetes Connectivity")
     logger.info("=" * 80)
     
     try:
-        # Load Kubernetes configuration
-        logger.info("Loading Kubernetes configuration...")
-        config.load_kube_config()
+        # Use KubernetesManager which supports SSH fallback
+        from src.infrastructure.kubernetes_manager import KubernetesManager
         
-        # Disable SSL verification for self-signed certificates
-        # Set shorter timeout for faster failure
-        from kubernetes.client import Configuration
-        k8s_config = Configuration.get_default_copy()
-        k8s_config.verify_ssl = False
-        k8s_config.timeout = 5  # 5 seconds timeout for faster failure
-        Configuration.set_default(k8s_config)
+        logger.info("Initializing Kubernetes manager...")
+        config_manager = ConfigManager(current_env)
+        k8s_manager = KubernetesManager(config_manager)
         
-        # Create API clients
-        core_v1 = client.CoreV1Api()
+        # Check connection method
+        if k8s_manager.use_ssh_fallback:
+            logger.info("ℹ️  Using SSH-based kubectl fallback")
+        else:
+            logger.info("ℹ️  Using direct Kubernetes API access")
         
-        # Get cluster version using VersionApi
-        logger.info("Retrieving cluster version...")
-        try:
-            from kubernetes.client import VersionApi
-            version_api = VersionApi()
-            # Note: get_code() doesn't support timeout parameter - using API client timeout instead
-            version = version_api.get_code()
-            logger.info(f"Kubernetes Version: {version.git_version}")
-        except Exception as e:
-            if "timeout" in str(e).lower() or "Connection" in str(type(e).__name__):
-                logger.warning("⚠️  Kubernetes API not directly accessible from this machine")
-                logger.info("ℹ️  This is expected - Kubernetes API requires SSH tunnel or VPN")
-                logger.info("ℹ️  To access Kubernetes, use one of these methods:")
-                logger.info("    1. SSH tunnel: ssh -L 6443:10.10.100.102:6443 root@10.10.100.3")
-                logger.info("    2. Direct SSH: ssh root@10.10.100.3 -> ssh prisma@10.10.100.113 -> k9s")
-                logger.info("    3. Run tests from within cluster network")
-                pytest.skip(f"Kubernetes API not accessible (requires SSH tunnel): {e}")
-            else:
-                raise
+        # Get cluster info (works with both direct API and SSH fallback)
+        logger.info("Retrieving cluster information...")
+        cluster_info = k8s_manager.get_cluster_info()
         
-        # List nodes with timeout
-        logger.info("Listing cluster nodes...")
-        try:
-            nodes = core_v1.list_node(timeout_seconds=5)
-            logger.info(f"Found {len(nodes.items)} nodes:")
-            
-            for node in nodes.items:
-                status = "Ready" if any(cond.type == "Ready" and cond.status == "True" 
-                                       for cond in node.status.conditions) else "NotReady"
-                logger.info(f"  - {node.metadata.name}: {status}")
-                logger.info(f"    Kubelet Version: {node.status.node_info.kubelet_version}")
-            
-            logger.info("✅ Kubernetes connectivity test PASSED")
-        except Exception as e:
-            if "timeout" in str(e).lower() or "Connection" in str(type(e).__name__):
-                logger.warning("⚠️  Kubernetes API not directly accessible")
-                logger.info("ℹ️  Use SSH tunnel or direct SSH access to connect to cluster")
-                pytest.skip(f"Kubernetes API not accessible (requires SSH tunnel): {e}")
-            else:
-                raise
+        logger.info(f"Kubernetes Cluster Information:")
+        logger.info(f"  Version: {cluster_info.get('version', 'Unknown')}")
+        logger.info(f"  Nodes: {cluster_info.get('node_count', 0)}")
         
-    except config.ConfigException as e:
-        logger.error(f"❌ Kubernetes config not found or invalid: {e}")
-        logger.warning("⚠️  This is expected if running outside of a Kubernetes environment")
-        pytest.skip(f"Kubernetes config not available: {e}")
+        # List nodes
+        nodes = cluster_info.get('nodes', [])
+        if nodes:
+            logger.info(f"Found {len(nodes)} nodes:")
+            for node in nodes:
+                logger.info(f"  - {node.get('name', 'Unknown')}: {node.get('status', 'Unknown')}")
+                logger.info(f"    Kubelet Version: {node.get('kubelet_version', 'Unknown')}")
+        else:
+            logger.warning("⚠️  No nodes found in cluster")
         
-    except ApiException as e:
-        logger.error(f"❌ Kubernetes API error: {e}")
-        pytest.fail(f"Kubernetes API error: {e}")
+        # Verify cluster is accessible
+        assert cluster_info.get('node_count', 0) > 0, "No nodes found in cluster"
+        
+        logger.info("✅ Kubernetes connectivity test PASSED")
         
     except Exception as e:
         error_str = str(e).lower()
-        if "timeout" in error_str or "connection" in error_str:
-            logger.warning("⚠️  Kubernetes API connection timeout")
-            logger.info("ℹ️  Kubernetes API is not directly accessible from this machine")
-            logger.info("ℹ️  Solutions:")
-            logger.info("    1. Create SSH tunnel: ssh -L 6443:10.10.100.102:6443 root@10.10.100.3")
-            logger.info("    2. Use direct SSH access to cluster worker node")
-            logger.info("    3. Run tests from within cluster network")
-            pytest.skip(f"Kubernetes API not accessible (requires SSH tunnel): {e}")
+        if "timeout" in error_str or "connection" in error_str or "not available" in error_str:
+            logger.warning("⚠️  Kubernetes not accessible")
+            logger.info("ℹ️  Kubernetes requires either:")
+            logger.info("    1. Direct kubeconfig access")
+            logger.info("    2. SSH access (automatically used as fallback)")
+            pytest.skip(f"Kubernetes not accessible: {e}")
         else:
             logger.error(f"❌ Kubernetes connectivity test failed: {e}")
             pytest.fail(f"Kubernetes connectivity test failed: {e}")
@@ -372,11 +344,14 @@ def test_ssh_direct_connection(current_env):
 
 
 @pytest.mark.smoke
-def test_connectivity_summary():
+def test_connectivity_summary(current_env):
     """
     Run all connectivity tests and provide a summary.
     
     This test provides a comprehensive overview of all external service connectivity.
+    
+    Args:
+        current_env: Current test environment
     """
     logger.info("=" * 80)
     logger.info("COMPREHENSIVE CONNECTIVITY SUMMARY")
@@ -391,7 +366,7 @@ def test_connectivity_summary():
     # Test MongoDB
     if PYMONGO_AVAILABLE:
         try:
-            test_mongodb_direct_connection()
+            test_mongodb_direct_connection(current_env)
             results["MongoDB"] = "✅ PASSED"
         except:
             results["MongoDB"] = "❌ FAILED"
@@ -401,7 +376,7 @@ def test_connectivity_summary():
     # Test Kubernetes
     if K8S_AVAILABLE:
         try:
-            test_kubernetes_direct_connection()
+            test_kubernetes_direct_connection(current_env)
             results["Kubernetes"] = "✅ PASSED"
         except:
             results["Kubernetes"] = "❌ FAILED / SKIPPED"
@@ -411,7 +386,7 @@ def test_connectivity_summary():
     # Test SSH
     if SSH_AVAILABLE:
         try:
-            test_ssh_direct_connection()
+            test_ssh_direct_connection(current_env)
             results["SSH"] = "✅ PASSED"
         except:
             results["SSH"] = "❌ FAILED"
