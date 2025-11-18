@@ -213,9 +213,8 @@ class TestHealthCheckConcurrentRequests:
         (100, 500, 1500),
     ])
     @pytest.mark.regression
-
     @pytest.mark.smoke
-def test_ack_concurrent_requests(self, num_requests, expected_avg_ms, expected_p95_ms):
+    def test_ack_concurrent_requests(self, num_requests, expected_avg_ms, expected_p95_ms):
         """
         Test PZ-14028: Health check handles concurrent requests.
         

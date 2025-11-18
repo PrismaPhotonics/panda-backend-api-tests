@@ -1075,7 +1075,7 @@ class TestLiveModeValidation:
     """
     
     @pytest.mark.regression
-def test_live_mode_valid_configuration(self, focus_server_api, valid_config_payload):
+    def test_live_mode_valid_configuration(self, focus_server_api, valid_config_payload):
         """
         Test: Valid Live Mode configuration (both times null).
         

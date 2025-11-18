@@ -63,7 +63,7 @@ class TestFocusServerCleanStartup:
     """
     
     @pytest.mark.regression
-def test_focus_server_clean_startup(
+    def test_focus_server_clean_startup(
         self,
         focus_server_api: FocusServerAPI,
         skip_if_waiting_for_fiber

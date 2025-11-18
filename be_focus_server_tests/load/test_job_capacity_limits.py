@@ -392,7 +392,7 @@ class TestBaselinePerformance:
     """Baseline performance test - single job."""
     
     @pytest.mark.regression
-def test_single_job_baseline(self, focus_server_api, standard_config_payload):
+    def test_single_job_baseline(self, focus_server_api, standard_config_payload):
         """
         Baseline performance test for a single job.
         

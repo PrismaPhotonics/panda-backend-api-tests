@@ -152,7 +152,7 @@ class TestK8sJobCreation:
     """
     
     @pytest.mark.regression
-def test_k8s_job_creation_triggers_pod_spawn(
+    def test_k8s_job_creation_triggers_pod_spawn(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,

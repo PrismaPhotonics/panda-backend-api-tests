@@ -48,8 +48,7 @@ class TestExternalServicesConnectivity(InfrastructureTest):
         return ConfigManager(current_env)
     
     @pytest.fixture(scope="class")
-    @pytest.mark.regression
-def test_results(self):
+    def test_results(self):
         """
         Store test results for final summary.
         

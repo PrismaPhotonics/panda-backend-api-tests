@@ -224,7 +224,7 @@ class TestDynamicROIHappyPath:
         logger.info(f"✅ ROI change command sent: [{new_start}, {new_end}]")
     
     @pytest.mark.regression
-def test_roi_change_with_validation(self, baby_analyzer_mq_client):
+    def test_roi_change_with_validation(self, baby_analyzer_mq_client):
         """
         Test: Send ROI change with safety validation.
         

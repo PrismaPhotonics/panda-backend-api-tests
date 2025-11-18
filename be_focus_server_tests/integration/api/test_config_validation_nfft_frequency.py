@@ -250,7 +250,7 @@ class TestConfigurationCompatibility:
     """Test suite for configuration parameter compatibility."""
     
     @pytest.mark.regression
-def test_configuration_resource_estimation(self, focus_server_api):
+    def test_configuration_resource_estimation(self, focus_server_api):
         """Test: Estimate resource usage for configuration."""
         logger.info("Test: Configuration resource estimation")
         

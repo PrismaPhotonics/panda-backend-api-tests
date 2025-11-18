@@ -169,7 +169,7 @@ class TestDataExposure:
         logger.info("=" * 80)
     
     @pytest.mark.regression
-def test_error_message_security(self, focus_server_api: FocusServerAPI):
+    def test_error_message_security(self, focus_server_api: FocusServerAPI):
         """
         Test: Security - Error Message Security.
         
