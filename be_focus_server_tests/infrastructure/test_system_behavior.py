@@ -223,6 +223,7 @@ class TestFocusServerStability:
     Related: Meeting decision - Stability over time (IN SCOPE)
     """
     
+    @pytest.mark.skip(reason="Long-running test (1 hour) - skip by default, run manually when needed")
     @pytest.mark.regression
     def test_focus_server_stability_over_time(
         self,
