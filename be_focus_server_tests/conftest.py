@@ -18,7 +18,8 @@ from src.utils.pod_logs_collector import PodLogsCollector
 from src.utils.realtime_pod_monitor import PodLogMonitor
 
 # Import logging plugin for automatic test log files
-pytest_plugins = ["pytest_logging_plugin"]
+# Note: pytest_plugins moved to root conftest.py to avoid deprecation warning
+# pytest_plugins = ["pytest_logging_plugin"]
 
 # ===================================================================
 # PZ Development Repository Integration
