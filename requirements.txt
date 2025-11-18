@@ -2,77 +2,77 @@
 # ================================================
 
 # Core Testing Framework
-pytest>=7.4.0
-pytest-asyncio>=0.21.1
-pytest-timeout>=2.2.0
-pytest-mock>=3.12.0
-pytest-html>=4.1.1
-pytest-cov>=4.1.0
-pytest-json-report>=1.5.0
-pytest-xdist>=3.3.1  # For parallel execution
+pytest>=7.4.0,<11.0.0
+pytest-asyncio>=0.21.1,<0.25.0
+pytest-timeout>=2.2.0,<3.0.0
+pytest-mock>=3.12.0,<4.0.0
+pytest-html>=4.1.1,<5.0.0
+pytest-cov>=4.1.0,<6.0.0
+pytest-json-report>=1.5.0,<2.0.0
+pytest-xdist>=3.3.1,<4.0.0  # For parallel execution
 
 # HTTP and API Testing
-requests>=2.31.0
-httpx>=0.24.1  # Modern HTTP client
-beautifulsoup4>=4.12.0  # For API Healing Framework (Swagger parsing)
+requests>=2.31.0,<3.0.0
+httpx>=0.24.1,<0.30.0  # Modern HTTP client
+beautifulsoup4>=4.12.0,<5.0.0  # For API Healing Framework (Swagger parsing)
 
 # Browser Automation and UI Testing
-playwright>=1.40.0  # AI-powered UI testing with self-healing selectors
-pytest-playwright>=0.4.3  # Pytest plugin for Playwright
+playwright>=1.40.0,<2.0.0  # AI-powered UI testing with self-healing selectors
+pytest-playwright>=0.4.3,<1.0.0  # Pytest plugin for Playwright
 
 # Infrastructure Management
-kubernetes>=28.1.0
-pymongo>=4.6.0
-paramiko>=3.3.1
-pika>=1.3.0  # RabbitMQ client
+kubernetes>=28.1.0,<35.0.0
+pymongo>=4.6.0,<5.0.0
+paramiko>=3.3.1,<5.0.0
+pika>=1.3.0,<2.0.0  # RabbitMQ client
 
 # Data Processing and Validation
-pydantic>=2.4.0
-pydantic-settings>=2.0.0
-orjson>=3.9.10
+pydantic>=2.4.0,<3.0.0
+pydantic-settings>=2.0.0,<3.0.0
+orjson>=3.9.10,<4.0.0
 
 # Configuration Management
-pyyaml>=6.0.1
-python-dotenv>=1.0.0
+pyyaml>=6.0.1,<7.0.0
+python-dotenv>=1.0.0,<2.0.0
 
 # Logging and Monitoring
-structlog>=23.2.0
-colorlog>=6.7.0
+structlog>=23.2.0,<26.0.0
+colorlog>=6.7.0,<7.0.0
 
 # Utilities
-python-dateutil>=2.8.2
-pytz>=2023.3
-psutil>=5.9.6
+python-dateutil>=2.8.2,<3.0.0
+pytz>=2023.3,<2026.0
+psutil>=5.9.6,<8.0.0
 
 # Development Tools
-black>=23.7.0
-flake8>=6.0.0
-mypy>=1.5.0
-isort>=5.12.0
+black>=23.7.0,<26.0.0
+flake8>=6.0.0,<8.0.0
+mypy>=1.5.0,<2.0.0
+isort>=5.12.0,<8.0.0
 
 # Security
-cryptography>=41.0.7
-bandit>=1.7.5
+cryptography>=41.0.7,<47.0.0
+bandit>=1.7.5,<2.0.0
 
 # Documentation
-sphinx>=7.1.0
-sphinx-rtd-theme>=1.3.0
+sphinx>=7.1.0,<9.0.0
+sphinx-rtd-theme>=1.3.0,<4.0.0
 
 # Reporting
-allure-pytest>=2.13.0
-jinja2>=3.1.2
+allure-pytest>=2.13.0,<3.0.0
+jinja2>=3.1.2,<4.0.0
 
 # Async Support
-asyncio-mqtt>=0.16.1
-aiofiles>=23.2.0
+asyncio-mqtt>=0.16.1,<1.0.0
+aiofiles>=23.2.0,<26.0.0
 
 # Network Testing
-netaddr>=0.10.1
+netaddr>=0.10.1,<2.0.0
 # socket-client>=1.0.0  # This package doesn't exist, removing
 
 # Jira Integration
-jira>=3.5.0  # Jira API client for Python
-pytest-xray>=0.2.1  # Optional: pytest plugin for Xray integration (makes marker handling easier)
+jira>=3.5.0,<4.0.0  # Jira API client for Python
+pytest-xray>=0.2.1,<1.0.0  # Optional: pytest plugin for Xray integration (makes marker handling easier)
 
 # File System Operations
 # pathlib2>=2.3.7  # Not needed in Python 3.4+, using built-in pathlib
