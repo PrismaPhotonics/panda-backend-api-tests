@@ -35,31 +35,33 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         
-        echo "Installing dependencies from requirements.txt..."
+        echo "Installing dependencies (skipping requirements.txt due to resolution-too-deep)..."
         
-        # Try installing with requirements.txt first
-        # Use --no-deps to avoid deep resolution, then install dependencies manually
-        pip install --no-cache-dir --prefer-binary -r requirements.txt 2>&1 | tee install.log || {
-          echo "First attempt failed, trying with resolver options..."
-          # If that fails, try with resolver options
-          pip install --no-cache-dir --prefer-binary \
-            --resolver=backtracking \
-            -r requirements.txt || \
-          pip install --no-cache-dir --prefer-binary \
-            --use-deprecated=legacy-resolver \
-            -r requirements.txt || {
-            echo "Full install failed, installing critical packages only..."
-            # Last resort: install only critical packages
-            pip install --no-cache-dir --prefer-binary pytest pytest-asyncio requests pydantic pyyaml
-            pip install --no-cache-dir --prefer-binary kubernetes pymongo paramiko pika
-            pip install --no-cache-dir --prefer-binary structlog colorlog python-dateutil pytz psutil python-dotenv netaddr || true
-            pip install --no-cache-dir --prefer-binary pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist || true
-            pip install --no-cache-dir --prefer-binary httpx beautifulsoup4 pydantic-settings orjson || true
-            pip install --no-cache-dir --prefer-binary allure-pytest jinja2 asyncio-mqtt aiofiles || true
-            pip install --no-cache-dir --prefer-binary playwright pytest-playwright || true
-            pip install --no-cache-dir --prefer-binary jira pytest-xray || true
-          }
-        }
+        # Skip requirements.txt and install packages directly to avoid resolution-too-deep
+        # Install core testing framework
+        pip install --no-cache-dir --prefer-binary \
+          pytest pytest-asyncio pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist
+        
+        # Install HTTP and data processing
+        pip install --no-cache-dir --prefer-binary \
+          requests httpx beautifulsoup4 pydantic pydantic-settings orjson pyyaml
+        
+        # Install infrastructure packages
+        pip install --no-cache-dir --prefer-binary \
+          kubernetes pymongo paramiko pika structlog colorlog python-dateutil pytz psutil python-dotenv netaddr
+        
+        # Install optional packages (allow failures)
+        pip install --no-cache-dir --prefer-binary \
+          allure-pytest jinja2 asyncio-mqtt aiofiles || echo "Some optional packages failed (continuing)..."
+        
+        pip install --no-cache-dir --prefer-binary \
+          playwright pytest-playwright || echo "Browser automation packages failed (continuing)..."
+        
+        pip install --no-cache-dir --prefer-binary \
+          jira pytest-xray || echo "Jira packages failed (continuing)..."
+        
+        pip install --no-cache-dir --prefer-binary \
+          black flake8 mypy isort cryptography bandit sphinx sphinx-rtd-theme || echo "Dev tools failed (continuing)..."
         
         echo "Dependency installation completed!"
         echo "Installed packages:"
