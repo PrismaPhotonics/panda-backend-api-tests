@@ -672,7 +672,7 @@ class TestROIDataSize:
         ids=[case[0] for case in ROI_TEST_CASES]  # Use test_id as test name
     )
     @pytest.mark.regression
-def test_roi_change_should_not_affect_other_config_parameters(
+    def test_roi_change_should_not_affect_other_config_parameters(
         self, 
         focus_server_api,
         test_id,

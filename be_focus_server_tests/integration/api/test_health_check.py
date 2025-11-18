@@ -321,9 +321,8 @@ class TestHealthCheckVariousHeaders:
         ("X-Requested-With", "XMLHttpRequest", 200),
     ])
     @pytest.mark.regression
-
     @pytest.mark.smoke
-def test_ack_with_various_headers(self, header_name, header_value, expected_status):
+    def test_ack_with_various_headers(self, header_name, header_value, expected_status):
         """
         Test PZ-14029: Health check with various headers.
         

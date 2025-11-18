@@ -318,7 +318,7 @@ class TestK8sResourceAllocation:
     """
     
     @pytest.mark.regression
-def test_k8s_job_resource_allocation(
+    def test_k8s_job_resource_allocation(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,

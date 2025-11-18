@@ -224,7 +224,7 @@ class TestFocusServerStability:
     """
     
     @pytest.mark.regression
-def test_focus_server_stability_over_time(
+    def test_focus_server_stability_over_time(
         self,
         focus_server_api: FocusServerAPI
     ):

@@ -443,7 +443,7 @@ class TestLinearLoad:
     """Linear load test - finding breaking point."""
     
     @pytest.mark.regression
-def test_linear_load_progression(self, focus_server_api, lightweight_config_payload):
+    def test_linear_load_progression(self, focus_server_api, lightweight_config_payload):
         """
         Linear load test: 5 → 10 → 20 → 50 jobs.
         
