@@ -510,6 +510,29 @@ class LiveMetadataFlat(BaseModel):
             raise ValueError('num_samples_per_trace must be > 0 if provided')
         return v
     
+    @field_validator('number_of_channels', mode='before')
+    @classmethod
+    def validate_number_of_channels(cls, v: Optional[float]) -> Optional[int]:
+        """
+        Validate number_of_channels: convert float to int if needed.
+        
+        The API sometimes returns float values (e.g., 2447.75) but we expect int.
+        This validator converts float to int by rounding.
+        """
+        if v is None:
+            return None
+        # Convert float to int by rounding
+        if isinstance(v, float):
+            return int(round(v))
+        # If already int, return as-is
+        if isinstance(v, int):
+            return v
+        # Try to convert other types
+        try:
+            return int(round(float(v)))
+        except (ValueError, TypeError):
+            raise ValueError(f'number_of_channels must be a number, got {type(v).__name__}: {v}')
+    
     @property
     def is_waiting_for_fiber(self) -> bool:
         """Check if system is in 'waiting for fiber' state."""
