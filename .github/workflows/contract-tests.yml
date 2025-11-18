@@ -42,8 +42,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install -U pip setuptools wheel
-          # Install dependencies in stages to avoid resolution conflicts
-          # Stage 1: Core pytest packages
+          
+          echo "Installing dependencies in stages to avoid resolution conflicts..."
+          
+          # Stage 1: Core pytest packages (required)
+          echo "Stage 1: Installing core pytest packages..."
           pip install --no-cache-dir --prefer-binary \
             pytest==8.2.0 \
             pytest-asyncio==0.23.0 \
@@ -53,7 +56,13 @@ jobs:
             pytest-cov==5.0.0 \
             pytest-json-report==1.5.0 \
             pytest-xdist==3.6.0
-          # Stage 2: HTTP and data processing
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Stage 1 failed - core pytest packages installation failed"
+            exit 1
+          fi
+          
+          # Stage 2: HTTP and data processing (required)
+          echo "Stage 2: Installing HTTP and data processing packages..."
           pip install --no-cache-dir --prefer-binary \
             requests==2.32.3 \
             httpx==0.27.0 \
@@ -62,7 +71,13 @@ jobs:
             pydantic-settings==2.5.0 \
             orjson==3.10.0 \
             pyyaml==6.0.1
-          # Stage 3: Infrastructure and utilities
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Stage 2 failed - HTTP packages installation failed"
+            exit 1
+          fi
+          
+          # Stage 3: Infrastructure and utilities (required)
+          echo "Stage 3: Installing infrastructure packages..."
           pip install --no-cache-dir --prefer-binary \
             kubernetes==30.1.0 \
             pymongo==4.10.0 \
@@ -76,13 +91,23 @@ jobs:
             python-dotenv==1.0.1 \
             netaddr==0.10.1 \
             jira==3.10.5
-          # Stage 4: Reporting and optional packages
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Stage 3 failed - infrastructure packages installation failed"
+            exit 1
+          fi
+          
+          # Stage 4: Reporting and optional packages (optional - allow failure)
+          echo "Stage 4: Installing reporting packages (optional)..."
           pip install --no-cache-dir --prefer-binary \
             allure-pytest==2.13.2 \
             jinja2==3.1.4 \
             asyncio-mqtt==0.16.2 \
-            aiofiles==24.1.0 \
-            pytest-xray==0.2.1 || true
+            aiofiles==24.1.0 || echo "WARNING: Some reporting packages failed (continuing)..."
+          pip install --no-cache-dir --prefer-binary pytest-xray==0.2.1 || echo "WARNING: pytest-xray failed (continuing)..."
+          
+          echo "Dependency installation completed!"
+          echo "Installed packages:"
+          pip list | head -30
 
       - name: Preflight – check Focus availability
         id: preflight
