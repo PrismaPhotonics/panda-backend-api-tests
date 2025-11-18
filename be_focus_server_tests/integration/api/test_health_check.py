@@ -384,9 +384,8 @@ class TestHealthCheckSecurityHeaders:
         ("X-Forwarded-For", "' OR '1'='1"),
     ])
     @pytest.mark.regression
-
     @pytest.mark.smoke
-def test_ack_security_headers_validation(self, header_name, malicious_value):
+    def test_ack_security_headers_validation(self, header_name, malicious_value):
         """
         Test PZ-14030: Health check security headers validation.
         

@@ -539,7 +539,7 @@ class TestStressLoad:
     """Stress test - pushing system to the limit."""
     
     @pytest.mark.regression
-def test_extreme_concurrent_load(self, focus_server_api, lightweight_config_payload):
+    def test_extreme_concurrent_load(self, focus_server_api, lightweight_config_payload):
         """
         Extreme load test: 100 concurrent jobs.
         
@@ -598,7 +598,7 @@ class TestHeavyConfigurationStress:
     """Stress test with heavy configuration."""
     
     @pytest.mark.regression
-def test_heavy_config_concurrent(self, focus_server_api, heavy_config_payload):
+    def test_heavy_config_concurrent(self, focus_server_api, heavy_config_payload):
         """
         Heavy configuration test (200 channels, NFFT 2048) with concurrent jobs.
         
@@ -650,7 +650,7 @@ class TestSystemRecovery:
     """System recovery test after load."""
     
     @pytest.mark.regression
-def test_recovery_after_stress(self, focus_server_api, standard_config_payload):
+    def test_recovery_after_stress(self, focus_server_api, standard_config_payload):
         """
         Check that system recovers after heavy load.
         

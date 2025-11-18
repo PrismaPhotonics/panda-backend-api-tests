@@ -940,7 +940,7 @@ class TestROIDataSize:
         ids=[case[0] for case in CONFIG_TEST_CASES]  # Use test_id as test name
     )
     @pytest.mark.regression
-def test_roi_change_with_different_configs_should_not_affect_other_params(
+    def test_roi_change_with_different_configs_should_not_affect_other_params(
         self,
         focus_server_api,
         config_test_id,
@@ -1072,7 +1072,7 @@ def test_roi_change_with_different_configs_should_not_affect_other_params(
         logger.info(f"✅ TEST PASSED ({config_test_id}): Config params remained constant")
     
     @pytest.mark.regression
-def test_different_rois_should_produce_same_data_size(self, focus_server_api):
+    def test_different_rois_should_produce_same_data_size(self, focus_server_api):
         """
         Test: Different ROIs should produce the same data size.
         

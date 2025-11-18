@@ -448,7 +448,7 @@ class TestPredictableErrorNoData:
     """
     
     @pytest.mark.regression
-def test_predictable_error_no_data_available(
+    def test_predictable_error_no_data_available(
         self,
         focus_server_api: FocusServerAPI
     ):
@@ -560,7 +560,7 @@ class TestPredictableErrorPortInUse:
     """
     
     @pytest.mark.regression
-def test_predictable_error_port_in_use(
+    def test_predictable_error_port_in_use(
         self,
         focus_server_api: FocusServerAPI,
         skip_if_waiting_for_fiber
@@ -656,7 +656,7 @@ class TestProperRollback:
     """
     
     @pytest.mark.regression
-def test_proper_rollback_on_job_creation_failure(
+    def test_proper_rollback_on_job_creation_failure(
         self,
         focus_server_api: FocusServerAPI,
         skip_if_waiting_for_fiber

@@ -112,7 +112,6 @@ def find_pods_by_job_id(k8s_manager: KubernetesManager, job_id: str, namespace: 
 
 @pytest.fixture
 @pytest.mark.xray("PZ-13899")
-
 @pytest.mark.regression
 def test_job_config():
     """
@@ -413,7 +412,7 @@ class TestK8sPortExposure:
     """
     
     @pytest.mark.regression
-def test_k8s_job_port_exposure(
+    def test_k8s_job_port_exposure(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,
@@ -517,7 +516,7 @@ class TestK8sJobCancellation:
     """
     
     @pytest.mark.regression
-def test_k8s_job_cancellation_and_cleanup(
+    def test_k8s_job_cancellation_and_cleanup(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,
@@ -665,7 +664,7 @@ class TestK8sJobObservability:
     """
     
     @pytest.mark.regression
-def test_k8s_job_observability(
+    def test_k8s_job_observability(
         self,
         focus_server_api: FocusServerAPI,
         k8s_manager: KubernetesManager,

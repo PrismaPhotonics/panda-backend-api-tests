@@ -24,9 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.critical
-
-
-
 @pytest.mark.regression
 class TestDataExposure:
     """
