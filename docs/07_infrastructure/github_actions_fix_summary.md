@@ -30,6 +30,14 @@
 - הוסף step לבדיקת collection לפני הרצת הבדיקות
 - שיפור טיפול בשגיאות עם הודעות ברורות יותר
 
+### 5. "Run Smoke Tests" - Exit Code 1 (Test Failures) ✅ שופר
+
+**בעיה:** כאשר בדיקות נכשלות, לא היה מידע ברור על מה נכשל  
+**תיקון:**
+- הוסף סיכום מפורט לפני ואחרי הרצת הבדיקות
+- הוסף parsing של JUnit XML להצגת סיכום מהיר של תוצאות
+- הוסף הודעות ברורות לכל exit code
+
 ---
 
 ## ✅ מה תוקן
@@ -40,6 +48,7 @@
 4. ✅ `Set PYTHONPATH` - הוסף step חדש להגדרת PYTHONPATH
 5. ✅ `Verify test collection` - הוסף step לבדיקת collection לפני הרצה
 6. ✅ `Run Smoke Tests` - שיפור טיפול בשגיאות עם exit codes
+7. ✅ `Run Smoke Tests` - הוסף סיכום מפורט ו-JUnit XML parsing
 
 ---
 
@@ -79,5 +88,7 @@ git push origin chore/add-roy-tests
 ---
 
 **עודכן לאחרונה:** 2025-11-19  
-**Commit:** a3d83d0 - "Improve smoke-tests.yml: Add PYTHONPATH, test collection verification, and better error handling"
+**Commits:**
+- `a3d83d0` - "Improve smoke-tests.yml: Add PYTHONPATH, test collection verification, and better error handling"
+- `67b0953` - "Add detailed test execution summary and JUnit XML parsing to smoke-tests workflow"
 
