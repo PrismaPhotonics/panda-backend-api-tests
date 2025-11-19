@@ -19,7 +19,7 @@ on:
 jobs:
   regression-tests:
     name: Regression Tests
-    runs-on: [self-hosted, Windows]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 60
 
     env:

@@ -9,7 +9,7 @@ on:
 jobs:
   load-performance-tests:
     name: Load and Performance Tests
-    runs-on: [self-hosted, Windows]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 120
 
     env:
