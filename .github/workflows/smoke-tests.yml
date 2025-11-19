@@ -47,7 +47,7 @@ jobs:
       - name: Run smoke tests
         shell: powershell
         run: |
-          pytest be_focus_server_tests/ -m "smoke" -v --junitxml=reports/junit-smoke.xml --maxfail=10
+          pytest be_focus_server_tests/ -m "smoke" -v --junitxml=reports/junit-smoke.xml --maxfail=10 --env=${{ env.ENV_NAME }} --skip-health-check
 
       - name: Upload JUnit report
         if: always()

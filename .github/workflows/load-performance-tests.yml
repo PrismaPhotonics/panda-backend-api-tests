@@ -40,7 +40,7 @@ jobs:
       - name: Run load and performance tests
         shell: powershell
         run: |
-          pytest be_focus_server_tests/ -m "load or performance" --monitor-pods -v --junitxml=reports/junit-load-performance.xml
+          pytest be_focus_server_tests/ -m "load or performance" --monitor-pods -v --junitxml=reports/junit-load-performance.xml --env=${{ env.ENV_NAME }} --skip-health-check
 
       - name: Upload JUnit report
         if: always()

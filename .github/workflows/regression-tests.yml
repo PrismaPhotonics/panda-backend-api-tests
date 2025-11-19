@@ -50,7 +50,7 @@ jobs:
       - name: Run regression tests
         shell: powershell
         run: |
-          pytest be_focus_server_tests/ -m "regression and not slow and not nightly" -v --junitxml=reports/junit-regression.xml
+          pytest be_focus_server_tests/ -m "regression and not slow and not nightly" -v --junitxml=reports/junit-regression.xml --env=${{ env.ENV_NAME }} --skip-health-check
 
       - name: Upload JUnit report
         if: always()
