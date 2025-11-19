@@ -4,7 +4,62 @@
 
 This directory contains GitHub Actions workflows for automated testing and CI/CD.
 
-## Workflows
+## 🆕 New Workflows (Recommended)
+
+### `backend-tests-lab.yml` - Focus Server Backend Tests (Lab Runner) 🏭
+
+**Purpose:** Run tests on self-hosted Windows runner in the lab (with access to K8s, MongoDB, RabbitMQ)
+
+**Runner:** `[self-hosted, Windows, panda-backend-lab]`
+
+**Triggers:**
+- Push to `main`, `develop`, `master`, `chore/add-roy-tests`
+- Pull Requests to `main`
+- Manual trigger (`workflow_dispatch`) with test suite selection
+- Scheduled: Daily at 23:00 UTC (01:00 Israel time)
+
+**Test Suites:**
+- `smoke` - Smoke and high-priority tests
+- `regression` - Regression tests (excluding slow/nightly)
+- `nightly` - Full suite including slow/load/stress with pod monitoring
+- `all` - All tests
+
+**Timeout:** 120 minutes  
+**Max Failures:** 5-50 (depending on suite)
+
+**Setup Required:**
+- Self-hosted Windows runner installed on lab machine
+- Runner labels: `self-hosted`, `Windows`, `panda-backend-lab`
+- GitHub Secrets: `FOCUS_BASE_URL`, `FOCUS_API_PREFIX`, `VERIFY_SSL`
+
+**See:** [Setup Guide](../docs/07_infrastructure/github_actions_setup_guide.md)
+
+---
+
+### `backend-tests-github.yml` - Focus Server Backend Tests (GitHub Runner) ☁️
+
+**Purpose:** Run tests on GitHub-hosted runner (for tests that don't need VPN/K8s access)
+
+**Runner:** `ubuntu-latest`
+
+**Triggers:**
+- Push to `main`, `develop`, `master`, `chore/add-roy-tests`
+- Pull Requests to `main`
+- Manual trigger (`workflow_dispatch`) with test suite selection
+
+**Test Suites:**
+- `smoke` - Smoke and high-priority tests
+- `regression` - Regression tests (excluding slow/nightly)
+
+**Timeout:** 30 minutes  
+**Max Failures:** 5-10 (depending on suite)
+
+**Setup Required:**
+- GitHub Secrets: `FOCUS_BASE_URL`, `FOCUS_API_PREFIX`, `VERIFY_SSL`
+
+---
+
+## Legacy Workflows
 
 ### `smoke-tests.yml` - Smoke Tests ⚡
 

@@ -1,0 +1,178 @@
+name: Focus Server Backend Tests (GitHub Runner)
+
+on:
+  push:
+    branches: [ main, develop, master, chore/add-roy-tests ]
+    paths:
+      - "be_focus_server_tests/**"
+      - "src/**"
+      - "config/**"
+      - "requirements*.txt"
+      - ".github/workflows/**"
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - regression
+
+env:
+  PYTHON_VERSION: "3.12"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  tests:
+    name: Backend Tests
+    # Use GitHub-hosted runner (good for tests that don't need VPN/K8s access)
+    runs-on: ubuntu-latest
+    
+    timeout-minutes: 30
+    
+    env:
+      # Environment configuration
+      FOCUS_ENV: "local"
+      CI: "true"
+      
+      # Secrets from GitHub Secrets
+      FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+      FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
+      
+      # Python path
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Determine test suite
+        id: test_suite
+        run: |
+          suite="${{ github.event.inputs.test_suite }}"
+          if [ -z "$suite" ]; then
+            if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
+              suite="smoke"
+            else
+              suite="smoke"
+            fi
+          fi
+          echo "suite=$suite" >> $GITHUB_OUTPUT
+          echo "Test suite: $suite"
+
+      - name: Check Focus Server availability
+        id: check_focus
+        env:
+          FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+          FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+        run: |
+          if [ -z "$FOCUS_BASE_URL" ]; then
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "FOCUS_BASE_URL secret not configured - tests requiring Focus Server will be skipped"
+          else
+            BASE="${FOCUS_BASE_URL%/}${FOCUS_API_PREFIX}"
+            code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/ack" 2>/dev/null || echo "000")
+            if [ "$code" -ge 200 ] && [ "$code" -lt 500 ]; then
+              echo "available=true" >> $GITHUB_OUTPUT
+              echo "Focus Server is reachable (HTTP $code)"
+            else
+              echo "available=false" >> $GITHUB_OUTPUT
+              echo "Focus Server not reachable (HTTP $code) - tests will be skipped"
+            fi
+          fi
+
+      - name: Run smoke tests
+        if: steps.test_suite.outputs.suite == 'smoke'
+        env:
+          FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
+        run: |
+          pytest be_focus_server_tests/ \
+            --env=local \
+            --skip-health-check \
+            --skip-sanity-check \
+            -m "smoke or high" \
+            -v \
+            --tb=short \
+            --junitxml=reports/junit-smoke.xml \
+            --html=reports/smoke-report.html \
+            --self-contained-html \
+            --maxfail=5 \
+            --continue-on-collection-errors
+
+      - name: Run regression tests
+        if: steps.test_suite.outputs.suite == 'regression'
+        env:
+          FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
+        run: |
+          pytest be_focus_server_tests/ \
+            --env=local \
+            --skip-health-check \
+            --skip-sanity-check \
+            -m "regression and not slow and not nightly" \
+            -v \
+            --tb=short \
+            --junitxml=reports/junit-regression.xml \
+            --html=reports/regression-report.html \
+            --self-contained-html \
+            --maxfail=10 \
+            --continue-on-collection-errors
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ steps.test_suite.outputs.suite }}
+          path: |
+            reports/junit-*.xml
+            reports/*-report.html
+          retention-days: 7
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let summary = '## 🔥 Backend Tests Results\n\n';
+            
+            try {
+              if (fs.existsSync('reports/junit-smoke.xml') || fs.existsSync('reports/junit-regression.xml')) {
+                summary += '✅ Test reports generated. Check artifacts for detailed reports.\n';
+              } else {
+                summary += '⚠️ No test reports found.\n';
+              }
+            } catch (error) {
+              summary += `⚠️ Error reading reports: ${error.message}\n`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
