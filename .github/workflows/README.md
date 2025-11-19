@@ -1,220 +1,156 @@
 # GitHub Actions Workflows
 
-## Overview
+סקירה כללית של ה-workflows הזמינים בפרויקט.
 
-This directory contains GitHub Actions workflows for automated testing and CI/CD.
+## 📋 Workflows זמינים
 
-## 🆕 New Workflows (Recommended)
-
-### `backend-tests-lab.yml` - Focus Server Backend Tests (Lab Runner) 🏭
-
-**Purpose:** Run tests on self-hosted Windows runner in the lab (with access to K8s, MongoDB, RabbitMQ)
-
-**Runner:** `[self-hosted, Windows, panda-backend-lab]`
-
-**Triggers:**
-- Push to `main`, `develop`, `master`, `chore/add-roy-tests`
-- Pull Requests to `main`
-- Manual trigger (`workflow_dispatch`) with test suite selection
-- Scheduled: Daily at 23:00 UTC (01:00 Israel time)
-
-**Test Suites:**
-- `smoke` - Smoke and high-priority tests
-- `regression` - Regression tests (excluding slow/nightly)
-- `nightly` - Full suite including slow/load/stress with pod monitoring
-- `all` - All tests
-
-**Timeout:** 120 minutes  
-**Max Failures:** 5-50 (depending on suite)
-
-**Setup Required:**
-- Self-hosted Windows runner installed on lab machine
-- Runner labels: `self-hosted`, `Windows`, `panda-backend-lab`
-- GitHub Secrets: `FOCUS_BASE_URL`, `FOCUS_API_PREFIX`, `VERIFY_SSL`
-
-**See:** [Setup Guide](../docs/07_infrastructure/github_actions_setup_guide.md)
-
----
-
-### `backend-tests-github.yml` - Focus Server Backend Tests (GitHub Runner) ☁️
-
-**Purpose:** Run tests on GitHub-hosted runner (for tests that don't need VPN/K8s access)
-
-**Runner:** `ubuntu-latest`
+### 1. Smoke Tests (`smoke-tests.yml`)
+**מטרה:** בדיקות מהירות וקריטיות  
+**Runner:** Self-hosted Windows  
+**זמן ריצה:** ~5-15 דקות  
+**תדירות:** כל push/PR  
+**מרקרים:** `smoke`
 
 **Triggers:**
-- Push to `main`, `develop`, `master`, `chore/add-roy-tests`
-- Pull Requests to `main`
-- Manual trigger (`workflow_dispatch`) with test suite selection
+- Push ל-`main`, `develop`, `master`, `chore/add-roy-tests`
+- Pull requests ל-`main`
+- Manual (`workflow_dispatch`)
 
-**Test Suites:**
-- `smoke` - Smoke and high-priority tests
-- `regression` - Regression tests (excluding slow/nightly)
-
-**Timeout:** 30 minutes  
-**Max Failures:** 5-10 (depending on suite)
-
-**Setup Required:**
-- GitHub Secrets: `FOCUS_BASE_URL`, `FOCUS_API_PREFIX`, `VERIFY_SSL`
-
----
-
-## Legacy Workflows
-
-### `smoke-tests.yml` - Smoke Tests ⚡
-
-Fast, critical tests that run on every commit/PR.
-
-**Triggers:**
-- Push to `main`, `develop`, or `master` branches
-- Pull Requests to `main`, `develop`, or `master` branches
-- Manual trigger via GitHub Actions UI (`workflow_dispatch`)
-
-**What Tests Are Run:**
-- Tests marked with `@pytest.mark.smoke`
-- Fast tests (< 5 minutes)
-- Critical functionality tests
-
-**Timeout:** 10 minutes  
-**Max Failures:** 5
-
----
-
-### `regression-tests.yml` - Regression Tests 🔄
-
-Full integration tests that run before merge to main.
-
-**Triggers:**
-- Push to `main` branch only
-- Manual trigger via GitHub Actions UI (`workflow_dispatch`)
-
-**What Tests Are Run:**
-- Tests marked with `@pytest.mark.regression`
-- Excludes slow and nightly tests
-- Full integration test suite
-
-**Timeout:** 60 minutes  
-**Max Failures:** 10
-
----
-
-### `nightly-tests.yml` - Nightly Full Suite 🌙
-
-Complete test suite including slow/load/stress tests.
-
-**Triggers:**
-- Scheduled: Daily at 2:00 AM UTC
-- Manual trigger via GitHub Actions UI (`workflow_dispatch`)
-
-**What Tests Are Run:**
-- Tests marked with `@pytest.mark.smoke`
-- Tests marked with `@pytest.mark.regression`
-- Tests marked with `@pytest.mark.nightly`
-- Includes slow, load, and stress tests
-
-**Timeout:** 120 minutes (2 hours)  
-**Max Failures:** 20
-
----
-
-### `backend-tests.yml` - Backend Tests (Legacy)
-
-**Note:** This workflow is kept for backward compatibility. Consider using the new test suite workflows (`smoke-tests.yml`, `regression-tests.yml`, `nightly-tests.yml`) instead.
-
-This workflow runs all tests except those that create load on the system.
-
-#### Triggers
-
-- **Push** to `main`, `develop`, or `master` branches
-- **Pull Requests** to `main`, `develop`, or `master` branches
-- **Manual trigger** via GitHub Actions UI (`workflow_dispatch`)
-
-#### What Tests Are Run
-
-✅ **Included Test Categories:**
-- **Unit tests** (`be_focus_server_tests/unit/`)
-- **Integration tests** (non-load) - will skip if infrastructure not available
-- **Data quality tests** - will skip if MongoDB/Focus Server not available
-- **Infrastructure tests** - will skip if SSH/K8s/RabbitMQ not available
-- **API tests** - will skip if Focus Server not available
-
-**Note:** The workflow attempts to run all tests except load/stress tests. Tests requiring external infrastructure (Focus Server API, MongoDB, RabbitMQ, Kubernetes, SSH) will automatically skip if the services are not available in the CI environment. This allows the workflow to run successfully even without access to internal services, while still running tests that can execute.
-
-**Focus Server Connection:** If `FOCUS_BASE_URL` secret is configured and the server is reachable, tests requiring Focus Server will run. Otherwise, they will be skipped gracefully.
-
-❌ **Excluded Test Categories:**
-- Load tests (`be_focus_server_tests/load/`)
-- Stress tests (`be_focus_server_tests/stress/`)
-- Infrastructure tests (`be_focus_server_tests/infrastructure/` - require SSH/K8s/RabbitMQ access)
-- Integration load tests (`be_focus_server_tests/integration/load/`)
-- Alert load tests (`test_alert_generation_load.py`)
-- Alert performance tests (`test_alert_generation_performance.py`)
-- gRPC stream tests (marked with `@pytest.mark.grpc`)
-- API load tests (`focus_server_api_load_tests/`)
-- Tests requiring infrastructure (MongoDB, RabbitMQ, Kubernetes, SSH)
-
-#### Test Execution Strategy
-
-The workflow uses multiple exclusion methods to ensure load tests are not run:
-
-1. **Directory exclusion**: `--ignore` flags for load/stress directories
-2. **File pattern exclusion**: `--ignore-glob` for specific load test files
-3. **Marker exclusion**: `-m "not load and not stress and not grpc"` to exclude tests marked with these markers
-
-#### Outputs
-
-- **Test Reports**: JUnit XML and HTML reports are generated and uploaded as artifacts
-- **Test Summary**: A summary is displayed in the GitHub Actions UI showing which test categories were included/excluded
-
-#### Artifacts
-
-The following artifacts are available after workflow completion:
-
-- `backend-test-reports`: Contains JUnit XML and HTML reports for backend tests
-- `frontend-test-reports`: Contains JUnit XML and HTML reports for frontend tests
-
-Artifacts are retained for 30 days.
-
-#### Timeouts
-
-- Backend tests: 60 minutes
-- Frontend tests: 30 minutes
-
-#### Failure Handling
-
-- Tests will stop after 10 failures (`--maxfail=10`) to prevent excessive CI time
-- Reports are uploaded even if tests fail (`if: always()`)
-
-## Running Tests Locally (Without Load)
-
-To run the same set of tests locally that the CI runs:
-
+**מה זה מריץ:**
 ```bash
-# Run only unit tests (same as CI)
-pytest be_focus_server_tests/unit/ -m "unit" -v
-
-# Or run all tests excluding load/stress/infrastructure (requires local infrastructure access)
-pytest be_focus_server_tests/ \
-  --ignore=be_focus_server_tests/load \
-  --ignore=be_focus_server_tests/stress \
-  --ignore=be_focus_server_tests/infrastructure \
-  --ignore-glob=**/integration/load \
-  --ignore-glob=**/test_alert_generation_load.py \
-  --ignore-glob=**/test_alert_generation_performance.py \
-  -m "not load and not stress and not grpc and not infrastructure and not mongodb and not rabbitmq and not kubernetes and not ssh" \
-  -v
+pytest be_focus_server_tests/ -m "smoke" -v --maxfail=10
 ```
 
-Or use the simpler marker-based approach:
+---
 
+### 2. Regression Tests (`regression-tests.yml`)
+**מטרה:** בדיקות אינטגרציה מלאות  
+**Runner:** Self-hosted Windows  
+**זמן ריצה:** ~30-60 דקות  
+**תדירות:** לפני merge ל-main, כל לילה  
+**מרקרים:** `regression` (ללא `slow` ו-`nightly`)
+
+**Triggers:**
+- Push ל-`main`, `develop`, `master`
+- Pull requests ל-`main`
+- Scheduled: כל לילה ב-23:00 UTC
+- Manual (`workflow_dispatch`)
+
+**מה זה מריץ:**
 ```bash
-pytest -m "not load and not stress and not grpc" -v
+pytest be_focus_server_tests/ -m "regression and not slow and not nightly" -v
 ```
 
-## Notes
+---
 
-- Load tests should be run manually or in a separate workflow on dedicated infrastructure
-- The workflow uses Python 3.10
-- All dependencies are installed from `requirements.txt`
-- Frontend tests use dependencies from `fe_panda_tests/requirements.txt`
+### 3. Load and Performance Tests (`load-performance-tests.yml`)
+**מטרה:** בדיקות עומס וביצועים בלבד  
+**Runner:** Self-hosted Windows  
+**זמן ריצה:** ~60-120 דקות  
+**תדירות:** כל לילה, ידנית  
+**מרקרים:** `load` או `performance`
 
+**Triggers:**
+- Scheduled: כל לילה ב-02:00 UTC
+- Manual (`workflow_dispatch`)
+
+**מה זה מריץ:**
+```bash
+pytest be_focus_server_tests/ -m "load or performance" --monitor-pods -v
+```
+
+---
+
+## 🗑️ Workflows שנמחקו
+
+העבודה הבאים נמחקו כחלק מהניקוי:
+- `focus-backend-tests.yml` - הוחלף ב-3 workflows נפרדים
+- `backend-tests.yml` - legacy
+- `backend-tests-github.yml` - legacy
+- `backend-tests-lab.yml` - legacy
+- `nightly-tests.yml` - הוחלף ב-`regression-tests.yml` ו-`load-performance-tests.yml`
+
+---
+
+## 🚀 הרצת Workflows
+
+### דרך GitHub UI
+1. לך ל: https://github.com/PrismaPhotonics/panda-backend-api-tests/actions
+2. בחר את ה-workflow הרצוי
+3. לחץ על **Run workflow**
+4. בחר branch ולחץ **Run workflow**
+
+### דרך Git Push
+```bash
+# Smoke tests ירוצו אוטומטית על כל push
+git push origin feature/my-feature
+
+# Regression tests ירוצו אוטומטית על push ל-main
+git push origin main
+```
+
+---
+
+## 📊 Test Suites
+
+### Smoke Tests
+- **מספר בדיקות:** ~30-50 בדיקות
+- **זמן ריצה:** < 15 דקות
+- **תדירות:** כל commit/PR
+- **מטרה:** וידוא שהמערכת עובדת
+
+### Regression Tests
+- **מספר בדיקות:** ~150-200 בדיקות
+- **זמן ריצה:** ~30-60 דקות
+- **תדירות:** לפני merge, כל לילה
+- **מטרה:** וידוא שלא נשבר דבר
+
+### Load and Performance Tests
+- **מספר בדיקות:** ~20-30 בדיקות
+- **זמן ריצה:** ~60-120 דקות
+- **תדירות:** כל לילה, ידנית
+- **מטרה:** בדיקות עומס וביצועים
+
+---
+
+## 🔧 תצורה
+
+כל ה-workflows משתמשים ב:
+- **Python:** 3.12
+- **Runner:** Self-hosted Windows (`self-hosted`, `Windows`)
+- **Environment:** `new_production`
+- **Dependencies:** `requirements.txt` עם `--use-deprecated=legacy-resolver`
+
+---
+
+## 📝 Artifacts
+
+כל workflow מייצר JUnit XML reports שנשמרים כ-artifacts:
+- **Smoke Tests:** `smoke-test-reports` (שמירה: 7 ימים)
+- **Regression Tests:** `regression-test-reports` (שמירה: 7 ימים)
+- **Load/Performance Tests:** `load-performance-test-reports` (שמירה: 7 ימים)
+
+---
+
+## 🐛 Troubleshooting
+
+### Workflow לא רץ
+- ודא שה-runner פעיל: https://github.com/PrismaPhotonics/panda-backend-api-tests/settings/actions/runners
+- בדוק שה-runner יש לו את ה-labels הנכונים: `self-hosted`, `Windows`
+
+### Tests נכשלים
+- בדוק את ה-logs ב-GitHub Actions
+- הורד את ה-artifacts לניתוח מפורט
+- ודא שה-Focus Server זמין ופועל
+
+### Dependency installation נכשל
+- ה-workflow משתמש ב-`--use-deprecated=legacy-resolver` כדי למנוע `resolution-too-deep` errors
+- אם עדיין יש בעיות, בדוק את `requirements.txt`
+
+---
+
+## 📚 קישורים שימושיים
+
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Pytest Documentation](https://docs.pytest.org/)
+- [Test Suites Guide](../../be_focus_server_tests/TEST_SUITES.md)
