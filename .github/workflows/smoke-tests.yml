@@ -36,16 +36,9 @@ jobs:
         cache: 'pip'
 
     - name: Install system dependencies
-      if: runner.os != 'Windows'
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential curl
-
-    - name: Install system dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        choco install python310 -y || echo "Python already installed or choco not available"
-        refreshenv || echo "Refreshenv failed"
 
     - name: Install Python dependencies
       run: |
@@ -68,12 +61,7 @@ jobs:
         echo "Dependency installation completed!"
 
     - name: Create reports directory
-      run: |
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          if (-not (Test-Path reports)) { New-Item -ItemType Directory -Path reports }
-        else
-          mkdir -p reports
-        fi
+      run: mkdir -p reports
 
     - name: Check Focus Server availability
       id: check_focus
@@ -81,40 +69,18 @@ jobs:
         FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
         FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       run: |
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          if ([string]::IsNullOrEmpty($env:FOCUS_BASE_URL)) {
-            echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-            echo "FOCUS_BASE_URL secret not configured - smoke tests requiring Focus Server will be skipped"
-          } else {
-            $base = "$env:FOCUS_BASE_URL$env:FOCUS_API_PREFIX"
-            try {
-              $response = Invoke-WebRequest -Uri "$base/ack" -Method GET -SkipCertificateCheck -TimeoutSec 10 -ErrorAction SilentlyContinue
-              if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
-                echo "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-                echo "Focus Server is reachable (HTTP $($response.StatusCode))"
-              } else {
-                echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-                echo "Focus Server not reachable (HTTP $($response.StatusCode))"
-              }
-            } catch {
-              echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-              echo "Focus Server not reachable"
-            }
-          }
+        if [ -z "$FOCUS_BASE_URL" ]; then
+          echo "available=false" >> $GITHUB_OUTPUT
+          echo "FOCUS_BASE_URL secret not configured - smoke tests requiring Focus Server will be skipped"
         else
-          if [ -z "$FOCUS_BASE_URL" ]; then
-            echo "available=false" >> $GITHUB_OUTPUT
-            echo "FOCUS_BASE_URL secret not configured - smoke tests requiring Focus Server will be skipped"
+          BASE="${FOCUS_BASE_URL%/}${FOCUS_API_PREFIX}"
+          code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/ack" 2>/dev/null || echo "000")
+          if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "Focus Server is reachable (HTTP $code)"
           else
-            BASE="${FOCUS_BASE_URL%/}${FOCUS_API_PREFIX}"
-            code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/ack" 2>/dev/null || echo "000")
-            if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then
-              echo "available=true" >> $GITHUB_OUTPUT
-              echo "Focus Server is reachable (HTTP $code)"
-            else
-              echo "available=false" >> $GITHUB_OUTPUT
-              echo "Focus Server not reachable (HTTP $code) - smoke tests will be skipped"
-            fi
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "Focus Server not reachable (HTTP $code) - smoke tests will be skipped"
           fi
         fi
 
