@@ -38,27 +38,27 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        shell: pwsh
+        shell: powershell
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Create reports directory
-        shell: pwsh
+        shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path reports | Out-Null
 
       # ריצת smoke / high-priority על push / PR
       - name: Run smoke / high priority backend tests (API)
         if: github.event_name != 'schedule'
-        shell: pwsh
+        shell: powershell
         run: |
           pytest be_focus_server_tests/integration/api -m "smoke or high" -v --junitxml=reports/junit-smoke.xml
 
       # ריצת full + monitor-pods בלילה
       - name: Run full backend suite with pod monitoring (Nightly)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        shell: pwsh
+        shell: powershell
         run: |
           pytest be_focus_server_tests/ --monitor-pods -v --junitxml=reports/junit-report.xml
 
