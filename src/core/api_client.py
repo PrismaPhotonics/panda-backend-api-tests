@@ -354,11 +354,14 @@ class BaseAPIClient:
         """
         Perform health check on the API.
         
+        Uses /ack endpoint for Focus Server health checks.
+        
         Returns:
             True if API is healthy
         """
         try:
-            response = self.get("/health", timeout=10)
+            # Use /ack endpoint instead of /health (which doesn't exist for Focus Server)
+            response = self.get("/ack", timeout=10)
             return response.status_code == 200
         except Exception as e:
             self.logger.error(f"Health check failed: {e}")

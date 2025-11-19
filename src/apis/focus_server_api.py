@@ -231,11 +231,11 @@ class FocusServerAPI(BaseAPIClient):
         self.logger.debug("Getting health status")
         
         try:
-            response = self.get("/health")
-            health_data = response.json()
-            
-            self.logger.debug(f"Health status: {health_data.get('status', 'unknown')}")
-            return health_data
+            # Use /ack endpoint instead of /health (which doesn't exist)
+            response = self.get("/ack")
+            # /ack returns 200 OK with empty body or simple response
+            # Return True if status is 200, False otherwise
+            return response.status_code == 200
             
         except Exception as e:
             self.logger.error(f"Failed to get health status: {e}")
@@ -279,14 +279,20 @@ class FocusServerAPI(BaseAPIClient):
         """
         Cancel a job by job ID.
         
+        Note: If job cancellation returns 404, it may mean:
+        - Job already completed/expired
+        - Job cancellation not supported by server
+        - Job ID not found
+        
         Args:
             job_id: Job identifier
             
         Returns:
             True if job was cancelled successfully
+            False if cancellation failed or not supported (404)
             
         Raises:
-            APIError: If API call fails
+            APIError: If API call fails (except 404 which returns False)
             ValidationError: If job_id is invalid
         """
         if not job_id or not isinstance(job_id, str):
@@ -300,14 +306,24 @@ class FocusServerAPI(BaseAPIClient):
             if response.status_code == 200:
                 self.logger.info(f"Job {job_id} cancelled successfully")
                 return True
+            elif response.status_code == 404:
+                # Job not found - may be already completed or cancellation not supported
+                self.logger.debug(f"Job {job_id} not found (may be completed or cancellation not supported)")
+                return False
             else:
                 self.logger.warning(f"Job {job_id} cancellation returned status {response.status_code}")
                 return False
                 
+        except APIError as e:
+            # Handle 404 specifically - don't log as ERROR
+            if hasattr(e, 'status_code') and e.status_code == 404:
+                self.logger.debug(f"Job {job_id} cancellation not supported or job not found (404)")
+                return False
+            # For other API errors, log and re-raise
+            self.logger.error(f"Failed to cancel job {job_id}: {e}")
+            raise
         except Exception as e:
             self.logger.error(f"Failed to cancel job {job_id}: {e}")
-            if isinstance(e, APIError):
-                raise
             raise APIError(f"Failed to cancel job: {e}") from e
     
     def validate_connection(self) -> bool:
