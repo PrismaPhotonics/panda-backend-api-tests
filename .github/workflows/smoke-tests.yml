@@ -6,15 +6,6 @@ on:
   pull_request:
     branches: [ main, develop, master ]
   workflow_dispatch:
-    inputs:
-      runner:
-        description: 'Runner to use (self-hosted or github-hosted)'
-        required: false
-        default: 'github-hosted'
-        type: choice
-        options:
-          - github-hosted
-          - self-hosted
 
 env:
   PYTHON_VERSION: '3.10'
@@ -22,7 +13,7 @@ env:
 jobs:
   smoke-tests:
     name: Smoke Tests
-    runs-on: ${{ github.event.inputs.runner == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
