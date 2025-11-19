@@ -18,8 +18,8 @@ on:
 
 jobs:
   backend-tests:
-    # חייב להתאים ללייבלים שהגדרת ל-runner במעבדה
-    # Labels: self-hosted, Windows, X64 (ה-label panda-backend-lab ניתן להוספה דרך GitHub UI)
+    # Runner: PL5012 (ID: 21) - Active
+    # Labels: self-hosted, Windows, X64
     runs-on: [self-hosted, Windows]
 
     env:
