@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [ main, develop, master ]
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner to use (self-hosted or github-hosted)'
+        required: false
+        default: 'github-hosted'
+        type: choice
+        options:
+          - github-hosted
+          - self-hosted
 
 env:
   PYTHON_VERSION: '3.10'
@@ -13,7 +22,7 @@ env:
 jobs:
   backend-tests:
     name: Backend Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.runner == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
     timeout-minutes: 60
 
     steps:

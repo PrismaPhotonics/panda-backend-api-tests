@@ -6,7 +6,65 @@ This directory contains GitHub Actions workflows for automated testing and CI/CD
 
 ## Workflows
 
-### `tests.yml` - Run Tests (Excluding Load Tests)
+### `smoke-tests.yml` - Smoke Tests ⚡
+
+Fast, critical tests that run on every commit/PR.
+
+**Triggers:**
+- Push to `main`, `develop`, or `master` branches
+- Pull Requests to `main`, `develop`, or `master` branches
+- Manual trigger via GitHub Actions UI (`workflow_dispatch`)
+
+**What Tests Are Run:**
+- Tests marked with `@pytest.mark.smoke`
+- Fast tests (< 5 minutes)
+- Critical functionality tests
+
+**Timeout:** 10 minutes  
+**Max Failures:** 5
+
+---
+
+### `regression-tests.yml` - Regression Tests 🔄
+
+Full integration tests that run before merge to main.
+
+**Triggers:**
+- Push to `main` branch only
+- Manual trigger via GitHub Actions UI (`workflow_dispatch`)
+
+**What Tests Are Run:**
+- Tests marked with `@pytest.mark.regression`
+- Excludes slow and nightly tests
+- Full integration test suite
+
+**Timeout:** 60 minutes  
+**Max Failures:** 10
+
+---
+
+### `nightly-tests.yml` - Nightly Full Suite 🌙
+
+Complete test suite including slow/load/stress tests.
+
+**Triggers:**
+- Scheduled: Daily at 2:00 AM UTC
+- Manual trigger via GitHub Actions UI (`workflow_dispatch`)
+
+**What Tests Are Run:**
+- Tests marked with `@pytest.mark.smoke`
+- Tests marked with `@pytest.mark.regression`
+- Tests marked with `@pytest.mark.nightly`
+- Includes slow, load, and stress tests
+
+**Timeout:** 120 minutes (2 hours)  
+**Max Failures:** 20
+
+---
+
+### `backend-tests.yml` - Backend Tests (Legacy)
+
+**Note:** This workflow is kept for backward compatibility. Consider using the new test suite workflows (`smoke-tests.yml`, `regression-tests.yml`, `nightly-tests.yml`) instead.
 
 This workflow runs all tests except those that create load on the system.
 

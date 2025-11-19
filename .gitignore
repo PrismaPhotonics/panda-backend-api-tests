@@ -37,6 +37,7 @@ html-reports/
 .env
 .env.local
 *.secret
+.secrets  # GitHub Actions secrets for local testing
 credentials.json
 .tokens/  # Token storage directory (contains authentication tokens)
 

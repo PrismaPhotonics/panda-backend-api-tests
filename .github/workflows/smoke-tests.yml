@@ -1,0 +1,176 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches: [ main, develop, master ]
+  pull_request:
+    branches: [ main, develop, master ]
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner to use (self-hosted or github-hosted)'
+        required: false
+        default: 'github-hosted'
+        type: choice
+        options:
+          - github-hosted
+          - self-hosted
+
+env:
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ${{ github.event.inputs.runner == 'self-hosted' && 'self-hosted' || 'ubuntu-latest' }}
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install system dependencies
+      if: runner.os != 'Windows'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential curl
+
+    - name: Install system dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install python310 -y || echo "Python already installed or choco not available"
+        refreshenv || echo "Refreshenv failed"
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        
+        echo "Installing dependencies for smoke tests..."
+        
+        # Install core testing framework
+        pip install --no-cache-dir --prefer-binary \
+          pytest pytest-asyncio pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist
+        
+        # Install HTTP and data processing
+        pip install --no-cache-dir --prefer-binary \
+          requests httpx beautifulsoup4 pydantic pydantic-settings orjson pyyaml
+        
+        # Install infrastructure packages
+        pip install --no-cache-dir --prefer-binary \
+          kubernetes pymongo paramiko pika structlog colorlog python-dateutil pytz psutil python-dotenv netaddr
+        
+        echo "Dependency installation completed!"
+
+    - name: Create reports directory
+      run: |
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          if (-not (Test-Path reports)) { New-Item -ItemType Directory -Path reports }
+        else
+          mkdir -p reports
+        fi
+
+    - name: Check Focus Server availability
+      id: check_focus
+      env:
+        FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+        FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      run: |
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          if ([string]::IsNullOrEmpty($env:FOCUS_BASE_URL)) {
+            echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            echo "FOCUS_BASE_URL secret not configured - smoke tests requiring Focus Server will be skipped"
+          } else {
+            $base = "$env:FOCUS_BASE_URL$env:FOCUS_API_PREFIX"
+            try {
+              $response = Invoke-WebRequest -Uri "$base/ack" -Method GET -SkipCertificateCheck -TimeoutSec 10 -ErrorAction SilentlyContinue
+              if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                echo "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+                echo "Focus Server is reachable (HTTP $($response.StatusCode))"
+              } else {
+                echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+                echo "Focus Server not reachable (HTTP $($response.StatusCode))"
+              }
+            } catch {
+              echo "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+              echo "Focus Server not reachable"
+            }
+          }
+        else
+          if [ -z "$FOCUS_BASE_URL" ]; then
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "FOCUS_BASE_URL secret not configured - smoke tests requiring Focus Server will be skipped"
+          else
+            BASE="${FOCUS_BASE_URL%/}${FOCUS_API_PREFIX}"
+            code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BASE/ack" 2>/dev/null || echo "000")
+            if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then
+              echo "available=true" >> $GITHUB_OUTPUT
+              echo "Focus Server is reachable (HTTP $code)"
+            else
+              echo "available=false" >> $GITHUB_OUTPUT
+              echo "Focus Server not reachable (HTTP $code) - smoke tests will be skipped"
+            fi
+          fi
+        fi
+
+    - name: Run Smoke Tests
+      env:
+        CI: true
+        FOCUS_ENV: local
+        FOCUS_BASE_URL: ${{ secrets.FOCUS_BASE_URL }}
+        FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+        VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
+        FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
+      run: |
+        pytest be_focus_server_tests/ \
+          --env=local \
+          --skip-health-check \
+          --skip-sanity-check \
+          -m "smoke" \
+          -v \
+          --tb=short \
+          --junitxml=reports/junit-smoke.xml \
+          --html=reports/smoke-report.html \
+          --self-contained-html \
+          --maxfail=5 \
+          --continue-on-collection-errors
+
+    - name: Upload test reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: smoke-test-reports
+        path: |
+          reports/junit-smoke.xml
+          reports/smoke-report.html
+        retention-days: 7
+
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let summary = '## 🔥 Smoke Tests Results\n\n';
+          
+          try {
+            if (fs.existsSync('reports/junit-smoke.xml')) {
+              summary += '✅ Smoke tests completed. Check artifacts for detailed reports.\n';
+            } else {
+              summary += '⚠️ Smoke test reports not found.\n';
+            }
+          } catch (error) {
+            summary += `⚠️ Error reading reports: ${error.message}\n`;
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
