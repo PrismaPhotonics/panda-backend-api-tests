@@ -115,6 +115,14 @@ jobs:
         FOCUS_SERVER_AVAILABLE: ${{ steps.check_focus.outputs.available }}
       continue-on-error: false
       run: |
+        echo "=========================================="
+        echo "🔥 Running Smoke Tests"
+        echo "=========================================="
+        echo "Focus Server Available: ${{ steps.check_focus.outputs.available }}"
+        echo "FOCUS_BASE_URL: ${FOCUS_BASE_URL:-'Not configured'}"
+        echo "FOCUS_ENV: ${FOCUS_ENV}"
+        echo "=========================================="
+        
         set +e
         pytest be_focus_server_tests/ \
           --env=local \
@@ -131,6 +139,12 @@ jobs:
         exit_code=$?
         set -e
         
+        echo ""
+        echo "=========================================="
+        echo "📊 Test Execution Summary"
+        echo "=========================================="
+        echo "Exit Code: $exit_code"
+        
         if [ $exit_code -eq 2 ]; then
           echo "⚠️ Pytest exit code 2 - collection or configuration error"
           echo "Attempting to collect tests for debugging..."
@@ -140,8 +154,35 @@ jobs:
           echo "⚠️ No tests collected (exit code 5)"
           echo "This might be expected if no tests match the 'smoke' marker"
           exit 0
+        elif [ $exit_code -eq 1 ]; then
+          echo "❌ Some tests failed (exit code 1)"
+          echo "Check the test reports in artifacts for details"
+          if [ -f reports/junit-smoke.xml ]; then
+            echo ""
+            echo "Quick summary from JUnit XML:"
+            python3 << 'PYTHON_SCRIPT'
+import xml.etree.ElementTree as ET
+import sys
+try:
+    tree = ET.parse('reports/junit-smoke.xml')
+    root = tree.getroot()
+    tests = int(root.get('tests', 0))
+    failures = int(root.get('failures', 0))
+    errors = int(root.get('errors', 0))
+    skipped = int(root.get('skipped', 0))
+    print(f'Total tests: {tests}')
+    print(f'Failed: {failures}')
+    print(f'Errors: {errors}')
+    print(f'Skipped: {skipped}')
+    print(f'Passed: {tests - failures - errors - skipped}')
+except Exception as e:
+    print(f'Could not parse JUnit XML: {e}')
+PYTHON_SCRIPT
+          fi
+          exit 1
         else
-          exit $exit_code
+          echo "✅ All tests passed!"
+          exit 0
         fi
 
     - name: Upload test reports
