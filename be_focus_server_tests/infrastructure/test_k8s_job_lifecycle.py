@@ -111,8 +111,7 @@ def find_pods_by_job_id(k8s_manager: KubernetesManager, job_id: str, namespace: 
 
 
 @pytest.fixture
-@pytest.mark.xray("PZ-13899")
-@pytest.mark.regression
+# Note: PZ-13899 - K8s job lifecycle tests, regression marker
 def test_job_config():
     """
     Standard configuration for K8s job lifecycle tests.

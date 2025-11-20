@@ -48,7 +48,7 @@ def k8s_manager(config_manager):
 
 
 @pytest.fixture
-@pytest.mark.regression
+# Note: regression marker - fixture for resilience tests
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -68,8 +68,8 @@ def test_config():
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
+@pytest.mark.resilience
 @pytest.mark.regression
 class TestRabbitMQPodResilience:
     """

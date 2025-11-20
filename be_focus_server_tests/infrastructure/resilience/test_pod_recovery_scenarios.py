@@ -55,7 +55,7 @@ def mongodb_manager(config_manager, k8s_manager):
 
 
 @pytest.fixture
-@pytest.mark.regression
+# Note: regression marker - fixture for resilience tests
 def test_config():
     """Standard configuration for resilience tests."""
     return {
@@ -75,8 +75,8 @@ def test_config():
 # ===================================================================
 
 @pytest.mark.slow
-
-
+@pytest.mark.nightly
+@pytest.mark.resilience
 @pytest.mark.regression
 class TestPodRecoveryScenarios:
     """

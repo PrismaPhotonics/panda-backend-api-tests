@@ -25,7 +25,7 @@ jobs:
     env:
       PYTHONUNBUFFERED: "1"
       PYTHONIOENCODING: "utf-8"
-      ENV_NAME: "new_production"
+      ENV_NAME: "production"
 
     steps:
       - name: Checkout repository
