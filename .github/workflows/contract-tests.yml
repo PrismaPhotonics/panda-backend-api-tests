@@ -130,7 +130,7 @@ jobs:
           echo "TEST EXECUTION SUMMARY"
           echo "========================================"
           if [ -f "reports/junit-contract.xml" ]; then
-            python3 -c "
+            cat > /tmp/parse_xml.py << 'PYEOF'
 import xml.etree.ElementTree as ET
 import sys
 try:
@@ -158,7 +158,8 @@ try:
 except Exception as e:
     print(f'Error parsing XML: {e}')
     sys.exit(0)
-"
+PYEOF
+            python3 /tmp/parse_xml.py
             echo "========================================"
             echo ""
           else
@@ -187,7 +188,7 @@ except Exception as e:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 << 'PYSCRIPT'
+          cat > /tmp/get_artifact.py << 'PYEOF'
 import os
 import time
 import json
@@ -256,7 +257,8 @@ for i in range(1, maxRetries + 1):
 
 if not artifactId:
     print(f"ERROR: Could not get artifact ID after {maxRetries} attempts")
-PYSCRIPT
+PYEOF
+          python3 /tmp/get_artifact.py
 
       - name: Generate GitHub Actions summary
         if: always()
@@ -270,7 +272,7 @@ PYSCRIPT
             exit 0
           fi
           
-          python3 << 'PYSCRIPT'
+          cat > /tmp/generate_summary.py << 'PYEOF'
 import xml.etree.ElementTree as ET
 import os
 import sys
@@ -360,5 +362,6 @@ else:
     with open(summaryPath, "w", encoding="utf-8") as f:
         f.write("## Warning: No test results found\n\n")
         f.write("Test execution may have failed before generating reports.\n")
-PYSCRIPT
+PYEOF
+          python3 /tmp/generate_summary.py
 
