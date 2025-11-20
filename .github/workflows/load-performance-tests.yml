@@ -106,16 +106,20 @@ jobs:
             $summary += "| **Duration** | ${timeRounded}s |`n`n"
             $summary += "### Test Reports`n`n"
             
-            # Build artifact download links
+            # Build artifact download links - link to run page where artifacts are visible
             $repo = $env:GITHUB_REPOSITORY
             $runId = $env:GITHUB_RUN_ID
             $serverUrl = $env:GITHUB_SERVER_URL
             if ($repo -and $runId -and $serverUrl) {
-              $artifactBaseUrl = "$serverUrl/$repo/actions/runs/$runId"
-              $summary += "- [HTML Report]($artifactBaseUrl/artifacts) - Visual test results (download load-performance-test-reports artifact)`n"
-              $summary += "- [JSON Report]($artifactBaseUrl/artifacts) - Machine-readable data (download load-performance-test-reports artifact)`n"
-              $summary += "- [JUnit XML]($artifactBaseUrl/artifacts) - CI/CD integration (download load-performance-test-reports artifact)`n"
-              $summary += "`n**Note:** Download the `load-performance-test-reports` artifact to access all report files.`n`n"
+              $runUrl = "$serverUrl/$repo/actions/runs/$runId"
+              $summary += "- [HTML Report]($runUrl) - Visual test results (`load-performance-report.html` in `load-performance-test-reports` artifact)`n"
+              $summary += "- [JSON Report]($runUrl) - Machine-readable data (`load-performance-report.json` in `load-performance-test-reports` artifact)`n"
+              $summary += "- [JUnit XML]($runUrl) - CI/CD integration (`junit-load-performance.xml` in `load-performance-test-reports` artifact)`n"
+              $summary += "`n**How to access reports:**`n"
+              $summary += "1. Click any link above to go to the workflow run page`n"
+              $summary += "2. Scroll down to the **Artifacts** section`n"
+              $summary += "3. Download the `load-performance-test-reports` artifact (ZIP file)`n"
+              $summary += "4. Extract the ZIP to access: `load-performance-report.html`, `load-performance-report.json`, `junit-load-performance.xml``n`n"
             } else {
               $summary += "- HTML Report - Visual test results (check artifacts section)`n"
               $summary += "- JSON Report - Machine-readable data (check artifacts section)`n"
