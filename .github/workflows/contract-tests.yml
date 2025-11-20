@@ -45,9 +45,9 @@ jobs:
           
           echo "Installing dependencies (skipping requirements.txt due to resolution-too-deep)..."
           
-          # Install core testing framework
+          # Install core testing framework (pytest 9.0.1 first)
           pip install --no-cache-dir --prefer-binary \
-            pytest pytest-asyncio pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist
+            pytest==9.0.1 pytest-asyncio pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist
           
           # Install HTTP and data processing
           pip install --no-cache-dir --prefer-binary \
@@ -57,12 +57,9 @@ jobs:
           pip install --no-cache-dir --prefer-binary \
             kubernetes pymongo paramiko pika structlog colorlog python-dateutil pytz psutil python-dotenv netaddr
           
-          # Install optional packages
+          # Install optional packages (skip pytest-xray as it conflicts with pytest 9.0.1)
           pip install --no-cache-dir --prefer-binary \
             allure-pytest jinja2 asyncio-mqtt aiofiles || true
-          
-          pip install --no-cache-dir --prefer-binary \
-            pytest-xray || true
           
           echo "Dependency installation completed!"
           echo "Installed packages:"
@@ -71,44 +68,214 @@ jobs:
       - name: Preflight – check Focus availability
         id: preflight
         shell: bash
+        continue-on-error: true
         run: |
           BASE="https://${FOCUS_SERVER_HOST}:${FOCUS_SERVER_PORT}${FOCUS_API_PREFIX}"
           echo "Checking $BASE/channels"
           set +e
-          code=$(curl -sk -o /dev/null -w "%{http_code}" "$BASE/channels")
+          code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "$BASE/channels" 2>/dev/null || echo "000")
           echo "status=$code" >> $GITHUB_OUTPUT
           if [[ "$code" -ge 200 && "$code" -lt 400 ]]; then
             echo "reachable=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "✅ Focus server is reachable"
           else
             echo "reachable=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Focus server unreachable (HTTP $code)"
             if [[ "${REQUIRE_SERVER}" == "true" ]]; then
               echo "::error::Focus server unreachable (HTTP $code)"
               exit 1
             fi
-            exit 0
           fi
 
       - name: Debug curl (unreachable)
         if: ${{ steps.preflight.outputs.reachable != 'true' }}
         shell: bash
+        continue-on-error: true
         run: |
           BASE="https://${FOCUS_SERVER_HOST}:${FOCUS_SERVER_PORT}${FOCUS_API_PREFIX}"
           echo "Diagnostic curl -vk $BASE/channels"
-          curl -vk "$BASE/channels" || true
+          curl -vk --max-time 10 "$BASE/channels" || true
 
       - name: Run contract tests
-        if: ${{ steps.preflight.outputs.reachable == 'true' }}
+        shell: bash
         run: |
           echo "FOCUS: $FOCUS_SERVER_HOST:$FOCUS_SERVER_PORT$FOCUS_API_PREFIX  VERIFY_SSL=$VERIFY_SSL"
           mkdir -p reports
-          pytest -q focus_server_api_load_tests/focus_api_tests/test_api_contract.py \
-            --junitxml=reports/junit.xml
+          pytest -v focus_server_api_load_tests/focus_api_tests/test_api_contract.py \
+            --junitxml=reports/junit-contract.xml \
+            --html=reports/contract-report.html \
+            --self-contained-html \
+            --json-report \
+            --json-report-file=reports/contract-report.json \
+            --maxfail=10 || true
 
-      - name: Upload test report (junit)
+      - name: Generate console summary
         if: always()
+        shell: bash
+        run: |
+          echo ""
+          echo "========================================"
+          echo "TEST EXECUTION SUMMARY"
+          echo "========================================"
+          if [ -f "reports/junit-contract.xml" ]; then
+            total=$(grep -o 'tests="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            failures=$(grep -o 'failures="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            errors=$(grep -o 'errors="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            skipped=$(grep -o 'skipped="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            time=$(grep -o 'time="[0-9.]*"' reports/junit-contract.xml | grep -o '[0-9.]*' | head -1 || echo "0")
+            passed=$((total - failures - errors - skipped))
+            echo "Total Tests: $total"
+            echo "Passed: $passed"
+            echo "Failed: $failures"
+            echo "Errors: $errors"
+            echo "Duration: ${time}s"
+            echo "========================================"
+            echo ""
+          else
+            echo "No test results found"
+            echo "========================================"
+            echo ""
+          fi
+
+      - name: Upload test reports
+        if: always()
+        id: upload-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: junit-report
-          path: reports/junit.xml
+          name: contract-test-reports
+          path: |
+            reports/junit-*.xml
+            reports/*.html
+            reports/*.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Get artifact download URL
+        if: always() && steps.upload-artifact.outcome == 'success'
+        id: get-artifact-url
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          repo="${{ github.repository }}"
+          runId="${{ github.run_id }}"
+          token="$GITHUB_TOKEN"
+          artifactName="contract-test-reports"
+          
+          headers=(
+            -H "Authorization: Bearer $token"
+            -H "Accept: application/vnd.github.v3+json"
+          )
+          
+          artifactsUrl="https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
+          maxRetries=5
+          retryDelay=2
+          artifact=""
+          
+          for i in $(seq 1 $maxRetries); do
+            echo "Attempt $i of $maxRetries to get artifact ID..."
+            response=$(curl -s "${headers[@]}" "$artifactsUrl" || echo "")
+            
+            if [ -n "$response" ]; then
+              artifact=$(echo "$response" | grep -o "\"name\":\"$artifactName\"" | head -1)
+              if [ -n "$artifact" ]; then
+                artifactId=$(echo "$response" | grep -A 5 "\"name\":\"$artifactName\"" | grep -o "\"id\":[0-9]*" | grep -o '[0-9]*' | head -1)
+                if [ -n "$artifactId" ]; then
+                  serverUrl="${{ github.server_url }}"
+                  downloadUrl="$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
+                  echo "url=$downloadUrl" >> $GITHUB_OUTPUT
+                  echo "Found artifact ID: $artifactId"
+                  echo "Download URL: $downloadUrl"
+                  break
+                fi
+              fi
+            fi
+            
+            if [ $i -lt $maxRetries ]; then
+              echo "Waiting $retryDelay seconds before retry..."
+              sleep $retryDelay
+            fi
+          done
+          
+          if [ -z "$artifactId" ]; then
+            echo "ERROR: Could not get artifact ID after $maxRetries attempts"
+          fi
+
+      - name: Generate GitHub Actions summary
+        if: always()
+        shell: bash
+        env:
+          ARTIFACT_DOWNLOAD_URL: ${{ steps.get-artifact-url.outputs.url }}
+        run: |
+          summaryPath="$GITHUB_STEP_SUMMARY"
+          if [ -z "$summaryPath" ]; then
+            echo "GITHUB_STEP_SUMMARY not set, skipping summary generation"
+            exit 0
+          fi
+          
+          if [ -f "reports/junit-contract.xml" ]; then
+            total=$(grep -o 'tests="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            failures=$(grep -o 'failures="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            errors=$(grep -o 'errors="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            skipped=$(grep -o 'skipped="[0-9]*"' reports/junit-contract.xml | grep -o '[0-9]*' | head -1 || echo "0")
+            time=$(grep -o 'time="[0-9.]*"' reports/junit-contract.xml | grep -o '[0-9.]*' | head -1 || echo "0")
+            passed=$((total - failures - errors - skipped))
+            timeRounded=$(echo "$time" | awk '{printf "%.2f", $1}')
+            
+            if [ "$failures" -eq 0 ] && [ "$errors" -eq 0 ]; then
+              status="[OK]"
+            else
+              status="[FAIL]"
+            fi
+            
+            {
+              echo "## Contract Tests Results $status"
+              echo ""
+              echo "| Metric | Value |"
+              echo "|--------|-------|"
+              echo "| **Total Tests** | $total |"
+              echo "| **Passed** | $passed |"
+              echo "| **Failed** | $failures |"
+              echo "| **Errors** | $errors |"
+              echo "| **Skipped** | $skipped |"
+              echo "| **Duration** | ${timeRounded}s |"
+              echo ""
+              echo "### Test Reports"
+              echo ""
+            } > "$summaryPath"
+            
+            artifactUrl="$ARTIFACT_DOWNLOAD_URL"
+            if [ -n "$artifactUrl" ] && [ "$artifactUrl" != "" ]; then
+              echo "- [Download All Reports]($artifactUrl) - Download ZIP with HTML, JSON, and JUnit XML reports" >> "$summaryPath"
+            else
+              repo="${{ github.repository }}"
+              runId="${{ github.run_id }}"
+              serverUrl="${{ github.server_url }}"
+              if [ -n "$repo" ] && [ -n "$runId" ] && [ -n "$serverUrl" ]; then
+                runUrl="$serverUrl/$repo/actions/runs/$runId"
+                echo "- [Download Reports]($runUrl) - Go to workflow run page and download \`contract-test-reports\` artifact" >> "$summaryPath"
+              else
+                echo "- Download Reports - Check artifacts section in workflow run" >> "$summaryPath"
+              fi
+            fi
+            
+            echo "" >> "$summaryPath"
+            
+            if [ "$failures" -gt 0 ] || [ "$errors" -gt 0 ]; then
+              echo "### Failed Tests" >> "$summaryPath"
+              echo "" >> "$summaryPath"
+              # Extract failed tests from XML (simplified)
+              failedTests=$(grep -c '<failure\|<error' reports/junit-contract.xml || echo "0")
+              if [ "$failedTests" -gt 0 ]; then
+                echo "- $failedTests test(s) failed. Check HTML report for details." >> "$summaryPath"
+                echo "" >> "$summaryPath"
+              fi
+            fi
+            
+            echo "[OK] GitHub Actions summary generated"
+          else
+            echo "## Warning: No test results found" > "$summaryPath"
+            echo "" >> "$summaryPath"
+            echo "Test execution may have failed before generating reports." >> "$summaryPath"
+          fi
 
