@@ -59,6 +59,112 @@ jobs:
             --env=$env:ENV_NAME `
             --skip-health-check
 
+      - name: Generate console summary
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "`n========================================" -ForegroundColor Cyan
+          Write-Host "TEST EXECUTION SUMMARY" -ForegroundColor Cyan
+          Write-Host "========================================" -ForegroundColor Cyan
+          if (Test-Path "reports/junit-regression.xml") {
+            $xml = [xml](Get-Content "reports/junit-regression.xml")
+            
+            # Handle both testsuites and testsuite structures
+            if ($xml.testsuites) {
+              $total = 0
+              $failures = 0
+              $errors = 0
+              $skipped = 0
+              $time = 0.0
+              foreach ($s in $xml.testsuites.testsuite) {
+                $total += [int]$s.tests
+                $failures += [int]$s.failures
+                $errors += [int]$s.errors
+                $skipped += [int]$s.skipped
+                $time += [double]$s.time
+              }
+            } elseif ($xml.testsuite) {
+              $total = [int]$xml.testsuite.tests
+              $failures = [int]$xml.testsuite.failures
+              $errors = [int]$xml.testsuite.errors
+              $skipped = [int]$xml.testsuite.skipped
+              $time = [double]$xml.testsuite.time
+            } else {
+              $total = [int]$xml.DocumentElement.GetAttribute("tests")
+              $failures = [int]$xml.DocumentElement.GetAttribute("failures")
+              $errors = [int]$xml.DocumentElement.GetAttribute("errors")
+              $skipped = [int]$xml.DocumentElement.GetAttribute("skipped")
+              $time = [double]$xml.DocumentElement.GetAttribute("time")
+            }
+            
+            $passed = $total - $failures - $errors - $skipped
+            Write-Host "Total Tests: $total" -ForegroundColor White
+            Write-Host "Passed: $passed" -ForegroundColor Green
+            Write-Host "Failed: $failures" -ForegroundColor $(if ($failures -gt 0) { "Red" } else { "Green" })
+            Write-Host "Errors: $errors" -ForegroundColor $(if ($errors -gt 0) { "Red" } else { "Green" })
+            Write-Host "Duration: $time seconds" -ForegroundColor White
+            Write-Host "========================================`n" -ForegroundColor Cyan
+          }
+
+      - name: Upload test reports
+        if: always()
+        id: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-test-reports
+          path: |
+            reports/junit-*.xml
+            reports/*.html
+            reports/*.json
+          retention-days: 30
+
+      - name: Get artifact download URL
+        if: always() && steps.upload-artifact.outcome == 'success'
+        id: get-artifact-url
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $repo = $env:GITHUB_REPOSITORY
+          $runId = $env:GITHUB_RUN_ID
+          $token = $env:GITHUB_TOKEN
+          $artifactName = "regression-test-reports"
+          
+          $headers = @{
+            "Authorization" = "Bearer $token"
+            "Accept" = "application/vnd.github.v3+json"
+          }
+          
+          $artifactsUrl = "https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
+          $maxRetries = 5
+          $retryDelay = 2
+          $artifact = $null
+          
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              Write-Host "Attempt $i of $maxRetries to get artifact ID..."
+              $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
+              $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
+              
+              if ($artifact) {
+                $artifactId = $artifact.id
+                $serverUrl = $env:GITHUB_SERVER_URL
+                $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
+                Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                Write-Host "Found artifact ID: $artifactId"
+                break
+              } else {
+                if ($i -lt $maxRetries) {
+                  Start-Sleep -Seconds $retryDelay
+                }
+              }
+            } catch {
+              if ($i -lt $maxRetries) {
+                Start-Sleep -Seconds $retryDelay
+              }
+            }
+          }
+
       - name: Generate GitHub Actions summary
         if: always()
         shell: powershell
@@ -167,110 +273,4 @@ jobs:
             Write-Host "[OK] GitHub Actions summary generated"
           } else {
             Set-Content -Path $summaryPath -Value "## Warning: No test results found`n`nTest execution may have failed before generating reports." -Encoding UTF8
-          }
-
-      - name: Generate console summary
-        if: always()
-        shell: powershell
-        run: |
-          Write-Host "`n========================================" -ForegroundColor Cyan
-          Write-Host "TEST EXECUTION SUMMARY" -ForegroundColor Cyan
-          Write-Host "========================================" -ForegroundColor Cyan
-          if (Test-Path "reports/junit-regression.xml") {
-            $xml = [xml](Get-Content "reports/junit-regression.xml")
-            
-            # Handle both testsuites and testsuite structures
-            if ($xml.testsuites) {
-              $total = 0
-              $failures = 0
-              $errors = 0
-              $skipped = 0
-              $time = 0.0
-              foreach ($s in $xml.testsuites.testsuite) {
-                $total += [int]$s.tests
-                $failures += [int]$s.failures
-                $errors += [int]$s.errors
-                $skipped += [int]$s.skipped
-                $time += [double]$s.time
-              }
-            } elseif ($xml.testsuite) {
-              $total = [int]$xml.testsuite.tests
-              $failures = [int]$xml.testsuite.failures
-              $errors = [int]$xml.testsuite.errors
-              $skipped = [int]$xml.testsuite.skipped
-              $time = [double]$xml.testsuite.time
-            } else {
-              $total = [int]$xml.DocumentElement.GetAttribute("tests")
-              $failures = [int]$xml.DocumentElement.GetAttribute("failures")
-              $errors = [int]$xml.DocumentElement.GetAttribute("errors")
-              $skipped = [int]$xml.DocumentElement.GetAttribute("skipped")
-              $time = [double]$xml.DocumentElement.GetAttribute("time")
-            }
-            
-            $passed = $total - $failures - $errors - $skipped
-            Write-Host "Total Tests: $total" -ForegroundColor White
-            Write-Host "Passed: $passed" -ForegroundColor Green
-            Write-Host "Failed: $failures" -ForegroundColor $(if ($failures -gt 0) { "Red" } else { "Green" })
-            Write-Host "Errors: $errors" -ForegroundColor $(if ($errors -gt 0) { "Red" } else { "Green" })
-            Write-Host "Duration: $time seconds" -ForegroundColor White
-            Write-Host "========================================`n" -ForegroundColor Cyan
-          }
-
-      - name: Upload test reports
-        if: always()
-        id: upload-artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: regression-test-reports
-          path: |
-            reports/junit-*.xml
-            reports/*.html
-            reports/*.json
-          retention-days: 30
-
-      - name: Get artifact download URL
-        if: always() && steps.upload-artifact.outcome == 'success'
-        id: get-artifact-url
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $repo = $env:GITHUB_REPOSITORY
-          $runId = $env:GITHUB_RUN_ID
-          $token = $env:GITHUB_TOKEN
-          $artifactName = "regression-test-reports"
-          
-          $headers = @{
-            "Authorization" = "Bearer $token"
-            "Accept" = "application/vnd.github.v3+json"
-          }
-          
-          $artifactsUrl = "https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
-          $maxRetries = 5
-          $retryDelay = 2
-          $artifact = $null
-          
-          for ($i = 1; $i -le $maxRetries; $i++) {
-            try {
-              Write-Host "Attempt $i of $maxRetries to get artifact ID..."
-              $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
-              $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
-              
-              if ($artifact) {
-                $artifactId = $artifact.id
-                $serverUrl = $env:GITHUB_SERVER_URL
-                $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
-                Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-                Write-Host "Found artifact ID: $artifactId"
-                break
-              } else {
-                if ($i -lt $maxRetries) {
-                  Start-Sleep -Seconds $retryDelay
-                }
-              }
-            } catch {
-              if ($i -lt $maxRetries) {
-                Start-Sleep -Seconds $retryDelay
-              }
-            }
           }
