@@ -101,7 +101,18 @@ jobs:
         continue-on-error: true
         run: |
           echo "FOCUS: $FOCUS_SERVER_HOST:$FOCUS_SERVER_PORT$FOCUS_API_PREFIX  VERIFY_SSL=$VERIFY_SSL"
+          echo "Server reachable: ${{ steps.preflight.outputs.reachable }}"
+          echo "Require server: ${{ env.REQUIRE_SERVER }}"
           mkdir -p reports
+          
+          # Run tests even if server is unreachable (unless REQUIRE_SERVER=true)
+          if [[ "${{ steps.preflight.outputs.reachable }}" != "true" && "${{ env.REQUIRE_SERVER }}" == "true" ]]; then
+            echo "ERROR: Server unreachable and REQUIRE_SERVER=true - skipping tests"
+            # Create empty report
+            echo '<?xml version="1.0" encoding="UTF-8"?><testsuite name="contract" tests="0" failures="0" errors="1" skipped="0" time="0"><error message="Server unreachable and REQUIRE_SERVER=true"/></testsuite>' > reports/junit-contract.xml
+            exit 1
+          fi
+          
           pytest -v focus_server_api_load_tests/focus_api_tests/test_api_contract.py \
             --junitxml=reports/junit-contract.xml \
             --html=reports/contract-report.html \
