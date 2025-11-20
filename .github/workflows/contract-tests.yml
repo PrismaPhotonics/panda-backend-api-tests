@@ -179,49 +179,76 @@ EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          repo="${{ github.repository }}"
-          runId="${{ github.run_id }}"
-          token="$GITHUB_TOKEN"
-          artifactName="contract-test-reports"
-          
-          headers=(
-            -H "Authorization: Bearer $token"
-            -H "Accept: application/vnd.github.v3+json"
-          )
-          
-          artifactsUrl="https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
-          maxRetries=5
-          retryDelay=2
-          artifact=""
-          
-          for i in $(seq 1 $maxRetries); do
-            echo "Attempt $i of $maxRetries to get artifact ID..."
-            response=$(curl -s "${headers[@]}" "$artifactsUrl" || echo "")
+          python3 << 'EOF'
+import os
+import time
+import json
+import urllib.request
+import urllib.error
+
+repo = os.environ.get("GITHUB_REPOSITORY", "")
+runId = os.environ.get("GITHUB_RUN_ID", "")
+token = os.environ.get("GITHUB_TOKEN", "")
+artifactName = "contract-test-reports"
+outputFile = os.environ.get("GITHUB_OUTPUT", "")
+
+if not repo or not runId or not token:
+    print("Missing required environment variables")
+    exit(0)
+
+artifactsUrl = f"https://api.github.com/repos/{repo}/actions/runs/{runId}/artifacts"
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Accept": "application/vnd.github.v3+json"
+}
+
+maxRetries = 5
+retryDelay = 2
+artifactId = None
+
+for i in range(1, maxRetries + 1):
+    try:
+        print(f"Attempt {i} of {maxRetries} to get artifact ID...")
+        req = urllib.request.Request(artifactsUrl, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read())
             
-            if [ -n "$response" ]; then
-              artifact=$(echo "$response" | grep -o "\"name\":\"$artifactName\"" | head -1)
-              if [ -n "$artifact" ]; then
-                artifactId=$(echo "$response" | grep -A 5 "\"name\":\"$artifactName\"" | grep -o "\"id\":[0-9]*" | grep -o '[0-9]*' | head -1)
-                if [ -n "$artifactId" ]; then
-                  serverUrl="${{ github.server_url }}"
-                  downloadUrl="$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
-                  echo "url=$downloadUrl" >> $GITHUB_OUTPUT
-                  echo "Found artifact ID: $artifactId"
-                  echo "Download URL: $downloadUrl"
-                  break
-                fi
-              fi
-            fi
+            artifacts = data.get("artifacts", [])
+            print(f"Found {len(artifacts)} artifacts")
+            for artifact in artifacts:
+                print(f"  - {artifact.get('name')} (ID: {artifact.get('id')})")
             
-            if [ $i -lt $maxRetries ]; then
-              echo "Waiting $retryDelay seconds before retry..."
-              sleep $retryDelay
-            fi
-          done
-          
-          if [ -z "$artifactId" ]; then
-            echo "ERROR: Could not get artifact ID after $maxRetries attempts"
-          fi
+            artifact = next((a for a in artifacts if a.get("name") == artifactName), None)
+            
+            if artifact:
+                artifactId = artifact.get("id")
+                serverUrl = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+                downloadUrl = f"{serverUrl}/{repo}/actions/runs/{runId}/artifacts/{artifactId}"
+                
+                if outputFile:
+                    with open(outputFile, "a", encoding="utf-8") as f:
+                        f.write(f"url={downloadUrl}\n")
+                
+                print(f"Found artifact ID: {artifactId}")
+                print(f"Download URL: {downloadUrl}")
+                break
+            else:
+                print(f"Artifact '{artifactName}' not found in response")
+                if i < maxRetries:
+                    print(f"Waiting {retryDelay} seconds before retry...")
+                    time.sleep(retryDelay)
+    except urllib.error.HTTPError as e:
+        print(f"HTTP Error on attempt {i}: {e.code} - {e.reason}")
+        if i < maxRetries:
+            time.sleep(retryDelay)
+    except Exception as e:
+        print(f"Error on attempt {i}: {e}")
+        if i < maxRetries:
+            time.sleep(retryDelay)
+
+if not artifactId:
+    print(f"ERROR: Could not get artifact ID after {maxRetries} attempts")
+EOF
 
       - name: Generate GitHub Actions summary
         if: always()
