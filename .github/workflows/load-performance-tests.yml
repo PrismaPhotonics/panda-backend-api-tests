@@ -140,19 +140,33 @@ jobs:
                 $artifactId = $artifact.id
                 $serverUrl = $env:GITHUB_SERVER_URL
                 $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
-                Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                
+                $outputFile = $env:GITHUB_OUTPUT
+                if ($outputFile) {
+                  "url=$downloadUrl" | Out-File -FilePath $outputFile -Encoding utf8 -Append
+                  Write-Host "Successfully wrote url=$downloadUrl to output file"
+                }
+                
                 Write-Host "Found artifact ID: $artifactId"
+                Write-Host "Download URL: $downloadUrl"
                 break
               } else {
+                $availableArtifacts = if ($response.artifacts) { $response.artifacts.name -join ', ' } else { 'none' }
+                Write-Host "Artifact '$artifactName' not found. Available: $availableArtifacts"
                 if ($i -lt $maxRetries) {
                   Start-Sleep -Seconds $retryDelay
                 }
               }
             } catch {
+              Write-Host "Error on attempt $i : $_"
               if ($i -lt $maxRetries) {
                 Start-Sleep -Seconds $retryDelay
               }
             }
+          }
+          
+          if (-not $artifact) {
+            Write-Host "ERROR: Could not get artifact ID after $maxRetries attempts"
           }
 
       - name: Generate GitHub Actions summary
@@ -216,16 +230,22 @@ jobs:
             
             # Build artifact download link
             $artifactUrl = $env:ARTIFACT_DOWNLOAD_URL
-            if ($artifactUrl) {
+            Write-Host "ARTIFACT_DOWNLOAD_URL from env: $artifactUrl"
+            
+            if ($artifactUrl -and $artifactUrl -ne "") {
+              Write-Host "Using artifact download URL: $artifactUrl"
               $summary += "- [Download All Reports]($artifactUrl) - Download ZIP with HTML, JSON, and JUnit XML reports`n`n"
             } else {
+              Write-Host "Artifact URL not available, using run page fallback"
               $repo = $env:GITHUB_REPOSITORY
               $runId = $env:GITHUB_RUN_ID
               $serverUrl = $env:GITHUB_SERVER_URL
               if ($repo -and $runId -and $serverUrl) {
                 $runUrl = "$serverUrl/$repo/actions/runs/$runId"
+                Write-Host "Using run page URL: $runUrl"
                 $summary += "- [Download Reports]($runUrl) - Go to workflow run page and download `load-performance-test-reports` artifact`n`n"
               } else {
+                Write-Host "Missing environment variables: repo=$repo, runId=$runId, serverUrl=$serverUrl"
                 $summary += "- Download Reports - Check artifacts section in workflow run`n`n"
               }
             }
