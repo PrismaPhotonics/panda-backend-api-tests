@@ -240,25 +240,37 @@ jobs:
           $token = $env:GITHUB_TOKEN
           $artifactName = "regression-test-reports"
           
-          Start-Sleep -Seconds 3
-          
           $headers = @{
             "Authorization" = "Bearer $token"
             "Accept" = "application/vnd.github.v3+json"
           }
           
           $artifactsUrl = "https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
-          try {
-            $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
-            $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
-            
-            if ($artifact) {
-              $artifactId = $artifact.id
-              $serverUrl = $env:GITHUB_SERVER_URL
-              $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
-              Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-              Write-Host "Found artifact ID: $artifactId"
+          $maxRetries = 5
+          $retryDelay = 2
+          $artifact = $null
+          
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              Write-Host "Attempt $i of $maxRetries to get artifact ID..."
+              $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
+              $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
+              
+              if ($artifact) {
+                $artifactId = $artifact.id
+                $serverUrl = $env:GITHUB_SERVER_URL
+                $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
+                Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                Write-Host "Found artifact ID: $artifactId"
+                break
+              } else {
+                if ($i -lt $maxRetries) {
+                  Start-Sleep -Seconds $retryDelay
+                }
+              }
+            } catch {
+              if ($i -lt $maxRetries) {
+                Start-Sleep -Seconds $retryDelay
+              }
             }
-          } catch {
-            Write-Host "Failed to get artifact ID: $_"
           }

@@ -252,30 +252,47 @@ jobs:
           $token = $env:GITHUB_TOKEN
           $artifactName = "smoke-test-reports"
           
-          # Wait a bit for artifact to be available
-          Start-Sleep -Seconds 3
-          
-          # Get artifact ID from GitHub API
+          # Get artifact ID from GitHub API with retries
           $headers = @{
             "Authorization" = "Bearer $token"
             "Accept" = "application/vnd.github.v3+json"
           }
           
           $artifactsUrl = "https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
-          try {
-            $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
-            $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
-            
-            if ($artifact) {
-              $artifactId = $artifact.id
-              $serverUrl = $env:GITHUB_SERVER_URL
-              $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
-              Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-              Write-Host "Found artifact ID: $artifactId"
-              Write-Host "Download URL: $downloadUrl"
-            } else {
-              Write-Host "Artifact not found yet"
+          $maxRetries = 5
+          $retryDelay = 2
+          $artifact = $null
+          
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              Write-Host "Attempt $i of $maxRetries to get artifact ID..."
+              $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
+              $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
+              
+              if ($artifact) {
+                $artifactId = $artifact.id
+                $serverUrl = $env:GITHUB_SERVER_URL
+                $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
+                Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                Write-Host "Found artifact ID: $artifactId"
+                Write-Host "Download URL: $downloadUrl"
+                break
+              } else {
+                Write-Host "Artifact '$artifactName' not found in response. Available artifacts: $($response.artifacts.name -join ', ')"
+                if ($i -lt $maxRetries) {
+                  Write-Host "Waiting $retryDelay seconds before retry..."
+                  Start-Sleep -Seconds $retryDelay
+                }
+              }
+            } catch {
+              Write-Host "Error on attempt $i : $_"
+              if ($i -lt $maxRetries) {
+                Write-Host "Waiting $retryDelay seconds before retry..."
+                Start-Sleep -Seconds $retryDelay
+              }
             }
-          } catch {
-            Write-Host "Failed to get artifact ID: $_"
+          }
+          
+          if (-not $artifact) {
+            Write-Host "Warning: Could not get artifact ID after $maxRetries attempts"
           }
