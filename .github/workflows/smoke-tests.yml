@@ -60,6 +60,8 @@ jobs:
       - name: Generate GitHub Actions summary
         if: always()
         shell: powershell
+        env:
+          ARTIFACT_DOWNLOAD_URL: ${{ steps.get-artifact-url.outputs.url }}
         run: |
           $summaryPath = $env:GITHUB_STEP_SUMMARY
           if (-not $summaryPath) {
@@ -128,34 +130,20 @@ jobs:
             $summary += "| **Duration** | ${timeRounded}s |`n`n"
             $summary += "### Test Reports`n`n"
             
-            # Build artifact download links - link to run page where artifacts are visible
-            $repo = $env:GITHUB_REPOSITORY
-            $runId = $env:GITHUB_RUN_ID
-            $serverUrl = $env:GITHUB_SERVER_URL
-            if ($repo -and $runId -and $serverUrl) {
-              $runUrl = "$serverUrl/$repo/actions/runs/$runId"
-              $summary += "- [HTML Report]($runUrl) - Visual test results (`smoke-report.html` in `smoke-test-reports` artifact)`n"
-              $summary += "- [JSON Report]($runUrl) - Machine-readable data (`smoke-report.json` in `smoke-test-reports` artifact)`n"
-              $summary += "- [JUnit XML]($runUrl) - CI/CD integration (`junit-smoke.xml` in `smoke-test-reports` artifact)`n"
-              $summary += "`n**How to access reports:**`n"
-              $summary += "1. Click any link above to go to the workflow run page`n"
-              $summary += "2. Scroll down to the **Artifacts** section`n"
-              $summary += "3. Download the `smoke-test-reports` artifact (ZIP file)`n"
-              $summary += "4. Extract the ZIP file`n"
-              $summary += "5. Open the reports:`n"
-              $summary += "   - **HTML Report**: Double-click `smoke-report.html` - opens in your web browser`n"
-              $summary += "   - **JSON Report**: Open `smoke-report.json` with:`n"
-              $summary += "     * VS Code / Notepad++ / any text editor`n"
-              $summary += "     * Online JSON viewer: https://jsonviewer.stack.hu/`n"
-              $summary += "     * Or drag & drop to https://jsonformatter.org/json-viewer`n"
-              $summary += "   - **JUnit XML**: Open `junit-smoke.xml` with:`n"
-              $summary += "     * VS Code / Notepad++ / any text editor`n"
-              $summary += "     * Online XML viewer: https://codebeautify.org/xmlviewer`n"
-              $summary += "     * Or use XML viewer extension in VS Code`n`n"
+            # Build artifact download link
+            $artifactUrl = $env:ARTIFACT_DOWNLOAD_URL
+            if ($artifactUrl) {
+              $summary += "- [Download All Reports]($artifactUrl) - Download ZIP with HTML, JSON, and JUnit XML reports`n`n"
             } else {
-              $summary += "- HTML Report - Visual test results (check artifacts section)`n"
-              $summary += "- JSON Report - Machine-readable data (check artifacts section)`n"
-              $summary += "- JUnit XML - CI/CD integration (check artifacts section)`n`n"
+              $repo = $env:GITHUB_REPOSITORY
+              $runId = $env:GITHUB_RUN_ID
+              $serverUrl = $env:GITHUB_SERVER_URL
+              if ($repo -and $runId -and $serverUrl) {
+                $runUrl = "$serverUrl/$repo/actions/runs/$runId"
+                $summary += "- [Download Reports]($runUrl) - Go to workflow run page and download `smoke-test-reports` artifact`n`n"
+              } else {
+                $summary += "- Download Reports - Check artifacts section in workflow run`n`n"
+              }
             }
             
             if ($failures -gt 0 -or $errors -gt 0) {
@@ -242,6 +230,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
+        id: upload-artifact
         uses: actions/upload-artifact@v4
         with:
           name: smoke-test-reports
@@ -250,3 +239,43 @@ jobs:
             reports/*.html
             reports/*.json
           retention-days: 30
+
+      - name: Get artifact download URL
+        if: always() && steps.upload-artifact.outcome == 'success'
+        id: get-artifact-url
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $repo = $env:GITHUB_REPOSITORY
+          $runId = $env:GITHUB_RUN_ID
+          $token = $env:GITHUB_TOKEN
+          $artifactName = "smoke-test-reports"
+          
+          # Wait a bit for artifact to be available
+          Start-Sleep -Seconds 3
+          
+          # Get artifact ID from GitHub API
+          $headers = @{
+            "Authorization" = "Bearer $token"
+            "Accept" = "application/vnd.github.v3+json"
+          }
+          
+          $artifactsUrl = "https://api.github.com/repos/$repo/actions/runs/$runId/artifacts"
+          try {
+            $response = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers -Method Get
+            $artifact = $response.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
+            
+            if ($artifact) {
+              $artifactId = $artifact.id
+              $serverUrl = $env:GITHUB_SERVER_URL
+              $downloadUrl = "$serverUrl/$repo/actions/runs/$runId/artifacts/$artifactId"
+              Write-Host "url=$downloadUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+              Write-Host "Found artifact ID: $artifactId"
+              Write-Host "Download URL: $downloadUrl"
+            } else {
+              Write-Host "Artifact not found yet"
+            }
+          } catch {
+            Write-Host "Failed to get artifact ID: $_"
+          }
