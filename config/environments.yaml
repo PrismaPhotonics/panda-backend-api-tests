@@ -135,9 +135,9 @@ environments:
       ssl: false
       replica_set: null
     
-    # RabbitMQ (Assumed same as production - UPDATE if different)
+    # RabbitMQ (Staging Environment - Different IP from production)
     rabbitmq:
-      host: "10.10.100.107"              # External LoadBalancer IP
+      host: "10.10.10.107"               # Staging LoadBalancer IP (NOT same as production!)
       port: 5672                         # AMQP
       ssl_port: 5671                     # AMQP SSL
       management_port: 15672             # Management UI
