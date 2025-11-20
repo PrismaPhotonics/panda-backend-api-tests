@@ -130,36 +130,35 @@ jobs:
           echo "TEST EXECUTION SUMMARY"
           echo "========================================"
           if [ -f "reports/junit-contract.xml" ]; then
-            cat > /tmp/parse_xml.py << 'PYEOF'
-import xml.etree.ElementTree as ET
-import sys
-try:
-    tree = ET.parse('reports/junit-contract.xml')
-    root = tree.getroot()
-    if root.tag == 'testsuites':
-        suites = root.findall('.//testsuite')
-        total = sum(int(s.get('tests', 0)) for s in suites)
-        failures = sum(int(s.get('failures', 0)) for s in suites)
-        errors = sum(int(s.get('errors', 0)) for s in suites)
-        skipped = sum(int(s.get('skipped', 0)) for s in suites)
-        time = sum(float(s.get('time', 0)) for s in suites)
-    else:
-        total = int(root.get('tests', 0))
-        failures = int(root.get('failures', 0))
-        errors = int(root.get('errors', 0))
-        skipped = int(root.get('skipped', 0))
-        time = float(root.get('time', 0))
-    passed = total - failures - errors - skipped
-    print(f'Total Tests: {total}')
-    print(f'Passed: {passed}')
-    print(f'Failed: {failures}')
-    print(f'Errors: {errors}')
-    print(f'Duration: {time:.2f}s')
-except Exception as e:
-    print(f'Error parsing XML: {e}')
-    sys.exit(0)
-PYEOF
-            python3 /tmp/parse_xml.py
+            python3 -c "
+          import xml.etree.ElementTree as ET
+          import sys
+          try:
+              tree = ET.parse('reports/junit-contract.xml')
+              root = tree.getroot()
+              if root.tag == 'testsuites':
+                  suites = root.findall('.//testsuite')
+                  total = sum(int(s.get('tests', 0)) for s in suites)
+                  failures = sum(int(s.get('failures', 0)) for s in suites)
+                  errors = sum(int(s.get('errors', 0)) for s in suites)
+                  skipped = sum(int(s.get('skipped', 0)) for s in suites)
+                  time = sum(float(s.get('time', 0)) for s in suites)
+              else:
+                  total = int(root.get('tests', 0))
+                  failures = int(root.get('failures', 0))
+                  errors = int(root.get('errors', 0))
+                  skipped = int(root.get('skipped', 0))
+                  time = float(root.get('time', 0))
+              passed = total - failures - errors - skipped
+              print(f'Total Tests: {total}')
+              print(f'Passed: {passed}')
+              print(f'Failed: {failures}')
+              print(f'Errors: {errors}')
+              print(f'Duration: {time:.2f}s')
+          except Exception as e:
+              print(f'Error parsing XML: {e}')
+              sys.exit(0)
+          "
             echo "========================================"
             echo ""
           else
@@ -188,77 +187,76 @@ PYEOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat > /tmp/get_artifact.py << 'PYEOF'
-import os
-import time
-import json
-import urllib.request
-import urllib.error
-
-repo = os.environ.get("GITHUB_REPOSITORY", "")
-runId = os.environ.get("GITHUB_RUN_ID", "")
-token = os.environ.get("GITHUB_TOKEN", "")
-artifactName = "contract-test-reports"
-outputFile = os.environ.get("GITHUB_OUTPUT", "")
-
-if not repo or not runId or not token:
-    print("Missing required environment variables")
-    exit(0)
-
-artifactsUrl = f"https://api.github.com/repos/{repo}/actions/runs/{runId}/artifacts"
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Accept": "application/vnd.github.v3+json"
-}
-
-maxRetries = 5
-retryDelay = 2
-artifactId = None
-
-for i in range(1, maxRetries + 1):
-    try:
-        print(f"Attempt {i} of {maxRetries} to get artifact ID...")
-        req = urllib.request.Request(artifactsUrl, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read())
-            
-            artifacts = data.get("artifacts", [])
-            print(f"Found {len(artifacts)} artifacts")
-            for artifact in artifacts:
-                print(f"  - {artifact.get('name')} (ID: {artifact.get('id')})")
-            
-            artifact = next((a for a in artifacts if a.get("name") == artifactName), None)
-            
-            if artifact:
-                artifactId = artifact.get("id")
-                serverUrl = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
-                downloadUrl = f"{serverUrl}/{repo}/actions/runs/{runId}/artifacts/{artifactId}"
-                
-                if outputFile:
-                    with open(outputFile, "a", encoding="utf-8") as f:
-                        f.write(f"url={downloadUrl}\n")
-                
-                print(f"Found artifact ID: {artifactId}")
-                print(f"Download URL: {downloadUrl}")
-                break
-            else:
-                print(f"Artifact '{artifactName}' not found in response")
-                if i < maxRetries:
-                    print(f"Waiting {retryDelay} seconds before retry...")
-                    time.sleep(retryDelay)
-    except urllib.error.HTTPError as e:
-        print(f"HTTP Error on attempt {i}: {e.code} - {e.reason}")
-        if i < maxRetries:
-            time.sleep(retryDelay)
-    except Exception as e:
-        print(f"Error on attempt {i}: {e}")
-        if i < maxRetries:
-            time.sleep(retryDelay)
-
-if not artifactId:
-    print(f"ERROR: Could not get artifact ID after {maxRetries} attempts")
-PYEOF
-          python3 /tmp/get_artifact.py
+          python3 << 'SCRIPT'
+          import os
+          import time
+          import json
+          import urllib.request
+          import urllib.error
+          
+          repo = os.environ.get("GITHUB_REPOSITORY", "")
+          runId = os.environ.get("GITHUB_RUN_ID", "")
+          token = os.environ.get("GITHUB_TOKEN", "")
+          artifactName = "contract-test-reports"
+          outputFile = os.environ.get("GITHUB_OUTPUT", "")
+          
+          if not repo or not runId or not token:
+              print("Missing required environment variables")
+              exit(0)
+          
+          artifactsUrl = f"https://api.github.com/repos/{repo}/actions/runs/{runId}/artifacts"
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github.v3+json"
+          }
+          
+          maxRetries = 5
+          retryDelay = 2
+          artifactId = None
+          
+          for i in range(1, maxRetries + 1):
+              try:
+                  print(f"Attempt {i} of {maxRetries} to get artifact ID...")
+                  req = urllib.request.Request(artifactsUrl, headers=headers)
+                  with urllib.request.urlopen(req, timeout=10) as response:
+                      data = json.loads(response.read())
+                      
+                      artifacts = data.get("artifacts", [])
+                      print(f"Found {len(artifacts)} artifacts")
+                      for artifact in artifacts:
+                          print(f"  - {artifact.get('name')} (ID: {artifact.get('id')})")
+                      
+                      artifact = next((a for a in artifacts if a.get("name") == artifactName), None)
+                      
+                      if artifact:
+                          artifactId = artifact.get("id")
+                          serverUrl = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+                          downloadUrl = f"{serverUrl}/{repo}/actions/runs/{runId}/artifacts/{artifactId}"
+                          
+                          if outputFile:
+                              with open(outputFile, "a", encoding="utf-8") as f:
+                                  f.write(f"url={downloadUrl}\n")
+                          
+                          print(f"Found artifact ID: {artifactId}")
+                          print(f"Download URL: {downloadUrl}")
+                          break
+                      else:
+                          print(f"Artifact '{artifactName}' not found in response")
+                          if i < maxRetries:
+                              print(f"Waiting {retryDelay} seconds before retry...")
+                              time.sleep(retryDelay)
+              except urllib.error.HTTPError as e:
+                  print(f"HTTP Error on attempt {i}: {e.code} - {e.reason}")
+                  if i < maxRetries:
+                      time.sleep(retryDelay)
+              except Exception as e:
+                  print(f"Error on attempt {i}: {e}")
+                  if i < maxRetries:
+                      time.sleep(retryDelay)
+          
+          if not artifactId:
+              print(f"ERROR: Could not get artifact ID after {maxRetries} attempts")
+          SCRIPT
 
       - name: Generate GitHub Actions summary
         if: always()
@@ -272,96 +270,95 @@ PYEOF
             exit 0
           fi
           
-          cat > /tmp/generate_summary.py << 'PYEOF'
-import xml.etree.ElementTree as ET
-import os
-import sys
-
-summaryPath = os.environ.get("GITHUB_STEP_SUMMARY", "")
-artifactUrl = os.environ.get("ARTIFACT_DOWNLOAD_URL", "")
-
-if not summaryPath:
-    print("GITHUB_STEP_SUMMARY not set")
-    sys.exit(0)
-
-if os.path.exists("reports/junit-contract.xml"):
-    try:
-        tree = ET.parse("reports/junit-contract.xml")
-        root = tree.getroot()
-        
-        # Handle both testsuites and testsuite
-        if root.tag == "testsuites":
-            suites = root.findall(".//testsuite")
-            total = sum(int(s.get("tests", 0)) for s in suites)
-            failures = sum(int(s.get("failures", 0)) for s in suites)
-            errors = sum(int(s.get("errors", 0)) for s in suites)
-            skipped = sum(int(s.get("skipped", 0)) for s in suites)
-            time = sum(float(s.get("time", 0)) for s in suites)
-        else:
-            total = int(root.get("tests", 0))
-            failures = int(root.get("failures", 0))
-            errors = int(root.get("errors", 0))
-            skipped = int(root.get("skipped", 0))
-            time = float(root.get("time", 0))
-        
-        passed = total - failures - errors - skipped
-        timeRounded = round(time, 2)
-        status = "[OK]" if failures == 0 and errors == 0 else "[FAIL]"
-        
-        with open(summaryPath, "w", encoding="utf-8") as f:
-            f.write(f"## Contract Tests Results {status}\n\n")
-            f.write("| Metric | Value |\n")
-            f.write("|--------|-------|\n")
-            f.write(f"| **Total Tests** | {total} |\n")
-            f.write(f"| **Passed** | {passed} |\n")
-            f.write(f"| **Failed** | {failures} |\n")
-            f.write(f"| **Errors** | {errors} |\n")
-            f.write(f"| **Skipped** | {skipped} |\n")
-            f.write(f"| **Duration** | {timeRounded}s |\n\n")
-            f.write("### Test Reports\n\n")
-            
-            if artifactUrl:
-                f.write(f"- [Download All Reports]({artifactUrl}) - Download ZIP with HTML, JSON, and JUnit XML reports\n\n")
-            else:
-                repo = os.environ.get("GITHUB_REPOSITORY", "")
-                runId = os.environ.get("GITHUB_RUN_ID", "")
-                serverUrl = os.environ.get("GITHUB_SERVER_URL", "")
-                if repo and runId and serverUrl:
-                    runUrl = f"{serverUrl}/{repo}/actions/runs/{runId}"
-                    f.write(f"- [Download Reports]({runUrl}) - Go to workflow run page and download \`contract-test-reports\` artifact\n\n")
-                else:
-                    f.write("- Download Reports - Check artifacts section in workflow run\n\n")
-            
-            if failures > 0 or errors > 0:
-                f.write("### Failed Tests\n\n")
-                failedTests = root.findall(".//testcase[failure or error]")
-                count = 0
-                for test in failedTests[:10]:
-                    name = test.get("name", "unknown")
-                    classname = test.get("classname", "unknown")
-                    failure = test.find("failure")
-                    error = test.find("error")
-                    msg = ""
-                    if failure is not None:
-                        msg = failure.get("message", "") or (failure.text or "")[:200]
-                    elif error is not None:
-                        msg = error.get("message", "") or (error.text or "")[:200]
-                    msg = msg.replace("`", "'")[:200]
-                    f.write(f"- **{classname}::{name}**\n")
-                    f.write(f"  ```{msg}```\n\n")
-                    count += 1
-                if len(failedTests) > 10:
-                    f.write(f"*... and {len(failedTests) - 10} more failures*\n\n")
-        
-        print("[OK] GitHub Actions summary generated")
-    except Exception as e:
-        with open(summaryPath, "w", encoding="utf-8") as f:
-            f.write(f"## Error parsing test results\n\nError: {e}\n")
-        print(f"Error: {e}")
-else:
-    with open(summaryPath, "w", encoding="utf-8") as f:
-        f.write("## Warning: No test results found\n\n")
-        f.write("Test execution may have failed before generating reports.\n")
-PYEOF
-          python3 /tmp/generate_summary.py
+          python3 << 'SCRIPT'
+          import xml.etree.ElementTree as ET
+          import os
+          import sys
+          
+          summaryPath = os.environ.get("GITHUB_STEP_SUMMARY", "")
+          artifactUrl = os.environ.get("ARTIFACT_DOWNLOAD_URL", "")
+          
+          if not summaryPath:
+              print("GITHUB_STEP_SUMMARY not set")
+              sys.exit(0)
+          
+          if os.path.exists("reports/junit-contract.xml"):
+              try:
+                  tree = ET.parse("reports/junit-contract.xml")
+                  root = tree.getroot()
+                  
+                  # Handle both testsuites and testsuite
+                  if root.tag == "testsuites":
+                      suites = root.findall(".//testsuite")
+                      total = sum(int(s.get("tests", 0)) for s in suites)
+                      failures = sum(int(s.get("failures", 0)) for s in suites)
+                      errors = sum(int(s.get("errors", 0)) for s in suites)
+                      skipped = sum(int(s.get("skipped", 0)) for s in suites)
+                      time = sum(float(s.get("time", 0)) for s in suites)
+                  else:
+                      total = int(root.get("tests", 0))
+                      failures = int(root.get("failures", 0))
+                      errors = int(root.get("errors", 0))
+                      skipped = int(root.get("skipped", 0))
+                      time = float(root.get("time", 0))
+                  
+                  passed = total - failures - errors - skipped
+                  timeRounded = round(time, 2)
+                  status = "[OK]" if failures == 0 and errors == 0 else "[FAIL]"
+                  
+                  with open(summaryPath, "w", encoding="utf-8") as f:
+                      f.write(f"## Contract Tests Results {status}\n\n")
+                      f.write("| Metric | Value |\n")
+                      f.write("|--------|-------|\n")
+                      f.write(f"| **Total Tests** | {total} |\n")
+                      f.write(f"| **Passed** | {passed} |\n")
+                      f.write(f"| **Failed** | {failures} |\n")
+                      f.write(f"| **Errors** | {errors} |\n")
+                      f.write(f"| **Skipped** | {skipped} |\n")
+                      f.write(f"| **Duration** | {timeRounded}s |\n\n")
+                      f.write("### Test Reports\n\n")
+                      
+                      if artifactUrl:
+                          f.write(f"- [Download All Reports]({artifactUrl}) - Download ZIP with HTML, JSON, and JUnit XML reports\n\n")
+                      else:
+                          repo = os.environ.get("GITHUB_REPOSITORY", "")
+                          runId = os.environ.get("GITHUB_RUN_ID", "")
+                          serverUrl = os.environ.get("GITHUB_SERVER_URL", "")
+                          if repo and runId and serverUrl:
+                              runUrl = f"{serverUrl}/{repo}/actions/runs/{runId}"
+                              f.write(f"- [Download Reports]({runUrl}) - Go to workflow run page and download \`contract-test-reports\` artifact\n\n")
+                          else:
+                              f.write("- Download Reports - Check artifacts section in workflow run\n\n")
+                      
+                      if failures > 0 or errors > 0:
+                          f.write("### Failed Tests\n\n")
+                          failedTests = root.findall(".//testcase[failure or error]")
+                          count = 0
+                          for test in failedTests[:10]:
+                              name = test.get("name", "unknown")
+                              classname = test.get("classname", "unknown")
+                              failure = test.find("failure")
+                              error = test.find("error")
+                              msg = ""
+                              if failure is not None:
+                                  msg = failure.get("message", "") or (failure.text or "")[:200]
+                              elif error is not None:
+                                  msg = error.get("message", "") or (error.text or "")[:200]
+                              msg = msg.replace("`", "'")[:200]
+                              f.write(f"- **{classname}::{name}**\n")
+                              f.write(f"  ```{msg}```\n\n")
+                              count += 1
+                          if len(failedTests) > 10:
+                              f.write(f"*... and {len(failedTests) - 10} more failures*\n\n")
+                  
+                  print("[OK] GitHub Actions summary generated")
+              except Exception as e:
+                  with open(summaryPath, "w", encoding="utf-8") as f:
+                      f.write(f"## Error parsing test results\n\nError: {e}\n")
+                  print(f"Error: {e}")
+          else:
+              with open(summaryPath, "w", encoding="utf-8") as f:
+                  f.write("## Warning: No test results found\n\n")
+                  f.write("Test execution may have failed before generating reports.\n")
+          SCRIPT
 
