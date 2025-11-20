@@ -17,15 +17,18 @@ env:
 
 jobs:
   contract:
-    runs-on: ubuntu-latest
+    # IMPORTANT: Use self-hosted Linux runner for staging environment access
+    # Cloud runners (ubuntu-latest) cannot access internal network (10.10.10.100)
+    # If no self-hosted runner available, workflow will fail with clear error message
+    runs-on: [self-hosted, Linux]
     timeout-minutes: 30
 
     env:
       FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
-      FOCUS_SERVER_PORT: ${{ secrets.FOCUS_SERVER_PORT || '443' }}
+      FOCUS_SERVER_PORT: ${{ secrets.FOCUS_SERVER_PORT || '' }}
       FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
-      REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'false' }}
+      REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'true' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
 
@@ -70,56 +73,152 @@ jobs:
         shell: bash
         continue-on-error: true
         run: |
-          BASE="https://${FOCUS_SERVER_HOST}:${FOCUS_SERVER_PORT}${FOCUS_API_PREFIX}"
+          # Initialize outputs with defaults
+          echo "reachable=false" >> $GITHUB_OUTPUT
+          echo "status=000" >> $GITHUB_OUTPUT
+          
+          # Build base URL - don't add port explicitly (HTTPS uses 443 by default)
+          # Explicit :443 in URL can cause connection issues
+          BASE="https://${FOCUS_SERVER_HOST}${FOCUS_API_PREFIX}"
           echo "Checking $BASE/channels"
+          echo "FOCUS_SERVER_HOST: ${FOCUS_SERVER_HOST}"
+          echo "FOCUS_SERVER_PORT: ${FOCUS_SERVER_PORT:-'(not used - HTTPS default)'}"
+          echo "REQUIRE_SERVER: ${REQUIRE_SERVER}"
+          echo ""
+          echo "Network diagnostics:"
+          echo "  Hostname: $(hostname)"
+          echo "  User: $(whoami)"
+          echo "  IP: $(hostname -I 2>/dev/null || echo 'unknown')"
+          echo ""
+          echo "Testing connectivity:"
+          
+          # Test basic connectivity first
+          if ping -c 1 -W 2 "${FOCUS_SERVER_HOST}" > /dev/null 2>&1; then
+            echo "  ✅ Ping to ${FOCUS_SERVER_HOST} successful"
+          else
+            echo "  ⚠️ Ping to ${FOCUS_SERVER_HOST} failed (may be blocked by firewall)"
+          fi
+          
+          # Test port 443
+          if timeout 3 bash -c "echo > /dev/tcp/${FOCUS_SERVER_HOST}/443" 2>/dev/null; then
+            echo "  ✅ Port 443 on ${FOCUS_SERVER_HOST} is reachable"
+          else
+            echo "  ⚠️ Port 443 on ${FOCUS_SERVER_HOST} is not reachable"
+          fi
+          
+          echo ""
+          echo "Testing HTTP connection:"
+          echo "  URL: $BASE/channels"
           set +e
-          code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "$BASE/channels" 2>/dev/null || echo "000")
+          
+          # Try curl with increased timeout and better error handling
+          echo "  Running: curl -sk --max-time 30 \"$BASE/channels\""
+          
+          # Save full output for debugging
+          curl_full_output=$(curl -sk -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}\n" --max-time 30 "$BASE/channels" 2>&1)
+          curl_exit=$?
+          
+          # Extract HTTP code
+          code=$(echo "$curl_full_output" | grep "HTTP_CODE:" | cut -d: -f2 || echo "000")
+          
+          if [[ $curl_exit -eq 0 && "$code" =~ ^[0-9]+$ && "$code" -ge 200 && "$code" -lt 400 ]]; then
+            echo "  ✅ Curl command succeeded with HTTP $code"
+            response_body=$(echo "$curl_full_output" | grep -v "HTTP_CODE:" | grep -v "TIME:" | head -1)
+            echo "  Response: ${response_body:0:100}"
+          else
+            echo "  ❌ Curl command failed"
+            echo "  Exit code: $curl_exit"
+            echo "  Status code: $code"
+            echo ""
+            echo "  Full curl output (first 50 lines):"
+            echo "$curl_full_output" | head -50
+            
+            # Try with verbose for more details
+            echo ""
+            echo "  Verbose curl attempt:"
+            curl -sk -v --max-time 30 "$BASE/channels" 2>&1 | head -40 || true
+            
+            # If code is not a valid HTTP status, set to 000
+            if [[ ! "$code" =~ ^[0-9]+$ ]]; then
+              code="000"
+            fi
+          fi
+          
+          echo ""
+          echo "Final HTTP status code: $code"
           echo "status=$code" >> $GITHUB_OUTPUT
+          
           if [[ "$code" -ge 200 && "$code" -lt 400 ]]; then
             echo "reachable=true" >> $GITHUB_OUTPUT
             echo "✅ Focus server is reachable"
           else
             echo "reachable=false" >> $GITHUB_OUTPUT
             echo "⚠️ Focus server unreachable (HTTP $code)"
+            echo ""
+            echo "Troubleshooting:"
+            echo "  1. Check if runner can access ${FOCUS_SERVER_HOST}"
+            echo "  2. Check firewall rules"
+            echo "  3. Verify network connectivity"
             if [[ "${REQUIRE_SERVER}" == "true" ]]; then
-              echo "::error::Focus server unreachable (HTTP $code)"
-              exit 1
+              echo "::error::Focus server unreachable (HTTP $code). Server must be accessible for contract tests."
+              echo "::error::Runner is on: $(hostname), trying to reach: ${FOCUS_SERVER_HOST}"
+              # Don't exit here - let the workflow continue to generate proper error reports
             fi
           fi
 
       - name: Debug curl (unreachable)
-        if: ${{ steps.preflight.outputs.reachable != 'true' }}
+        if: steps.preflight.outcome == 'success' && steps.preflight.outputs.reachable != 'true'
         shell: bash
         continue-on-error: true
         run: |
-          BASE="https://${FOCUS_SERVER_HOST}:${FOCUS_SERVER_PORT}${FOCUS_API_PREFIX}"
+          # Use URL without explicit port (HTTPS uses 443 by default)
+          BASE="https://${FOCUS_SERVER_HOST}${FOCUS_API_PREFIX}"
           echo "Diagnostic curl -vk $BASE/channels"
           curl -vk --max-time 10 "$BASE/channels" || true
+          
+          # Also try with explicit port if specified (for debugging)
+          if [[ -n "${FOCUS_SERVER_PORT}" && "${FOCUS_SERVER_PORT}" != "443" ]]; then
+            echo ""
+            echo "Trying with explicit port ${FOCUS_SERVER_PORT}:"
+            BASE_WITH_PORT="https://${FOCUS_SERVER_HOST}:${FOCUS_SERVER_PORT}${FOCUS_API_PREFIX}"
+            curl -vk --max-time 10 "$BASE_WITH_PORT/channels" || true
+          fi
 
       - name: Run contract tests
         shell: bash
-        continue-on-error: true
         run: |
-          echo "FOCUS: $FOCUS_SERVER_HOST:$FOCUS_SERVER_PORT$FOCUS_API_PREFIX  VERIFY_SSL=$VERIFY_SSL"
-          echo "Server reachable: ${{ steps.preflight.outputs.reachable }}"
-          echo "Require server: ${{ env.REQUIRE_SERVER }}"
+          # Build base URL for display (without explicit port)
+          FOCUS_URL="$FOCUS_SERVER_HOST$FOCUS_API_PREFIX"
+          echo "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$VERIFY_SSL"
+          
+          # Get reachable status with safe fallback
+          REACHABLE="${steps.preflight.outputs.reachable:-false}"
+          echo "Server reachable: ${REACHABLE}"
+          echo "Require server: ${REQUIRE_SERVER}"
           mkdir -p reports
           
-          # Run tests even if server is unreachable (unless REQUIRE_SERVER=true)
-          if [[ "${{ steps.preflight.outputs.reachable }}" != "true" && "${{ env.REQUIRE_SERVER }}" == "true" ]]; then
-            echo "ERROR: Server unreachable and REQUIRE_SERVER=true - skipping tests"
-            # Create empty report
-            echo '<?xml version="1.0" encoding="UTF-8"?><testsuite name="contract" tests="0" failures="0" errors="1" skipped="0" time="0"><error message="Server unreachable and REQUIRE_SERVER=true"/></testsuite>' > reports/junit-contract.xml
+          # Fail if server is unreachable and REQUIRE_SERVER=true
+          if [[ "${REACHABLE}" != "true" && "${REQUIRE_SERVER}" == "true" ]]; then
+            echo "::error::Server unreachable and REQUIRE_SERVER=true - cannot run contract tests"
+            echo '<?xml version="1.0" encoding="UTF-8"?><testsuite name="contract" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="server_unreachable" classname="preflight"><error message="Server unreachable and REQUIRE_SERVER=true" type="ConnectionError">Server unreachable and REQUIRE_SERVER=true</error></testcase></testsuite>' > reports/junit-contract.xml
             exit 1
           fi
           
+          # Skip tests if server unreachable and REQUIRE_SERVER=false
+          if [[ "${REACHABLE}" != "true" ]]; then
+            echo "⚠️ Server unreachable - skipping contract tests"
+            echo '<?xml version="1.0" encoding="UTF-8"?><testsuite name="contract" tests="0" failures="0" errors="0" skipped="1" time="0"><testcase name="server_unreachable" classname="preflight"><skipped message="Server unreachable"/></testcase></testsuite>' > reports/junit-contract.xml
+            exit 0
+          fi
+          
+          # Run tests
           pytest -v focus_server_api_load_tests/focus_api_tests/test_api_contract.py \
             --junitxml=reports/junit-contract.xml \
             --html=reports/contract-report.html \
             --self-contained-html \
             --json-report \
             --json-report-file=reports/contract-report.json \
-            --maxfail=10 || echo "Tests completed with errors"
+            --maxfail=10
 
       - name: Generate console summary
         if: always()
@@ -143,12 +242,20 @@ jobs:
                   errors = sum(int(s.get('errors', 0)) for s in suites)
                   skipped = sum(int(s.get('skipped', 0)) for s in suites)
                   time = sum(float(s.get('time', 0)) for s in suites)
-              else:
+              elif root.tag == 'testsuite':
                   total = int(root.get('tests', 0))
                   failures = int(root.get('failures', 0))
                   errors = int(root.get('errors', 0))
                   skipped = int(root.get('skipped', 0))
                   time = float(root.get('time', 0))
+              else:
+                  # Unknown root tag, try to count testcases
+                  testcases = root.findall('.//testcase')
+                  total = len(testcases)
+                  failures = len(root.findall('.//failure'))
+                  errors = len(root.findall('.//error'))
+                  skipped = len(root.findall('.//skipped'))
+                  time = 0.0
               passed = total - failures - errors - skipped
               print(f'Total Tests: {total}')
               print(f'Passed: {passed}')
@@ -295,12 +402,20 @@ jobs:
                       errors = sum(int(s.get("errors", 0)) for s in suites)
                       skipped = sum(int(s.get("skipped", 0)) for s in suites)
                       time = sum(float(s.get("time", 0)) for s in suites)
-                  else:
+                  elif root.tag == "testsuite":
                       total = int(root.get("tests", 0))
                       failures = int(root.get("failures", 0))
                       errors = int(root.get("errors", 0))
                       skipped = int(root.get("skipped", 0))
                       time = float(root.get("time", 0))
+                  else:
+                      # Unknown root tag, try to count testcases
+                      testcases = root.findall(".//testcase")
+                      total = len(testcases)
+                      failures = len(root.findall(".//failure"))
+                      errors = len(root.findall(".//error"))
+                      skipped = len(root.findall(".//skipped"))
+                      time = 0.0
                   
                   passed = total - failures - errors - skipped
                   timeRounded = round(time, 2)
