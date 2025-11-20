@@ -127,9 +127,22 @@ jobs:
             $summary += "| **Skipped** | $skipped |`n"
             $summary += "| **Duration** | ${timeRounded}s |`n`n"
             $summary += "### Test Reports`n`n"
-            $summary += "- [HTML Report](artifact://smoke-test-reports/smoke-report.html) - Visual test results`n"
-            $summary += "- [JSON Report](artifact://smoke-test-reports/smoke-report.json) - Machine-readable data`n"
-            $summary += "- [JUnit XML](artifact://smoke-test-reports/junit-smoke.xml) - CI/CD integration`n`n"
+            
+            # Build artifact download links
+            $repo = $env:GITHUB_REPOSITORY
+            $runId = $env:GITHUB_RUN_ID
+            $serverUrl = $env:GITHUB_SERVER_URL
+            if ($repo -and $runId -and $serverUrl) {
+              $artifactBaseUrl = "$serverUrl/$repo/actions/runs/$runId"
+              $summary += "- [HTML Report]($artifactBaseUrl/artifacts) - Visual test results (download smoke-test-reports artifact)`n"
+              $summary += "- [JSON Report]($artifactBaseUrl/artifacts) - Machine-readable data (download smoke-test-reports artifact)`n"
+              $summary += "- [JUnit XML]($artifactBaseUrl/artifacts) - CI/CD integration (download smoke-test-reports artifact)`n"
+              $summary += "`n**Note:** Download the `smoke-test-reports` artifact to access all report files.`n`n"
+            } else {
+              $summary += "- HTML Report - Visual test results (check artifacts section)`n"
+              $summary += "- JSON Report - Machine-readable data (check artifacts section)`n"
+              $summary += "- JUnit XML - CI/CD integration (check artifacts section)`n`n"
+            }
             
             if ($failures -gt 0 -or $errors -gt 0) {
               $summary += "### Failed Tests`n`n"
