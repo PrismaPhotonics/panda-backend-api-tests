@@ -68,25 +68,25 @@ jobs:
             $passed = $total - $failures - $errors - $skipped
             $time = [double]$xml.testsuite.time
             
-            $status = if ($failures -eq 0 -and $errors -eq 0) { "✅" } else { "❌" }
+            $status = if ($failures -eq 0 -and $errors -eq 0) { '[OK]' } else { '[FAIL]' }
             $timeRounded = [math]::Round($time, 2)
             
-            $summary = "## 📊 Load & Performance Tests Results $status`n`n"
+            $summary = "## Load & Performance Tests Results $status`n`n"
             $summary += "| Metric | Value |`n"
             $summary += "|--------|-------|`n"
             $summary += "| **Total Tests** | $total |`n"
-            $summary += "| **✅ Passed** | $passed |`n"
-            $summary += "| **❌ Failed** | $failures |`n"
-            $summary += "| **⚠️ Errors** | $errors |`n"
-            $summary += "| **⏭️ Skipped** | $skipped |`n"
-            $summary += "| **⏱️ Duration** | ${timeRounded}s |`n`n"
-            $summary += "### 📋 Test Reports`n`n"
-            $summary += "- 📄 [HTML Report](artifact://load-performance-test-reports/load-performance-report.html) - Visual test results`n"
-            $summary += "- 📊 [JSON Report](artifact://load-performance-test-reports/load-performance-report.json) - Machine-readable data`n"
-            $summary += "- 📦 [JUnit XML](artifact://load-performance-test-reports/junit-load-performance.xml) - CI/CD integration`n`n"
+            $summary += "| **Passed** | $passed |`n"
+            $summary += "| **Failed** | $failures |`n"
+            $summary += "| **Errors** | $errors |`n"
+            $summary += "| **Skipped** | $skipped |`n"
+            $summary += "| **Duration** | ${timeRounded}s |`n`n"
+            $summary += "### Test Reports`n`n"
+            $summary += "- [HTML Report](artifact://load-performance-test-reports/load-performance-report.html) - Visual test results`n"
+            $summary += "- [JSON Report](artifact://load-performance-test-reports/load-performance-report.json) - Machine-readable data`n"
+            $summary += "- [JUnit XML](artifact://load-performance-test-reports/junit-load-performance.xml) - CI/CD integration`n`n"
             
             if ($failures -gt 0 -or $errors -gt 0) {
-              $summary += "### ❌ Failed Tests`n`n"
+              $summary += "### Failed Tests`n`n"
               $failedTests = $xml.SelectNodes("//testcase[failure or error]")
               $count = 0
               foreach ($test in $failedTests) {
@@ -107,9 +107,9 @@ jobs:
             }
             
             Set-Content -Path $summaryPath -Value $summary -Encoding UTF8
-            Write-Host "✅ GitHub Actions summary generated"
+            Write-Host "[OK] GitHub Actions summary generated"
           } else {
-            Set-Content -Path $summaryPath -Value "## ⚠️ No test results found`n`nTest execution may have failed before generating reports." -Encoding UTF8
+            Set-Content -Path $summaryPath -Value "## Warning: No test results found`n`nTest execution may have failed before generating reports." -Encoding UTF8
           }
 
       - name: Generate console summary
