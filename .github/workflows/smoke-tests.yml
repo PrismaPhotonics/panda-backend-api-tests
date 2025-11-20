@@ -69,12 +69,50 @@ jobs:
           
           if (Test-Path "reports/junit-smoke.xml") {
             $xml = [xml](Get-Content "reports/junit-smoke.xml")
-            $total = [int]$xml.testsuite.tests
-            $failures = [int]$xml.testsuite.failures
-            $errors = [int]$xml.testsuite.errors
-            $skipped = [int]$xml.testsuite.skipped
+            
+            # Debug: Log XML structure
+            Write-Host "XML Root Element: $($xml.DocumentElement.Name)"
+            Write-Host "XML Root Attributes: $($xml.DocumentElement.Attributes | ForEach-Object { $_.Name + '=' + $_.Value })"
+            
+            # Handle both testsuites (root) and testsuite (single suite) structures
+            $suite = $null
+            if ($xml.testsuites) {
+              Write-Host "Found testsuites structure"
+              # Multiple suites - aggregate all
+              $total = 0
+              $failures = 0
+              $errors = 0
+              $skipped = 0
+              $time = 0.0
+              foreach ($s in $xml.testsuites.testsuite) {
+                $total += [int]$s.tests
+                $failures += [int]$s.failures
+                $errors += [int]$s.errors
+                $skipped += [int]$s.skipped
+                $time += [double]$s.time
+              }
+            } elseif ($xml.testsuite) {
+              Write-Host "Found testsuite structure"
+              # Single suite
+              $suite = $xml.testsuite
+              $total = [int]$suite.tests
+              $failures = [int]$suite.failures
+              $errors = [int]$suite.errors
+              $skipped = [int]$suite.skipped
+              $time = [double]$suite.time
+            } else {
+              Write-Host "Using root element attributes"
+              # Try root element attributes
+              $total = [int]$xml.DocumentElement.GetAttribute("tests")
+              $failures = [int]$xml.DocumentElement.GetAttribute("failures")
+              $errors = [int]$xml.DocumentElement.GetAttribute("errors")
+              $skipped = [int]$xml.DocumentElement.GetAttribute("skipped")
+              $time = [double]$xml.DocumentElement.GetAttribute("time")
+            }
+            
+            Write-Host "Parsed values: total=$total, failures=$failures, errors=$errors, skipped=$skipped, time=$time"
+            
             $passed = $total - $failures - $errors - $skipped
-            $time = [double]$xml.testsuite.time
             $timeRounded = [math]::Round($time, 2)
             
             $status = if ($failures -eq 0 -and $errors -eq 0) { '[OK]' } else { '[FAIL]' }
@@ -99,11 +137,19 @@ jobs:
               $count = 0
               foreach ($test in $failedTests) {
                 if ($count -ge 10) { break }
-                $name = $test.name
-                $class = $test.classname
+                $name = $test.GetAttribute("name")
+                $class = $test.GetAttribute("classname")
                 $failureMsg = ""
-                if ($test.failure) { $failureMsg = $test.failure.message } 
-                elseif ($test.error) { $failureMsg = $test.error.message }
+                $failureNode = $test.SelectSingleNode("failure")
+                $errorNode = $test.SelectSingleNode("error")
+                if ($failureNode) { 
+                  $failureMsg = $failureNode.GetAttribute("message")
+                  if (-not $failureMsg) { $failureMsg = $failureNode.InnerText }
+                } 
+                elseif ($errorNode) { 
+                  $failureMsg = $errorNode.GetAttribute("message")
+                  if (-not $failureMsg) { $failureMsg = $errorNode.InnerText }
+                }
                 $failureShort = if ($failureMsg.Length -gt 200) { $failureMsg.Substring(0, 200) + "..." } else { $failureMsg }
                 $summary += "- **$class::$name**`n"
                 $summary += "  ```$failureShort````n`n"
@@ -129,11 +175,36 @@ jobs:
           Write-Host "========================================" -ForegroundColor Cyan
           if (Test-Path "reports/junit-smoke.xml") {
             $xml = [xml](Get-Content "reports/junit-smoke.xml")
-            $total = $xml.testsuite.tests
-            $failures = $xml.testsuite.failures
-            $errors = $xml.testsuite.errors
-            $passed = $total - $failures - $errors
-            $time = $xml.testsuite.time
+            
+            # Handle both testsuites and testsuite structures
+            if ($xml.testsuites) {
+              $total = 0
+              $failures = 0
+              $errors = 0
+              $skipped = 0
+              $time = 0.0
+              foreach ($s in $xml.testsuites.testsuite) {
+                $total += [int]$s.tests
+                $failures += [int]$s.failures
+                $errors += [int]$s.errors
+                $skipped += [int]$s.skipped
+                $time += [double]$s.time
+              }
+            } elseif ($xml.testsuite) {
+              $total = [int]$xml.testsuite.tests
+              $failures = [int]$xml.testsuite.failures
+              $errors = [int]$xml.testsuite.errors
+              $skipped = [int]$xml.testsuite.skipped
+              $time = [double]$xml.testsuite.time
+            } else {
+              $total = [int]$xml.DocumentElement.GetAttribute("tests")
+              $failures = [int]$xml.DocumentElement.GetAttribute("failures")
+              $errors = [int]$xml.DocumentElement.GetAttribute("errors")
+              $skipped = [int]$xml.DocumentElement.GetAttribute("skipped")
+              $time = [double]$xml.DocumentElement.GetAttribute("time")
+            }
+            
+            $passed = $total - $failures - $errors - $skipped
             Write-Host "Total Tests: $total" -ForegroundColor White
             Write-Host "Passed: $passed" -ForegroundColor Green
             Write-Host "Failed: $failures" -ForegroundColor $(if ($failures -gt 0) { "Red" } else { "Green" })

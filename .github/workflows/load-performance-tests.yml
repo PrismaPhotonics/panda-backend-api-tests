@@ -61,12 +61,36 @@ jobs:
           
           if (Test-Path "reports/junit-load-performance.xml") {
             $xml = [xml](Get-Content "reports/junit-load-performance.xml")
-            $total = [int]$xml.testsuite.tests
-            $failures = [int]$xml.testsuite.failures
-            $errors = [int]$xml.testsuite.errors
-            $skipped = [int]$xml.testsuite.skipped
+            
+            # Handle both testsuites and testsuite structures
+            if ($xml.testsuites) {
+              $total = 0
+              $failures = 0
+              $errors = 0
+              $skipped = 0
+              $time = 0.0
+              foreach ($s in $xml.testsuites.testsuite) {
+                $total += [int]$s.tests
+                $failures += [int]$s.failures
+                $errors += [int]$s.errors
+                $skipped += [int]$s.skipped
+                $time += [double]$s.time
+              }
+            } elseif ($xml.testsuite) {
+              $total = [int]$xml.testsuite.tests
+              $failures = [int]$xml.testsuite.failures
+              $errors = [int]$xml.testsuite.errors
+              $skipped = [int]$xml.testsuite.skipped
+              $time = [double]$xml.testsuite.time
+            } else {
+              $total = [int]$xml.DocumentElement.GetAttribute("tests")
+              $failures = [int]$xml.DocumentElement.GetAttribute("failures")
+              $errors = [int]$xml.DocumentElement.GetAttribute("errors")
+              $skipped = [int]$xml.DocumentElement.GetAttribute("skipped")
+              $time = [double]$xml.DocumentElement.GetAttribute("time")
+            }
+            
             $passed = $total - $failures - $errors - $skipped
-            $time = [double]$xml.testsuite.time
             
             $status = if ($failures -eq 0 -and $errors -eq 0) { '[OK]' } else { '[FAIL]' }
             $timeRounded = [math]::Round($time, 2)
@@ -91,11 +115,19 @@ jobs:
               $count = 0
               foreach ($test in $failedTests) {
                 if ($count -ge 10) { break }
-                $name = $test.name
-                $class = $test.classname
+                $name = $test.GetAttribute("name")
+                $class = $test.GetAttribute("classname")
                 $failureMsg = ""
-                if ($test.failure) { $failureMsg = $test.failure.message } 
-                elseif ($test.error) { $failureMsg = $test.error.message }
+                $failureNode = $test.SelectSingleNode("failure")
+                $errorNode = $test.SelectSingleNode("error")
+                if ($failureNode) { 
+                  $failureMsg = $failureNode.GetAttribute("message")
+                  if (-not $failureMsg) { $failureMsg = $failureNode.InnerText }
+                } 
+                elseif ($errorNode) { 
+                  $failureMsg = $errorNode.GetAttribute("message")
+                  if (-not $failureMsg) { $failureMsg = $errorNode.InnerText }
+                }
                 $failureShort = if ($failureMsg.Length -gt 200) { $failureMsg.Substring(0, 200) + "..." } else { $failureMsg }
                 $summary += "- **$class::$name**`n"
                 $summary += "  ```$failureShort````n`n"
@@ -121,11 +153,36 @@ jobs:
           Write-Host "========================================" -ForegroundColor Cyan
           if (Test-Path "reports/junit-load-performance.xml") {
             $xml = [xml](Get-Content "reports/junit-load-performance.xml")
-            $total = $xml.testsuite.tests
-            $failures = $xml.testsuite.failures
-            $errors = $xml.testsuite.errors
-            $passed = $total - $failures - $errors
-            $time = $xml.testsuite.time
+            
+            # Handle both testsuites and testsuite structures
+            if ($xml.testsuites) {
+              $total = 0
+              $failures = 0
+              $errors = 0
+              $skipped = 0
+              $time = 0.0
+              foreach ($s in $xml.testsuites.testsuite) {
+                $total += [int]$s.tests
+                $failures += [int]$s.failures
+                $errors += [int]$s.errors
+                $skipped += [int]$s.skipped
+                $time += [double]$s.time
+              }
+            } elseif ($xml.testsuite) {
+              $total = [int]$xml.testsuite.tests
+              $failures = [int]$xml.testsuite.failures
+              $errors = [int]$xml.testsuite.errors
+              $skipped = [int]$xml.testsuite.skipped
+              $time = [double]$xml.testsuite.time
+            } else {
+              $total = [int]$xml.DocumentElement.GetAttribute("tests")
+              $failures = [int]$xml.DocumentElement.GetAttribute("failures")
+              $errors = [int]$xml.DocumentElement.GetAttribute("errors")
+              $skipped = [int]$xml.DocumentElement.GetAttribute("skipped")
+              $time = [double]$xml.DocumentElement.GetAttribute("time")
+            }
+            
+            $passed = $total - $failures - $errors - $skipped
             Write-Host "Total Tests: $total" -ForegroundColor White
             Write-Host "Passed: $passed" -ForegroundColor Green
             Write-Host "Failed: $failures" -ForegroundColor $(if ($failures -gt 0) { "Red" } else { "Green" })
