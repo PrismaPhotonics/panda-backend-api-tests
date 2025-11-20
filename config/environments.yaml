@@ -191,7 +191,7 @@ environments:
           type: "LoadBalancer"
           cluster_ip: "10.43.10.166"
           internal_endpoint: "rabbitmq-panda.panda:5672"
-          external_ip: "10.10.100.107"
+          external_ip: "10.10.10.107"    # Staging LoadBalancer IP
           pod_selector: "app.kubernetes.io/instance=rabbitmq-panda"
         grpc_service:
           name: "grpc-service-*"
