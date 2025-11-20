@@ -68,7 +68,7 @@ jobs:
           echo "Installed packages:"
           pip list | head -40
 
-      - name: Preflight – check Focus availability
+      - name: Preflight ג€“ check Focus availability
         id: preflight
         shell: bash
         continue-on-error: true
@@ -94,16 +94,16 @@ jobs:
           
           # Test basic connectivity first
           if ping -c 1 -W 2 "${FOCUS_SERVER_HOST}" > /dev/null 2>&1; then
-            echo "  ✅ Ping to ${FOCUS_SERVER_HOST} successful"
+            echo "  ג… Ping to ${FOCUS_SERVER_HOST} successful"
           else
-            echo "  ⚠️ Ping to ${FOCUS_SERVER_HOST} failed (may be blocked by firewall)"
+            echo "  ג ן¸ Ping to ${FOCUS_SERVER_HOST} failed (may be blocked by firewall)"
           fi
           
           # Test port 443
           if timeout 3 bash -c "echo > /dev/tcp/${FOCUS_SERVER_HOST}/443" 2>/dev/null; then
-            echo "  ✅ Port 443 on ${FOCUS_SERVER_HOST} is reachable"
+            echo "  ג… Port 443 on ${FOCUS_SERVER_HOST} is reachable"
           else
-            echo "  ⚠️ Port 443 on ${FOCUS_SERVER_HOST} is not reachable"
+            echo "  ג ן¸ Port 443 on ${FOCUS_SERVER_HOST} is not reachable"
           fi
           
           echo ""
@@ -122,11 +122,11 @@ jobs:
           code=$(echo "$curl_full_output" | grep "HTTP_CODE:" | cut -d: -f2 || echo "000")
           
           if [[ $curl_exit -eq 0 && "$code" =~ ^[0-9]+$ && "$code" -ge 200 && "$code" -lt 400 ]]; then
-            echo "  ✅ Curl command succeeded with HTTP $code"
+            echo "  ג… Curl command succeeded with HTTP $code"
             response_body=$(echo "$curl_full_output" | grep -v "HTTP_CODE:" | grep -v "TIME:" | head -1)
             echo "  Response: ${response_body:0:100}"
           else
-            echo "  ❌ Curl command failed"
+            echo "  ג Curl command failed"
             echo "  Exit code: $curl_exit"
             echo "  Status code: $code"
             echo ""
@@ -150,10 +150,10 @@ jobs:
           
           if [[ "$code" -ge 200 && "$code" -lt 400 ]]; then
             echo "reachable=true" >> $GITHUB_OUTPUT
-            echo "✅ Focus server is reachable"
+            echo "ג… Focus server is reachable"
           else
             echo "reachable=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Focus server unreachable (HTTP $code)"
+            echo "ג ן¸ Focus server unreachable (HTTP $code)"
             echo ""
             echo "Troubleshooting:"
             echo "  1. Check if runner can access ${FOCUS_SERVER_HOST}"
@@ -192,7 +192,13 @@ jobs:
           echo "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$VERIFY_SSL"
           
           # Get reachable status with safe fallback
-          REACHABLE="${steps.preflight.outputs.reachable:-false}"
+          # Get reachable status (use GitHub Actions output syntax)
+          # Get reachable status (use GitHub Actions output syntax)
+          REACHABLE="${{ steps.preflight.outputs.reachable }}"
+          # Default to false if empty
+          if [[ -z "${REACHABLE}" ]]; then
+            REACHABLE="false"
+          fi
           echo "Server reachable: ${REACHABLE}"
           echo "Require server: ${REQUIRE_SERVER}"
           mkdir -p reports
@@ -206,7 +212,7 @@ jobs:
           
           # Skip tests if server unreachable and REQUIRE_SERVER=false
           if [[ "${REACHABLE}" != "true" ]]; then
-            echo "⚠️ Server unreachable - skipping contract tests"
+            echo "ג ן¸ Server unreachable - skipping contract tests"
             echo '<?xml version="1.0" encoding="UTF-8"?><testsuite name="contract" tests="0" failures="0" errors="0" skipped="1" time="0"><testcase name="server_unreachable" classname="preflight"><skipped message="Server unreachable"/></testcase></testsuite>' > reports/junit-contract.xml
             exit 0
           fi
