@@ -47,12 +47,108 @@ jobs:
       - name: Run smoke tests
         shell: powershell
         run: |
-          pytest be_focus_server_tests/ -m "smoke" -v --junitxml=reports/junit-smoke.xml --maxfail=10 --env=$env:ENV_NAME --skip-health-check
+          pytest be_focus_server_tests/ -m "smoke" -v `
+            --junitxml=reports/junit-smoke.xml `
+            --html=reports/smoke-report.html `
+            --self-contained-html `
+            --json-report `
+            --json-report-file=reports/smoke-report.json `
+            --maxfail=10 `
+            --env=$env:ENV_NAME `
+            --skip-health-check
 
-      - name: Upload JUnit report
+      - name: Generate GitHub Actions summary
+        if: always()
+        shell: powershell
+        run: |
+          $summaryPath = $env:GITHUB_STEP_SUMMARY
+          if (-not $summaryPath) {
+            Write-Host "GITHUB_STEP_SUMMARY not set, skipping summary generation"
+            exit 0
+          }
+          
+          if (Test-Path "reports/junit-smoke.xml") {
+            $xml = [xml](Get-Content "reports/junit-smoke.xml")
+            $total = [int]$xml.testsuite.tests
+            $failures = [int]$xml.testsuite.failures
+            $errors = [int]$xml.testsuite.errors
+            $skipped = [int]$xml.testsuite.skipped
+            $passed = $total - $failures - $errors - $skipped
+            $time = [double]$xml.testsuite.time
+            $timeRounded = [math]::Round($time, 2)
+            
+            $status = if ($failures -eq 0 -and $errors -eq 0) { "✅" } else { "❌" }
+            
+            $summary = "## 📊 Smoke Tests Results $status`n`n"
+            $summary += "| Metric | Value |`n"
+            $summary += "|--------|-------|`n"
+            $summary += "| **Total Tests** | $total |`n"
+            $summary += "| **✅ Passed** | $passed |`n"
+            $summary += "| **❌ Failed** | $failures |`n"
+            $summary += "| **⚠️ Errors** | $errors |`n"
+            $summary += "| **⏭️ Skipped** | $skipped |`n"
+            $summary += "| **⏱️ Duration** | ${timeRounded}s |`n`n"
+            $summary += "### 📋 Test Reports`n`n"
+            $summary += "- 📄 [HTML Report](artifact://smoke-test-reports/smoke-report.html) - Visual test results`n"
+            $summary += "- 📊 [JSON Report](artifact://smoke-test-reports/smoke-report.json) - Machine-readable data`n"
+            $summary += "- 📦 [JUnit XML](artifact://smoke-test-reports/junit-smoke.xml) - CI/CD integration`n`n"
+            
+            if ($failures -gt 0 -or $errors -gt 0) {
+              $summary += "### ❌ Failed Tests`n`n"
+              $failedTests = $xml.SelectNodes("//testcase[failure or error]")
+              $count = 0
+              foreach ($test in $failedTests) {
+                if ($count -ge 10) { break }
+                $name = $test.name
+                $class = $test.classname
+                $failureMsg = ""
+                if ($test.failure) { $failureMsg = $test.failure.message } 
+                elseif ($test.error) { $failureMsg = $test.error.message }
+                $failureShort = if ($failureMsg.Length -gt 200) { $failureMsg.Substring(0, 200) + "..." } else { $failureMsg }
+                $summary += "- **$class::$name**`n"
+                $summary += "  ```$failureShort````n`n"
+                $count++
+              }
+              if ($failedTests.Count -gt 10) {
+                $summary += "*... and $($failedTests.Count - 10) more failures*`n`n"
+              }
+            }
+            
+            Set-Content -Path $summaryPath -Value $summary -Encoding UTF8
+            Write-Host "✅ GitHub Actions summary generated"
+          } else {
+            Set-Content -Path $summaryPath -Value "## ⚠️ No test results found`n`nTest execution may have failed before generating reports." -Encoding UTF8
+          }
+
+      - name: Generate console summary
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "`n========================================" -ForegroundColor Cyan
+          Write-Host "TEST EXECUTION SUMMARY" -ForegroundColor Cyan
+          Write-Host "========================================" -ForegroundColor Cyan
+          if (Test-Path "reports/junit-smoke.xml") {
+            $xml = [xml](Get-Content "reports/junit-smoke.xml")
+            $total = $xml.testsuite.tests
+            $failures = $xml.testsuite.failures
+            $errors = $xml.testsuite.errors
+            $passed = $total - $failures - $errors
+            $time = $xml.testsuite.time
+            Write-Host "Total Tests: $total" -ForegroundColor White
+            Write-Host "Passed: $passed" -ForegroundColor Green
+            Write-Host "Failed: $failures" -ForegroundColor $(if ($failures -gt 0) { "Red" } else { "Green" })
+            Write-Host "Errors: $errors" -ForegroundColor $(if ($errors -gt 0) { "Red" } else { "Green" })
+            Write-Host "Duration: $time seconds" -ForegroundColor White
+            Write-Host "========================================`n" -ForegroundColor Cyan
+          }
+
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: smoke-test-reports
-          path: reports/junit-*.xml
-          retention-days: 7
+          path: |
+            reports/junit-*.xml
+            reports/*.html
+            reports/*.json
+          retention-days: 30
