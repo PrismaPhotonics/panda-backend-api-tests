@@ -66,13 +66,17 @@ jobs:
             allure-pytest jinja2 asyncio-mqtt aiofiles; if ($LASTEXITCODE -ne 0) { Write-Host "Some optional packages failed" }
           
           Write-Host "Dependency installation completed!"
-          pip list --format=freeze | Select-Object -First 40 | Out-String
+          Write-Host "Installed packages (first 40):"
+          pip list --format=freeze | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
 
       - name: Preflight – check Focus availability
         id: preflight
         shell: powershell
         continue-on-error: true
         run: |
+          # Ensure reports directory exists so preflight can write JUnit XML
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+
           # Initialize outputs with defaults
           echo "reachable=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           echo "status=000" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -92,8 +96,20 @@ jobs:
           Write-Host "  URL: $BASE/channels"
           
           try {
-            # Try Invoke-WebRequest with increased timeout
-            $response = Invoke-WebRequest -Uri "$BASE/channels" -Method Get -SkipCertificateCheck -TimeoutSec 30 -ErrorAction Stop
+            # Configure certificate handling for different PowerShell versions
+            $skipCert = $false
+            if ($env:VERIFY_SSL -eq 'false') {
+              if ($PSVersionTable.PSVersion.Major -ge 7) {
+                $skipCert = $true
+              } else {
+                [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+              }
+            }
+
+            $invokeParams = @{ Uri = "$BASE/channels"; Method = 'Get'; TimeoutSec = 30; ErrorAction = 'Stop' }
+            if ($skipCert) { $invokeParams['SkipCertificateCheck'] = $true }
+
+            $response = Invoke-WebRequest @invokeParams
             $code = $response.StatusCode
             
             if ($code -ge 200 -and $code -lt 400) {
