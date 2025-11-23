@@ -138,14 +138,24 @@ class TestAlertGenerationLoad:
                 "alertIds": [f"load-test-{i}-{int(time.time())}"]
             }
             
-            # Send alert via API using shared session
+            # Send alert via API using shared session with retry logic
             try:
-                response = send_alert_via_api(config_manager, alert_payload, session=session)
+                response = send_alert_via_api(
+                    config_manager, 
+                    alert_payload, 
+                    session=session,
+                    max_retries=5,  # Increase retries for load tests
+                    retry_delay=0.5  # Faster initial retry for load tests
+                )
                 assert response.status_code in [200, 201], f"Alert {i} failed: {response.status_code}"
                 success_count += 1
             except Exception as e:
                 logger.error(f"Failed to send alert {i}: {e}")
                 failure_count += 1
+            
+            # Add small delay to avoid rate limiting (every 10 alerts)
+            if (i + 1) % 10 == 0:
+                time.sleep(0.1)  # 100ms pause every 10 alerts
         
         end_time = time.time()
         processing_time = end_time - start_time
