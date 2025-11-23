@@ -45,8 +45,8 @@ SSL_VERIFY = False
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
+@pytest.mark.smoke
 @pytest.mark.regression
 class TestHealthCheckValidResponses:
     """Test suite for valid health check responses with SLA validation."""
@@ -572,8 +572,7 @@ class TestHealthCheckSSL:
 # ===================================================================
 
 @pytest.mark.slow
-
-
+@pytest.mark.nightly
 @pytest.mark.regression
 class TestHealthCheckLoadTesting:
     """Test suite for health check load testing."""

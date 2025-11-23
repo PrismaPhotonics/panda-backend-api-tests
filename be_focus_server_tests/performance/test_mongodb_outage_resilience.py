@@ -160,6 +160,7 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.resilience
     @pytest.mark.mongodb_outage
     @pytest.mark.slow
+    @pytest.mark.nightly
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
 
@@ -228,6 +229,7 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.resilience
     @pytest.mark.mongodb_outage
     @pytest.mark.slow
+    @pytest.mark.nightly
     @pytest.mark.skip(reason="Requires SSH access and iptables manipulation on the node")
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
@@ -415,6 +417,7 @@ class TestMongoDBOutageResilience(InfrastructureTest):
     @pytest.mark.resilience
     @pytest.mark.mongodb_outage
     @pytest.mark.slow
+    @pytest.mark.nightly
     @pytest.mark.xray("PZ-13687")
     @pytest.mark.xray("PZ-13603")
 

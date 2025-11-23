@@ -26,9 +26,8 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.slow
-
-
-
+@pytest.mark.nightly
+@pytest.mark.load
 @pytest.mark.regression
 class TestRecoveryAndExhaustion:
     """

@@ -199,8 +199,8 @@ class TestAPILatencyP95:
 # ===================================================================
 
 @pytest.mark.slow
-
-
+@pytest.mark.nightly
+@pytest.mark.performance
 @pytest.mark.regression
 class TestConcurrentTaskLimit:
     """

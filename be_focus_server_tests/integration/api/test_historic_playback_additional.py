@@ -181,6 +181,7 @@ class TestHistoricPlaybackEdgeCases:
     
     @pytest.mark.xray("PZ-13868")
     @pytest.mark.slow
+    @pytest.mark.nightly
 
     @pytest.mark.regression
     def test_historic_playback_status_208_completion(self, focus_server_api: FocusServerAPI):
@@ -288,6 +289,7 @@ class TestHistoricPlaybackDataQuality:
     
     @pytest.mark.xray("PZ-13867")
     @pytest.mark.slow
+    @pytest.mark.nightly
 
     @pytest.mark.regression
     def test_historic_playback_data_integrity(self, focus_server_api: FocusServerAPI):
@@ -348,6 +350,7 @@ class TestHistoricPlaybackDataQuality:
     
     @pytest.mark.xray("PZ-13871")
     @pytest.mark.slow
+    @pytest.mark.nightly
 
     @pytest.mark.regression
     def test_historic_playback_timestamp_ordering(self, focus_server_api: FocusServerAPI):

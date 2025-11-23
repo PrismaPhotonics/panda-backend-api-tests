@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.integration
 @pytest.mark.api
 @pytest.mark.critical
+@pytest.mark.high
 @pytest.mark.skip(reason="Future API structure - POST /config/{task_id} endpoint not yet deployed to staging. "
                           "Use POST /configure tests instead (test_configure_endpoint.py)")
 @pytest.mark.regression

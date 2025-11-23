@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.integration
 @pytest.mark.api
 @pytest.mark.critical
+@pytest.mark.high
 @pytest.mark.skip(reason="Future API structure - GET /metadata/{task_id} endpoint not yet deployed to staging. "
                           "Use GET /metadata/{job_id} tests instead")
 @pytest.mark.regression

@@ -837,8 +837,7 @@ class TestSingleChannelViewErrorHandling:
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestSingleChannelBackendConsistency:
     """
@@ -1237,6 +1236,7 @@ class TestSingleChannelBackendConsistency:
     
     @pytest.mark.xray("PZ-13859")
     @pytest.mark.slow
+    @pytest.mark.nightly
 
     @pytest.mark.regression
     def test_singlechannel_polling_stability(self, focus_server_api):
@@ -1329,6 +1329,7 @@ class TestSingleChannelBackendConsistency:
     
     @pytest.mark.xray("PZ-13862")
     @pytest.mark.slow
+    @pytest.mark.nightly
     @pytest.mark.e2e
     @pytest.mark.xray("PZ-13873")
 

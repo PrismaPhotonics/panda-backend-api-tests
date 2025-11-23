@@ -49,8 +49,8 @@ def k8s_manager(config_manager):
 # ===================================================================
 
 @pytest.mark.slow
-
-
+@pytest.mark.nightly
+@pytest.mark.resilience
 @pytest.mark.regression
 class TestSEGYRecorderPodResilience:
     """

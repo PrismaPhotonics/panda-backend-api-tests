@@ -96,6 +96,20 @@ class ConfigureResponse(BaseModel):
     stream_port: int
     stream_url: str
     view_type: ViewType
+    
+    @field_validator("view_type", mode="before")
+    @classmethod
+    def convert_view_type(cls, v) -> str:
+        """Convert int to string if server returns numeric view_type."""
+        if isinstance(v, int):
+            # Map common view_type integers to strings
+            view_type_map = {
+                0: "MultiChannelSpectrogram",
+                1: "Waterfall",
+                2: "SingleChannel",
+            }
+            return view_type_map.get(v, str(v))
+        return str(v)
 
 class LiveMetadata(BaseModel):
     """Live system metadata describing acquisition and system characteristics.
@@ -106,7 +120,7 @@ class LiveMetadata(BaseModel):
         fiber_start_meters: Optional fiber starting position in meters.
         fiber_length_meters: Optional fiber length in meters.
         sw_version: Software version string.
-        number_of_channels: Number of channels available.
+        number_of_channels: Number of channels available (may be float from server, converted to int).
         fiber_description: Descriptive string for the fiber.
     """
     dx: float
@@ -116,6 +130,14 @@ class LiveMetadata(BaseModel):
     sw_version: str
     number_of_channels: int
     fiber_description: str
+    
+    @field_validator("number_of_channels", mode="before")
+    @classmethod
+    def convert_number_of_channels(cls, v) -> int:
+        """Convert float to int if server returns fractional number."""
+        if isinstance(v, float):
+            return int(v)
+        return int(v)
 
 class RecordingsInTimeRangeRequest(BaseModel):
     """Request payload for querying recordings between two epoch timestamps."""

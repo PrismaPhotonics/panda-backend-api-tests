@@ -29,8 +29,7 @@ logger = logging.getLogger(__name__)
 # ===================================================================
 
 @pytest.mark.slow
-
-
+@pytest.mark.nightly
 @pytest.mark.regression
 class TestMongoDBRecovery:
     """

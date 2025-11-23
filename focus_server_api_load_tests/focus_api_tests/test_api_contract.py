@@ -34,23 +34,63 @@ warnings.filterwarnings('ignore', category=InsecureRequestWarning)
 # Base URL composition and availability probe
 # Try multiple sources for configuration
 def get_focus_config():
-    """Get Focus server configuration from environment or common defaults."""
+    """Get Focus server configuration from environment, config file, or production defaults."""
     # Try environment variables first
     base_url = os.getenv("FOCUS_BASE_URL")
     api_prefix = os.getenv("FOCUS_API_PREFIX")
 
-    # If environment variables aren't set, try some common configurations
+    # If environment variables aren't set, try loading from config file
+    if not base_url:
+        try:
+            # Try to load from config_manager (if available)
+            import sys
+            from pathlib import Path
+            # Add project root to path if not already there
+            project_root = Path(__file__).parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            from config.config_manager import ConfigManager
+            
+            # Try to get environment from env var or use default (staging)
+            env = os.getenv("FOCUS_ENV", "staging")
+            config = ConfigManager(env=env)
+            api_config = config.get_api_config()
+            
+            if api_config and api_config.get("base_url"):
+                full_url = api_config["base_url"]
+                # Check if base_url includes the API prefix
+                if "/focus-server" in full_url:
+                    # Extract base URL and prefix
+                    base_url = full_url.split("/focus-server")[0]
+                    api_prefix = "/focus-server"
+                elif "/prisma/api" in full_url:
+                    base_url = full_url.split("/prisma/api")[0]
+                    api_prefix = "/prisma/api"
+                else:
+                    # base_url doesn't include prefix, use as-is
+                    base_url = full_url
+        except (ImportError, Exception) as e:
+            # Config manager not available or failed - use fallback defaults
+            pass
+    
+    # If still not set, try environment variables for host/port
     if not base_url:
         # Check if we have any FOCUS_ env vars set, which might indicate we should use remote
         focus_env_vars = [key for key in os.environ.keys() if key.startswith("FOCUS_")]
         if focus_env_vars or os.getenv("FOCUS_SERVER_HOST"):
             # Prefer explicit host if set
-            host = os.getenv("FOCUS_SERVER_HOST", "10.10.10.150")
-            port = os.getenv("FOCUS_SERVER_PORT", "30443")
-            base_url = f"https://{host}:{port}"
+            host = os.getenv("FOCUS_SERVER_HOST", "10.10.10.100")  # Default to staging
+            port = os.getenv("FOCUS_SERVER_PORT")
+            if port:
+                base_url = f"https://{host}:{port}"
+            else:
+                # No port specified - use default HTTPS (443) or no port if standard HTTPS
+                base_url = f"https://{host}"
         else:
-            # Default to localhost
-            base_url = "http://localhost:8500"
+            # Default to staging environment (NOT localhost!)
+            # This ensures tests always try staging unless explicitly configured otherwise
+            base_url = "https://10.10.10.100"
 
     if not api_prefix:
         api_prefix = "/focus-server"
@@ -69,7 +109,26 @@ if API_PREFIX and not API_PREFIX.startswith("/"):
 
 API_PREFIX = API_PREFIX.rstrip("/")
 FULL_BASE_URL = f"{BASE_URL}{API_PREFIX}"
+
+# Get VERIFY_SSL from environment or config
 VERIFY_SSL = os.getenv("VERIFY_SSL", "false").lower() in ("true", "1", "t")
+if not os.getenv("VERIFY_SSL"):
+    # Try to get from config if available
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        from config.config_manager import ConfigManager
+        env = os.getenv("FOCUS_ENV", "staging")
+        config = ConfigManager(env=env)
+        api_config = config.get_api_config()
+        if api_config and "verify_ssl" in api_config:
+            VERIFY_SSL = api_config["verify_ssl"]
+    except (ImportError, Exception):
+        # Config manager not available - use default (False for self-signed certs)
+        VERIFY_SSL = False
 
 server_available = False
 try:

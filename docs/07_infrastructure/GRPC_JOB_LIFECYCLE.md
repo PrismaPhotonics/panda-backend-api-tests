@@ -99,6 +99,36 @@ serviceAccountName: cleanup-sa       # Needs permissions to delete jobs/services
 
 ## Job Lifecycle
 
+### Job Termination Mechanisms
+
+**Current State (November 2025):**
+
+| תרחיש | זמן עד מחיקה | מנגנון |
+|-------|-------------|--------|
+| **Job לא פותחים אותו** (לא מתחברים) | **~50 שניות** | Cleanup job מזהה CPU נמוך (5 checks × 10s) |
+| **Job מסתיים** (Complete/Failed) | **2 דקות** | TTL (`ttlSecondsAfterFinished: 120`) |
+| **Stream ללא פעילות** | **3 דקות** | gRPC Timeout (180s) |
+
+#### פירוט מנגנונים:
+
+1. **Job לא פותחים אותו (~50 שניות):**
+   - Cleanup job בודק CPU כל 10 שניות
+   - אם CPU ≤ 1m (millicore) במשך 5 בדיקות רצופות → מתחיל cleanup
+   - זמן כולל: 5 × 10s = **50 שניות**
+
+2. **Job מסתיים (2 דקות):**
+   - Kubernetes Job מסתיים (Complete/Failed)
+   - `ttlSecondsAfterFinished: 120` → Job נמחק אוטומטית אחרי **2 דקות**
+
+3. **Stream ללא פעילות (3 דקות):**
+   - gRPC stream ללא פעילות
+   - Timeout של **180 שניות (3 דקות)** → Job נסגר אוטומטית
+
+4. **Job Cancellation Endpoint (Discussed, Not Implemented):**
+   - `DELETE /job/{job_id}` → **Currently returns 404**
+   - **Status:** Discussed in team conversation (not a formal decision)
+   - **Security Concern Raised:** Need to protect against one APP instance cancelling jobs of another (if implemented)
+
 ### Phase 1: Job Creation (by Focus Server)
 
 ```

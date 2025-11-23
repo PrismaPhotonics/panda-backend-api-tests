@@ -44,7 +44,8 @@ class TestExtremeConfigurationValues:
     
     @pytest.mark.xray("PZ-13880")
     @pytest.mark.slow
-
+    @pytest.mark.nightly
+    @pytest.mark.stress
     @pytest.mark.regression
     def test_configuration_with_extreme_values(self, focus_server_api: FocusServerAPI):
         """

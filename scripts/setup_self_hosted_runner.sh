@@ -4,20 +4,19 @@
 
 set -e
 
-REPO_URL="${1:-}"
-RUNNER_NAME="${2:-lab-linux-runner-01}"
-INSTALL_PATH="${3:-./actions-runner}"
+REPO_URL="${1:-https://github.com/PrismaPhotonics/panda-backend-api-tests}"
+RUNNER_NAME="${2:-staging-linux-runner-01}"
+INSTALL_PATH="${3:-/opt/actions-runner}"
 
 echo "=========================================="
 echo "Setting up Self-Hosted Runner"
 echo "=========================================="
 echo ""
 
-if [ -z "$REPO_URL" ]; then
-    echo "⚠️  Repository URL not provided, using default..."
-    REPO_URL="https://github.com/PrismaPhotonics/panda-backend-api-tests"
-    echo "Using: $REPO_URL"
-fi
+echo "Repository: $REPO_URL"
+echo "Runner Name: $RUNNER_NAME"
+echo "Install Path: $INSTALL_PATH"
+echo ""
 
 # Create installation directory
 mkdir -p "$INSTALL_PATH"
@@ -55,7 +54,7 @@ read -p "Enter registration token: " TOKEN
     --url "$REPO_URL" \
     --token "$TOKEN" \
     --name "$RUNNER_NAME" \
-    --labels "self-hosted,linux,lab" \
+    --labels "self-hosted,Linux" \
     --work "_work" \
     --replace
 
@@ -78,5 +77,11 @@ echo ""
 echo "To check status:"
 echo "  cd $INSTALL_PATH"
 echo "  sudo ./svc.sh status"
+echo ""
+echo "To verify runner is online:"
+echo "  Visit: https://github.com/PrismaPhotonics/panda-backend-api-tests/settings/actions/runners"
+echo ""
+echo "⚠️  IMPORTANT: Make sure this machine can access 10.10.10.100 (staging network)"
+echo "   Test with: curl -k https://10.10.10.100/focus-server/channels"
 echo ""
 

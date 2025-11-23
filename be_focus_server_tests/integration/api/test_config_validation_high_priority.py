@@ -111,8 +111,7 @@ def valid_historic_config_payload() -> Dict[str, Any]:
 # ===================================================================
 
 @pytest.mark.documents_current_behavior
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestMissingRequiredFields:
     """
@@ -330,8 +329,7 @@ class TestMissingRequiredFields:
 # ===================================================================
 
 @pytest.mark.server_bug
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestInvalidCanvasInfo:
     """
@@ -467,6 +465,7 @@ class TestInvalidCanvasInfo:
 @pytest.mark.server_bug
 
 
+@pytest.mark.high
 @pytest.mark.regression
 class TestInvalidRanges:
     """
@@ -779,6 +778,7 @@ class TestInvalidRanges:
 @pytest.mark.smoke
 
 
+@pytest.mark.high
 @pytest.mark.regression
 class TestValidConfigurationAllParameters:
     """
@@ -1058,8 +1058,7 @@ class TestValidConfigurationAllParameters:
 # ===================================================================
 
 @pytest.mark.documents_current_behavior
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestLiveModeValidation:
     """
@@ -1195,6 +1194,7 @@ class TestLiveModeValidation:
 @pytest.mark.documents_current_behavior
 
 
+@pytest.mark.high
 @pytest.mark.regression
 class TestHistoricModeValidation:
     """

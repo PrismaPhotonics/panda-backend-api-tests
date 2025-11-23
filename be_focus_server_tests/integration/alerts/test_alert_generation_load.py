@@ -70,9 +70,8 @@ def _get_rabbitmq_connection_manager(config_manager):
 
 
 @pytest.mark.slow
-
-
-
+@pytest.mark.nightly
+@pytest.mark.load
 @pytest.mark.regression
 class TestAlertGenerationLoad:
     """

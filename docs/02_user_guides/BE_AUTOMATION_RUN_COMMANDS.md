@@ -1,3 +1,4 @@
+
 # 🚀 פקודות הרצה - אוטומציה של Backend (BE)
 
 **מדריך מקיף להרצת כל חלקי האוטומציה**  
@@ -830,4 +831,5 @@ pytest be_focus_server_tests/ -v
 **עדכון אחרון:** 2025-11-17  
 **מחבר:** QA Automation Team  
 **גרסה:** 1.0.0
+
 

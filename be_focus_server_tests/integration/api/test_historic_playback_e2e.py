@@ -32,8 +32,7 @@ logger = logging.getLogger(__name__)
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestHistoricPlaybackCompleteE2E:
     """
@@ -47,6 +46,7 @@ class TestHistoricPlaybackCompleteE2E:
     
     @pytest.mark.xray("PZ-13872")
     @pytest.mark.slow
+    @pytest.mark.nightly
     @pytest.mark.xray("PZ-14101")
 
     @pytest.mark.regression

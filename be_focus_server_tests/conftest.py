@@ -1238,6 +1238,18 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "pz: PZ development repository integration tests"
     )
+    config.addinivalue_line(
+        "markers", "nightly: Nightly test suite (includes all tests including slow/load/stress)"
+    )
+    config.addinivalue_line(
+        "markers", "high: High priority tests"
+    )
+    config.addinivalue_line(
+        "markers", "medium: Medium priority tests"
+    )
+    config.addinivalue_line(
+        "markers", "low: Low priority tests"
+    )
     
     # Run pre-test health checks automatically before all tests
     # This is a PRECONDITION - tests will not run if health checks fail

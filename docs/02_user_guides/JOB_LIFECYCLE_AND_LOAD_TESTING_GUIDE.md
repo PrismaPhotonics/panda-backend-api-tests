@@ -62,11 +62,23 @@
          ✓ לעקוב אחר תקינות הנתונים
 
 7️⃣  JOB TERMINATION (סיום Job)
-    └──> אופציות:
-         ✓ Client מתנתק → Job נסגר אוטומטית
-         ✓ DELETE /job/{job_id} → ביטול ידני (אם נתמך)
-         ✓ Timeout → Job נסגר אחרי 180 שניות ללא פעילות
-         ✓ Historic job ends → Job נסגר כשהנתונים נגמרים
+    └──> מנגנוני סיום Job (מתי Job נמחק):
+         
+         | תרחיש | זמן עד מחיקה | מנגנון |
+         |-------|-------------|--------|
+         | **Job לא פותחים אותו** (לא מתחברים) | **~50 שניות** | Cleanup job מזהה CPU נמוך |
+         | **Job מסתיים** (Complete/Failed) | **2 דקות** | TTL (ttlSecondsAfterFinished: 120) |
+         | **Stream ללא פעילות** | **3 דקות** | gRPC Timeout (180s) |
+         
+         **פירוט:**
+         - ✓ Job לא פותחים → Cleanup job מזהה CPU נמוך (~50 שניות)
+         - ✓ Job מסתיים → נמחק אחרי 2 דקות (TTL)
+         - ✓ Stream ללא פעילות → נסגר אחרי 3 דקות (gRPC Timeout)
+         - ✓ Client מתנתק → Job נסגר אוטומטית (GRPC disconnection)
+         - ✓ Historic job ends → Job נסגר כשהנתונים נגמרים
+         - ⚠️ DELETE /job/{job_id} → **כרגע לא מיושם** (מחזיר 404)
+            - נדון בשיחה עם צוות Backend (לא החלטה רשמית)
+            - אם ייושם, צריך הגנות אבטחה (מניעת ביטול Jobs של instance אחר)
 
 8️⃣  CLEANUP (ניקוי משאבים)
     └──> Focus Server:

@@ -86,8 +86,7 @@ def valid_historic_config():
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestPortAvailabilityValidation:
     """

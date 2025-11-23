@@ -47,6 +47,8 @@ logger = logging.getLogger(__name__)
 # =================================================================
 
 @pytest.mark.xray("PZ-13898")
+@pytest.mark.critical
+@pytest.mark.high
 @pytest.mark.regression
 @pytest.mark.smoke
 def test_mongodb_direct_connection(current_env):
@@ -126,8 +128,8 @@ def test_mongodb_direct_connection(current_env):
 # =================================================================
 
 @pytest.mark.xray("PZ-13899")
-
-
+@pytest.mark.critical
+@pytest.mark.high
 @pytest.mark.regression
 @pytest.mark.smoke
 def test_kubernetes_direct_connection(current_env):

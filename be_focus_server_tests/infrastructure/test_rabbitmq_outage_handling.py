@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 # ===================================================================
 
 @pytest.mark.slow
-
-
+@pytest.mark.nightly
+@pytest.mark.resilience
 @pytest.mark.regression
 class TestRabbitMQOutageHandling:
     """

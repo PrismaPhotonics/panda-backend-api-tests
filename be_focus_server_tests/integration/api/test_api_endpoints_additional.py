@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestSensorsEndpoint:
     """
@@ -123,8 +122,7 @@ class TestSensorsEndpoint:
 # ===================================================================
 
 @pytest.mark.critical
-
-
+@pytest.mark.high
 @pytest.mark.regression
 class TestLiveMetadataEndpoint:
     """
