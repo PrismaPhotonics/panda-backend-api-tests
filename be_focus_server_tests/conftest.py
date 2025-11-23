@@ -12,6 +12,20 @@ import logging
 from typing import Generator, Any, List
 from pathlib import Path
 
+# ===================================================================
+# Windows Console Encoding Fix for GitHub Actions
+# ===================================================================
+# Fix for 'charmap' codec errors when printing Unicode characters
+# This is needed for Windows PowerShell in GitHub Actions
+import io
+if sys.platform == 'win32':
+    # Wrap stdout/stderr with UTF-8 encoding
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if isinstance(sys.stderr, io.TextIOWrapper):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+# ===================================================================
+
 from config.config_manager import ConfigManager
 from src.core.exceptions import ConfigurationError, InfrastructureError
 from src.utils.pod_logs_collector import PodLogsCollector

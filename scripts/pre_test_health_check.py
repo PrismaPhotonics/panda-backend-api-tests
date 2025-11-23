@@ -25,6 +25,20 @@ import logging
 from typing import Dict, Any, List, Tuple
 from datetime import datetime
 
+# ===================================================================
+# Windows Console Encoding Fix for GitHub Actions
+# ===================================================================
+# Fix for 'charmap' codec errors when printing Unicode characters
+# This is needed for Windows PowerShell in GitHub Actions
+import io
+if sys.platform == 'win32':
+    # Wrap stdout/stderr with UTF-8 encoding
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if isinstance(sys.stderr, io.TextIOWrapper):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+# ===================================================================
+
 # Try to import colorama for colored output (optional)
 try:
     from colorama import init, Fore, Style
