@@ -70,11 +70,12 @@ jobs:
             allure-pytest jinja2 asyncio-mqtt aiofiles; if ($LASTEXITCODE -ne 0) { Write-Host "Some optional packages failed" }
           
           Write-Host "Dependency installation completed!"
-          # List installed packages (non-blocking)
-          $packages = pip list --format=freeze 2>&1 | Select-Object -First 40
-          if ($packages) {
-            Write-Host "Installed packages (first 40):"
-            $packages | ForEach-Object { Write-Host $_ }
+          # List installed packages (non-blocking, ignore errors)
+          try {
+            $ErrorActionPreference = 'Continue'
+            pip list --format=freeze 2>&1 | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
+          } catch {
+            Write-Host "Could not list packages (non-critical)"
           }
 
       - name: Preflight – check Focus availability
