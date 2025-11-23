@@ -63,7 +63,7 @@ jobs:
           
           # Install optional packages
           pip install --no-cache-dir --prefer-binary `
-            allure-pytest jinja2 asyncio-mqtt aiofiles || echo "Some optional packages failed"
+            allure-pytest jinja2 asyncio-mqtt aiofiles; if ($LASTEXITCODE -ne 0) { Write-Host "Some optional packages failed" }
           
           Write-Host "Dependency installation completed!"
           pip list | Select-Object -First 40
