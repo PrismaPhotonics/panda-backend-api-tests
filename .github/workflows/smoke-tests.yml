@@ -67,7 +67,7 @@ jobs:
             allure-pytest jinja2 asyncio-mqtt aiofiles; if ($LASTEXITCODE -ne 0) { Write-Host "Some optional packages failed" }
           
           Write-Host "Dependency installation completed!"
-          pip list --format=freeze | Select-Object -First 40
+          pip list --format=freeze | Select-Object -First 40 | Out-String
 
       - name: Preflight – check Focus availability
         id: preflight
