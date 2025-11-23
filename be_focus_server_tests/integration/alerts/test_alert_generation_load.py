@@ -128,8 +128,17 @@ class TestAlertGenerationLoad:
         start_time = time.time()
         success_count = 0
         failure_count = 0
+        consecutive_429_errors = 0  # Track consecutive rate limit errors
+        max_consecutive_429 = 5  # Threshold for backing off
         
         for i in range(num_alerts):
+            # If too many consecutive 429 errors, wait longer before continuing
+            if consecutive_429_errors >= max_consecutive_429:
+                backoff_time = 10  # 10 seconds backoff
+                logger.warning(f"⚠️ Rate limited! Pausing for {backoff_time}s after {consecutive_429_errors} consecutive 429 errors...")
+                time.sleep(backoff_time)
+                consecutive_429_errors = 0  # Reset counter after backoff
+            
             alert_payload = {
                 "alertsAmount": 1,
                 "dofM": 1000 + (i % 2000),
@@ -149,9 +158,17 @@ class TestAlertGenerationLoad:
                 )
                 assert response.status_code in [200, 201], f"Alert {i} failed: {response.status_code}"
                 success_count += 1
+                consecutive_429_errors = 0  # Reset on success
             except Exception as e:
+                error_str = str(e)
                 logger.error(f"Failed to send alert {i}: {e}")
                 failure_count += 1
+                
+                # Track consecutive 429 errors
+                if "429" in error_str or "Too Many Requests" in error_str:
+                    consecutive_429_errors += 1
+                else:
+                    consecutive_429_errors = 0  # Reset if it's not a 429 error
             
             # Add small delay to avoid rate limiting (every 10 alerts)
             if (i + 1) % 10 == 0:
@@ -215,8 +232,17 @@ class TestAlertGenerationLoad:
         
         start_time = time.time()
         success_count = 0
+        consecutive_429_errors = 0  # Track consecutive rate limit errors
+        max_consecutive_429 = 5  # Threshold for backing off
         
         while time.time() - start_time < duration_seconds:
+            # If too many consecutive 429 errors, wait longer before continuing
+            if consecutive_429_errors >= max_consecutive_429:
+                backoff_time = 10  # 10 seconds backoff
+                logger.warning(f"⚠️ Rate limited! Pausing for {backoff_time}s after {consecutive_429_errors} consecutive 429 errors...")
+                time.sleep(backoff_time)
+                consecutive_429_errors = 0  # Reset counter after backoff
+            
             for _ in range(alerts_per_second):
                 alert_payload = {
                     "alertsAmount": 1,
@@ -237,8 +263,16 @@ class TestAlertGenerationLoad:
                     )
                     assert response.status_code in [200, 201], f"Alert failed: {response.status_code}"
                     success_count += 1
+                    consecutive_429_errors = 0  # Reset on success
                 except Exception as e:
+                    error_str = str(e)
                     logger.error(f"Failed to send alert: {e}")
+                    
+                    # Track consecutive 429 errors
+                    if "429" in error_str or "Too Many Requests" in error_str:
+                        consecutive_429_errors += 1
+                    else:
+                        consecutive_429_errors = 0  # Reset if it's not a 429 error
                     # Continue with next alert
                 
                 # Add small delay between individual requests to avoid rate limiting
