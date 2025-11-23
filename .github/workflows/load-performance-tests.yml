@@ -174,7 +174,7 @@ jobs:
           Write-Host "LOAD AND PERFORMANCE TEST EXECUTION SUMMARY"
           Write-Host "========================================"
           if (Test-Path "reports/junit-load-performance.xml") {
-            python -c @"
+            $pythonScript = @"
 import xml.etree.ElementTree as ET
 import sys
 try:
@@ -211,6 +211,7 @@ except Exception as e:
     print(f'Error parsing XML: {e}')
     sys.exit(0)
 "@
+python -c $pythonScript
             Write-Host "========================================"
             Write-Host ""
           } else {
@@ -244,7 +245,7 @@ except Exception as e:
             exit 0
           }
           
-          python -c @"
+          $pythonScript = @"
 import xml.etree.ElementTree as ET
 import os
 import sys
@@ -341,4 +342,5 @@ else:
         f.write('## Warning: No test results found\n\n')
         f.write('Test execution may have failed before generating reports.\n')
 "@
+python -c $pythonScript
 
