@@ -17,14 +17,14 @@ function Install-PipWithRetry {
       # Run pip and capture verbose output to a per-group log
       pip install --no-cache-dir --prefer-binary $packages -v 2>&1 | Tee-Object -FilePath "pip-install-$($groupName).log"
       if ($LASTEXITCODE -eq 0) {
-        Write-Host "✓ $($groupName) installed successfully (attempt $($attempt))"
+        Write-Host "[OK] $($groupName) installed successfully (attempt $($attempt))"
         return 0
       }
     } catch {
       Write-Host "pip exited with error on attempt $($attempt) for $($groupName): $($_.Exception.Message)"
     }
 
-    Write-Host "✗ Attempt $($attempt) failed for $($groupName)"
+    Write-Host "[FAIL] Attempt $($attempt) failed for $($groupName)"
     if ($attempt -lt $maxAttempts) { Start-Sleep -Seconds (5 * $attempt) }
   }
 
