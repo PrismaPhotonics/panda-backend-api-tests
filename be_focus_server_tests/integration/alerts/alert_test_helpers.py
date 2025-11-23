@@ -58,7 +58,9 @@ def send_alert_via_api(
     base_url: Optional[str] = None,
     site_id: Optional[str] = None,
     session: Optional[requests.Session] = None,
-    track_for_cleanup: bool = True
+    track_for_cleanup: bool = True,
+    max_retries: int = 3,
+    retry_delay: float = 1.0
 ) -> requests.Response:
     """
     Send an alert via the Prisma Web App API push-to-rabbit endpoint.
@@ -75,12 +77,14 @@ def send_alert_via_api(
         site_id: Optional site ID override
         session: Optional authenticated session (if provided, will reuse it instead of creating new one)
         track_for_cleanup: If True, track alert IDs for automatic cleanup (default: True)
+        max_retries: Maximum number of retries for 429 errors (default: 3)
+        retry_delay: Initial delay between retries in seconds (default: 1.0)
     
     Returns:
         requests.Response: HTTP response from the API
     
     Raises:
-        requests.HTTPError: If the request fails
+        requests.HTTPError: If the request fails after all retries
     """
     # Get configuration
     if not base_url:
@@ -100,32 +104,61 @@ def send_alert_via_api(
     if session is None:
         session = authenticate_session(base_url)
     
-    # Send alert
+    # Send alert with retry logic for 429 (Rate Limiting)
     alert_url = base_url + f"{site_id}/api/push-to-rabbit"
     logger.debug(f"Sending alert to: {alert_url}")
     logger.debug(f"Alert payload: {alert_payload}")
     
-    response = session.post(alert_url, json=alert_payload, timeout=15)
-    response.raise_for_status()
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = session.post(alert_url, json=alert_payload, timeout=15)
+            
+            # If rate limited (429), retry with exponential backoff
+            if response.status_code == 429:
+                if attempt < max_retries:
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Rate limited (429). Retrying in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    # Last attempt, raise the error
+                    response.raise_for_status()
+            
+            # For other errors, raise immediately
+            response.raise_for_status()
+            
+            logger.debug(f"Alert sent successfully. Status: {response.status_code}")
+            
+            # Track alert IDs for cleanup if requested
+            if track_for_cleanup and 'alertIds' in alert_payload:
+                alert_ids = alert_payload['alertIds']
+                if isinstance(alert_ids, list) and alert_ids:
+                    # Add to module-level set for cleanup (set by conftest fixture)
+                    try:
+                        # Import the module to access the set
+                        import be_focus_server_tests.integration.alerts.alert_test_helpers as helpers_module
+                        if hasattr(helpers_module, '_alert_ids_created'):
+                            helpers_module._alert_ids_created.update(alert_ids)
+                            logger.debug(f"Tracked {len(alert_ids)} alert IDs for cleanup")
+                    except Exception:
+                        # If tracking not available, silently skip
+                        pass
+            
+            return response
+            
+        except requests.exceptions.HTTPError as e:
+            last_error = e
+            if e.response.status_code != 429 or attempt >= max_retries:
+                raise
+        except Exception as e:
+            last_error = e
+            raise
     
-    logger.debug(f"Alert sent successfully. Status: {response.status_code}")
-    
-    # Track alert IDs for cleanup if requested
-    if track_for_cleanup and 'alertIds' in alert_payload:
-        alert_ids = alert_payload['alertIds']
-        if isinstance(alert_ids, list) and alert_ids:
-            # Add to module-level set for cleanup (set by conftest fixture)
-            try:
-                # Import the module to access the set
-                import be_focus_server_tests.integration.alerts.alert_test_helpers as helpers_module
-                if hasattr(helpers_module, '_alert_ids_created'):
-                    helpers_module._alert_ids_created.update(alert_ids)
-                    logger.debug(f"Tracked {len(alert_ids)} alert IDs for cleanup")
-            except Exception:
-                # If tracking not available, silently skip
-                pass
-    
-    return response
+    # Should not reach here, but just in case
+    if last_error:
+        raise last_error
+    raise RuntimeError("Unexpected error in send_alert_via_api")
 
 
 def create_alert_payload(
