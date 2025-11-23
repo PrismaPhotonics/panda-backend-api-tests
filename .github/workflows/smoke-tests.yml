@@ -48,6 +48,17 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
 
+      - name: Install project in editable mode
+        shell: powershell
+        run: |
+          Write-Host "Installing project in editable mode..."
+          pip install -e .
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Failed to install project in editable mode"
+            exit 1
+          }
+          Write-Host "Project installed successfully"
+
       - name: Preflight – check Focus availability
         id: preflight
         shell: powershell
@@ -141,9 +152,10 @@ jobs:
             exit 0
           }
           
-          # Run smoke tests
+          # Run smoke tests (excluding UI tests that require playwright)
           pytest be_focus_server_tests/ `
             -m "smoke" `
+            --ignore=be_focus_server_tests/ui `
             -v `
             --maxfail=10 `
             --junitxml=reports/junit-smoke.xml `
