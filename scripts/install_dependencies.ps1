@@ -128,12 +128,24 @@ Install-PipWithRetry -groupName 'optional-packages' -packages @(
 ) -isFatal "false"
 
 Write-Host "Dependency installation completed!"
+Write-Host ""
 
-# Attempt to list installed packages to a file (non-fatal)
+# Attempt to list installed packages (non-fatal)
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Installed Packages (First 40)" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 try {
   $ErrorActionPreference = 'Continue'
-  pip list --format=freeze 2>&1 | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
+  $packages = pip list --format=freeze 2>&1 | Select-Object -First 40
+  foreach ($pkg in $packages) {
+    Write-Host $pkg
+  }
+  Write-Host ""
+  Write-Host "Total packages shown: $($packages.Count)" -ForegroundColor Green
 } catch {
-  Write-Host "Could not list packages (non-critical)"
+  Write-Host "Could not list packages (non-critical)" -ForegroundColor Yellow
 }
+
+# Ensure we exit with success code
+exit 0
 
