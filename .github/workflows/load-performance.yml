@@ -61,6 +61,10 @@ jobs:
           pip install --no-cache-dir --prefer-binary `
             kubernetes pymongo paramiko pika structlog colorlog python-dateutil pytz psutil python-dotenv netaddr
           
+          # Fix isort version conflict (isort 7.x doesn't exist, use 5.13.2)
+          pip install --no-cache-dir --prefer-binary `
+            isort==5.13.2
+          
           # Install optional packages
           pip install --no-cache-dir --prefer-binary `
             allure-pytest jinja2 asyncio-mqtt aiofiles; if ($LASTEXITCODE -ne 0) { Write-Host "Some optional packages failed" }
