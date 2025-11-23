@@ -72,26 +72,38 @@ jobs:
           Write-Host "  URL: $BASE/channels"
           
           try {
-            # Try Invoke-WebRequest with increased timeout
-            $response = Invoke-WebRequest -Uri "$BASE/channels" -Method Get -SkipCertificateCheck -TimeoutSec 30 -ErrorAction Stop
+            # Configure certificate handling for different PowerShell versions
+            $skipCert = $false
+            if ($env:VERIFY_SSL -eq 'false') {
+              if ($PSVersionTable.PSVersion.Major -ge 7) {
+                $skipCert = $true
+              } else {
+                [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+              }
+            }
+
+            $invokeParams = @{ Uri = "$BASE/channels"; Method = 'Get'; TimeoutSec = 30; ErrorAction = 'Stop' }
+            if ($skipCert) { $invokeParams['SkipCertificateCheck'] = $true }
+
+            $response = Invoke-WebRequest @invokeParams
             $code = $response.StatusCode
             
             if ($code -ge 200 -and $code -lt 400) {
-              Write-Host "  ✓ HTTP request succeeded with HTTP $code"
+              Write-Host "  [OK] HTTP request succeeded with HTTP $code"
               Write-Host "  Response: $($response.Content.Substring(0, [Math]::Min(100, $response.Content.Length)))"
               echo "reachable=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
               echo "status=$code" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-              Write-Host "✓ Focus server is reachable"
+              Write-Host "[OK] Focus server is reachable"
             } else {
               echo "reachable=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
               echo "status=$code" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-              Write-Host "✗ Focus server unreachable (HTTP $code)"
+              Write-Host "[FAIL] Focus server unreachable (HTTP $code)"
             }
           } catch {
             $code = "000"
             echo "reachable=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
             echo "status=$code" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-            Write-Host "✗ Focus server unreachable (Connection failed)"
+            Write-Host "[FAIL] Focus server unreachable (Connection failed)"
             Write-Host "  Error: $($_.Exception.Message)"
             
             if ($env:REQUIRE_SERVER -eq "true") {
@@ -128,7 +140,7 @@ jobs:
           
           # Skip tests if server unreachable and REQUIRE_SERVER=false
           if ($REACHABLE -ne "true") {
-            Write-Host "✗ Server unreachable - skipping smoke tests"
+            Write-Host "[FAIL] Server unreachable - skipping smoke tests"
             $xmlContent = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="smoke" tests="0" failures="0" errors="0" skipped="1" time="0"><testcase name="server_unreachable" classname="preflight"><skipped message="Server unreachable"/></testcase></testsuite>'
             $xmlContent | Out-File -FilePath reports/junit-smoke.xml -Encoding utf8
             exit 0
