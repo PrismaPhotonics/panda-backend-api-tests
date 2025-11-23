@@ -98,7 +98,7 @@ jobs:
             $code = $response.StatusCode
             
             if ($code -ge 200 -and $code -lt 400) {
-              Write-Host "  ✓ Curl command succeeded with HTTP $code"
+              Write-Host "  ✓ HTTP request succeeded with HTTP $code"
               Write-Host "  Response: $($response.Content.Substring(0, [Math]::Min(100, $response.Content.Length)))"
               echo "reachable=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
               echo "status=$code" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
