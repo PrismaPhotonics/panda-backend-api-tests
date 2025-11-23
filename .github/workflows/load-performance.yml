@@ -13,7 +13,7 @@ on:
         options: [ "true", "false" ]
 
 env:
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   load-performance:
@@ -45,38 +45,73 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Stop'
+
           python -m pip install -U pip setuptools wheel
-          
-          Write-Host "Installing dependencies..."
-          
-          # Install core testing framework (pytest 9.0.1 first)
-          pip install --no-cache-dir --prefer-binary `
-            pytest==9.0.1 pytest-asyncio pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist
-          
-          # Install HTTP and data processing
-          pip install --no-cache-dir --prefer-binary `
-            requests httpx beautifulsoup4 pydantic pydantic-settings orjson pyyaml
-          
-          # Install infrastructure packages
-          pip install --no-cache-dir --prefer-binary `
-            kubernetes pymongo paramiko pika structlog colorlog python-dateutil pytz psutil python-dotenv netaddr
-          
-          # Fix isort version conflict (isort 7.x doesn't exist, use 5.13.2)
-          pip install --no-cache-dir --prefer-binary `
-            isort==5.13.2
-          
-          # Install optional packages
-          pip install --no-cache-dir --prefer-binary `
-            allure-pytest jinja2 asyncio-mqtt aiofiles; if ($LASTEXITCODE -ne 0) { Write-Host "Some optional packages failed" }
-          
+
+          function Install-PipWithRetry($groupName, $packages, [bool]$fatal = $true) {
+            $maxAttempts = 3
+            for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+              Write-Host "Attempt $attempt/$maxAttempts: Installing $groupName"
+              try {
+                pip install --no-cache-dir --prefer-binary $packages -v 2>&1 | Tee-Object -FilePath "pip-install-$groupName.log"
+              } catch {
+                Write-Host "pip exited with error: $($_.Exception.Message)"
+              }
+
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✓ $groupName installed successfully"
+                return 0
+              }
+
+              Write-Host "✗ Attempt $attempt failed for $groupName"
+              if ($attempt -lt $maxAttempts) { Start-Sleep -Seconds (5 * $attempt) }
+            }
+
+            Write-Host "All attempts failed for $groupName"
+            pip --version
+            python -V
+            if ($fatal) {
+              Write-Host "::error::Failed installing $groupName after $maxAttempts attempts. See pip-install-$groupName.log"
+              exit 1
+            } else {
+              Write-Host "Optional group $groupName failed to install; continuing without these optional packages. See pip-install-$groupName.log"
+            }
+          }
+
+          Write-Host "Installing core test packages..."
+          Install-PipWithRetry 'core-test-packages' 'pytest==9.0.1 pytest-asyncio pytest-timeout pytest-mock pytest-html pytest-cov pytest-json-report pytest-xdist'
+
+          Write-Host "Installing HTTP and data packages..."
+          Install-PipWithRetry 'http-data-packages' 'requests httpx beautifulsoup4 pydantic pydantic-settings orjson pyyaml'
+
+          Write-Host "Installing infra packages..."
+          Install-PipWithRetry 'infra-packages' 'kubernetes pymongo paramiko pika structlog colorlog python-dateutil pytz psutil python-dotenv netaddr'
+
+          Write-Host "Installing pinned isort..."
+          Install-PipWithRetry 'isort' 'isort==5.13.2'
+
+          Write-Host "Installing optional packages (non-fatal)..."
+          Install-PipWithRetry 'optional-packages' 'allure-pytest jinja2 asyncio-mqtt aiofiles' $false
+
           Write-Host "Dependency installation completed!"
-          # List installed packages (non-blocking, ignore errors)
+
           try {
             $ErrorActionPreference = 'Continue'
             pip list --format=freeze 2>&1 | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
           } catch {
             Write-Host "Could not list packages (non-critical)"
           }
+
+      - name: Upload pip install logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-install-logs
+          path: |
+            pip-install-*.log
+          retention-days: 5
+          if-no-files-found: ignore
 
       - name: Preflight – check Focus availability
         id: preflight
