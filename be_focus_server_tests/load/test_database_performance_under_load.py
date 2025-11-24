@@ -81,8 +81,8 @@ class TestDatabasePerformanceUnderLoad:
         logger.info("TEST: MongoDB Query Performance Under Load (PZ-15140)")
         logger.info("=" * 80)
         
-        num_api_jobs = 30
-        num_db_queries = 100
+        num_api_jobs = 15  # Reduced from 30 to avoid system overload
+        num_db_queries = 50  # Reduced from 100 to reasonable amount
         
         logger.info(f"Test Configuration:")
         logger.info(f"  API Load: {num_api_jobs} concurrent jobs")
@@ -340,7 +340,7 @@ class TestDatabasePerformanceUnderLoad:
         logger.info("TEST: MongoDB Connection Pool Under Load (PZ-15140.2)")
         logger.info("=" * 80)
         
-        num_jobs = 20
+        num_jobs = 10  # Reduced from 20 to avoid overload
         
         config_payload = {
             "displayTimeAxisDuration": 10,

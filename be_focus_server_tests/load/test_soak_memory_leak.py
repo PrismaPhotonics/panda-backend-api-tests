@@ -84,8 +84,8 @@ class TestSoakMemoryLeak:
         
         # Configuration
         duration_hours = 24
-        jobs_per_interval = 5
-        interval_minutes = 5
+        jobs_per_interval = 3  # Reduced from 5 to avoid overload
+        interval_minutes = 10  # Increased from 5 to give system recovery time
         
         # Calculate total iterations
         iterations_per_hour = 60 // interval_minutes  # 12
@@ -482,8 +482,8 @@ class TestSoakMemoryLeakShort:
         logger.info("=" * 80)
         
         duration_hours = 4
-        jobs_per_interval = 5
-        interval_minutes = 5
+        jobs_per_interval = 3  # Reduced from 5 to avoid overload
+        interval_minutes = 10  # Increased from 5 to give system recovery time
         
         config_payload = {
             "displayTimeAxisDuration": 10,

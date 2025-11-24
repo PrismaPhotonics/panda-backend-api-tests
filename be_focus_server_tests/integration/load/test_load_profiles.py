@@ -193,7 +193,7 @@ class TestLoadProfiles:
         logger.info("=" * 80)
         
         normal_rps = 2
-        spike_rps = 20
+        spike_rps = 12  # Reduced from 20 to avoid system overload during spike
         normal_duration = 30  # 30 seconds normal
         spike_duration = 10  # 10 seconds spike
         

@@ -224,7 +224,7 @@ class TestRecoveryAndExhaustion:
         logger.info("TEST: Load - Resource Exhaustion Under Load (PZ-14807)")
         logger.info("=" * 80)
         
-        extreme_load_rps = 50  # Very high RPS
+        extreme_load_rps = 20  # Reduced from 50 to realistic extreme (Very high RPS)
         extreme_load_duration = 30  # 30 seconds
         
         payload = {

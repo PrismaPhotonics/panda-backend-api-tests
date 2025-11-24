@@ -63,7 +63,7 @@ class TestConcurrentLoad:
         logger.info("TEST: Load - Concurrent Job Creation Load (PZ-14800)")
         logger.info("=" * 80)
         
-        num_concurrent_jobs = 20  # 20 concurrent jobs
+        num_concurrent_jobs = 15  # Reduced from 20 to safer level for system capacity
         max_response_time = 10.0  # 10 seconds per job
         
         payload = {

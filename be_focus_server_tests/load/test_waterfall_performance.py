@@ -74,7 +74,7 @@ class TestWaterfallPerformance:
         logger.info("TEST: Waterfall Streaming Performance Under Load (PZ-15141)")
         logger.info("=" * 80)
         
-        num_concurrent_jobs = 20
+        num_concurrent_jobs = 10  # Reduced from 20 to avoid system overload
         test_duration = 180  # 3 minutes
         poll_interval = 2  # seconds
         

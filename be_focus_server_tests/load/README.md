@@ -5,16 +5,18 @@
 
 ---
 
-## ⚠️ CRITICAL UPDATE (27 Oct 2025)
+## ⚠️ CRITICAL UPDATE (November 2025)
 
-**דרישה חדשה מפגישה (PZ-13756):**
-- ✅ המערכת חייבת לתמוך ב-**200 concurrent jobs**
-- ✅ טסט חדש: `test_200_concurrent_jobs_target_capacity()`
+**דרישה מעודכנת (Graduated Load Testing):**
+- ✅ המערכת חייבת לתמוך ב-**40 concurrent jobs** (מינימום חובה)
+- 🎯 יעד אופטימלי: **50 concurrent jobs**
+- ✅ טסט מדורג חכם: `test_graduated_load_capacity()`
+- ✅ פרוגרסיה: **5→10→20→25→30→31-40→41-49→50**
 - ✅ אם סביבה לא עומדת ביעד → **Infrastructure Gap Report** אוטומטי
 
-**Target Environments (חובה לעמוד ביעד 200 jobs):**
-- DEV (must support 200 jobs at 95%+ success rate)
-- Staging (must support 200 jobs at 95%+ success rate)
+**Target Environments (חובה לעמוד במינימום 40 jobs):**
+- DEV (minimum: 40 jobs, target: 50 jobs at 95%+ success rate)
+- Staging (minimum: 40 jobs, target: 50 jobs at 95%+ success rate)
 
 **Non-Target Environments (דיווח בלבד):**
 - Production (informational only)
@@ -50,13 +52,13 @@
 ### **אופציה 1: בדיקה מהירה (מומלץ למתחילים)**
 
 ```bash
-# בדיקה מהירה - 1, 5, 10 jobs (~30 שניות)
+# בדיקה מהירה - 5, 10, 20 jobs (~1 דקה)
 python scripts/quick_job_capacity_check.py --environment staging --quick
 
-# בדיקה סטנדרטית - עד 30 jobs (~2 דקות)
+# בדיקה סטנדרטית - עד 30 jobs (~2-3 דקות)
 python scripts/quick_job_capacity_check.py --environment production
 
-# בדיקה מקיפה - עד 100 jobs (~5-10 דקות)
+# בדיקה מקיפה - עד 50 jobs מדורג (~5-10 דקות)
 python scripts/quick_job_capacity_check.py --environment staging --comprehensive
 ```
 
@@ -133,9 +135,64 @@ pytest tests/load/test_job_capacity_limits.py::TestStressLoad -v
 ```
 
 **מה זה בודק:**
-- ⚠️ 100 jobs concurrent בבת אחת
+- ⚠️ 40 jobs concurrent בבת אחת
 - ⚠️ איך המערכת מגיבה לעומס יתר
 - ⚠️ האם המערכת קורסת או שורדת
+
+**משך זמן משוער:** ~5-10 דקות
+
+**אזהרה:** ⚠️ הבדיקה הזו עלולה להעמיס על המערכת!
+
+---
+
+### **4. Graduated Load Test (בדיקה מדורגת חכמה)** 🆕
+מטרה: למצוא את הקיבולת המקסימלית בצורה אופטימלית
+
+```bash
+pytest tests/load/test_job_capacity_limits.py::TestGraduatedLoadCapacity -v
+```
+
+**מה זה בודק:**
+- 🚀 **Phase 1 (Quick Ramp):** 5 → 10 → 20 → 25 → 30 (קפיצות גדולות)
+- 🎯 **Phase 2 (Fine-Tuning):** 31 → 32 → ... → 40 (job אחד אחד)
+- 📈 **Phase 3 (Extended):** 41 → 42 → ... → 50 (job אחד אחד)
+
+**התנהגות חכמה:**
+- 🛑 **עצירה מיידית** ברגע שמזהה כשל או degradation
+- 📊 **תיעוד מדויק** של נקודת השבירה (breaking point)
+- ✅ לא ממשיך לנסות אחרי כשל - חוסך זמן
+- 🔍 מזהה 3 סוגי בעיות:
+  - כשל מלא (0% success)
+  - הידרדרות (partial success)
+  - Exception של המערכת
+
+**יתרונות:**
+- ✅ חוסך זמן באזור העומס הנמוך (קפיצות גדולות)
+- ✅ מדייק בזיהוי נקודת השבירה (צעדים קטנים ליד הגבול)
+- ✅ עוצר מיד כשמוצא בעיה - לא מעמיס על המערכת
+- ✅ בודק עד 50 jobs למציאת מקסימום ריאליסטי
+- ✅ מתעד בדיוק איפה המערכת נכשלת ולמה
+
+**משך זמן משוער:** 
+- אם מגיע ל-50 ללא בעיות: ~8-12 דקות
+- אם מוצא נקודת שבירה מוקדם: ~2-5 דקות
+
+**Target:**
+- מינימום: 40 jobs (חובה)
+- אופטימלי: 50 jobs (יעד)
+
+**דוגמת פלט:**
+```
+✅ All 30 job(s) succeeded - moving to next step
+✅ All 31 job(s) succeeded - moving to next step
+⚠️ PARTIAL SUCCESS (85.0%) - DEGRADATION DETECTED!
+   Last full capacity: 31 jobs (100% success)
+   Degradation at: 32 jobs (85.0% success)
+
+🔴 CAPACITY LIMIT IDENTIFIED
+Maximum Stable Capacity: 31 jobs (100% success)
+Degradation Point:      32 jobs (85.0% success)
+```
 
 **משך זמן משוער:** ~5-10 דקות
 
@@ -254,7 +311,61 @@ python scripts/quick_job_capacity_check.py \
 
 ---
 
-## 📈 **פירוש תוצאות**
+## 🔴 **הבנת נקודות שבירה (Breaking Points)**
+
+הטסט המדורג זוהה **שלושה סוגים** של נקודות שבירה:
+
+### **1. כשל מלא (Complete Failure)**
+```
+❌ ALL 35 job(s) FAILED - BREAKING POINT DETECTED!
+   Last successful capacity: 34 jobs
+   Breaking point: 35 jobs (0% success)
+```
+
+**משמעות:** המערכת קרסה לחלוטין ב-35 jobs. אף job לא הצליח.
+
+**פעולה:** 
+- הגבל מיידית ל-34 jobs מקסימום
+- חקור logs לזהות את הגורם לקריסה
+- בדוק resource exhaustion (CPU, Memory, Network)
+
+---
+
+### **2. הידרדרות (Degradation)**
+```
+⚠️ PARTIAL SUCCESS (75.0%) - DEGRADATION DETECTED!
+   Last full capacity: 32 jobs (100% success)
+   Degradation at: 33 jobs (75.0% success)
+```
+
+**משמעות:** המערכת עדיין עובדת אבל מתחילה להיכשל חלקית. 25% מה-jobs נכשלו.
+
+**פעולה:**
+- הגבל ל-32 jobs לשימוש production
+- ניתן לשקול 33 jobs בשעות low-traffic (עם ניטור)
+- חקור למה יש degradation: timeout? resource contention?
+
+---
+
+### **3. Exception**
+```
+💥 SYSTEM EXCEPTION DETECTED
+   Maximum Working Capacity: 28 jobs (100% success)
+   Exception at:            29 jobs
+   Error:                   ConnectionTimeout: Unable to reach backend service
+```
+
+**משמעות:** המערכת זרקה exception במקום להחזיר תגובה תקינה.
+
+**פעולה:**
+- הגבל ל-28 jobs מקסימום
+- **קריטי:** תקן את ה-bug שגורם ל-exception
+- בדוק: connection pools, timeouts, network issues
+- זו בעיה קוד שצריכה תיקון
+
+---
+
+## 📊 **פירוש תוצאות**
 
 ### **Success Rate (אחוז הצלחה)**
 

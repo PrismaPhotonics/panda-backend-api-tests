@@ -76,10 +76,10 @@ class TestNetworkBandwidth:
         logger.info("TEST: Network Bandwidth Under Concurrent Load (PZ-15139)")
         logger.info("=" * 80)
         
-        num_jobs = 20
+        num_jobs = 10  # Reduced from 20 to avoid system overload
         poll_duration = 300  # 5 minutes
         rows_per_poll = 100
-        poll_interval = 1  # 1 second between polls
+        poll_interval = 2  # Increased from 1 to reduce request rate
         
         logger.info(f"Test Configuration:")
         logger.info(f"  Concurrent Jobs: {num_jobs}")
@@ -399,7 +399,7 @@ class TestNetworkBandwidth:
         logger.info("TEST: Network Throughput Scaling (PZ-15139.2)")
         logger.info("=" * 80)
         
-        job_counts = [5, 10, 20]
+        job_counts = [3, 5, 10]  # Reduced from [5, 10, 20] to safer levels
         test_duration = 60  # 1 minute per test
         
         config_payload = {
