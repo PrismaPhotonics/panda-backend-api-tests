@@ -1237,13 +1237,13 @@ def generate_infra_gap_report(
             "generated_at": datetime.now().isoformat(),
             "generated_by": "Focus Server Automation Test Suite",
             "jira_reference": "PZ-13756",
-            "meeting_decision": "Support 200 concurrent jobs"
+            "meeting_decision": "Support 40 concurrent jobs (minimum) / 50 concurrent jobs (optimal target)"
         },
         
         "environment": {
             "name": environment,
             "is_target_environment": environment.lower() in ["dev", "staging"],
-            "requirement": "Must support 200 concurrent jobs" if environment.lower() in ["dev", "staging"] else "Informational only"
+            "requirement": "Must support 40 concurrent jobs (minimum) / 50 concurrent jobs (optimal)" if environment.lower() in ["dev", "staging"] else "Informational only"
         },
         
         "capacity_analysis": {
