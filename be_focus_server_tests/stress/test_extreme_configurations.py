@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 # ===================================================================
 
 @pytest.mark.api
-
-
+@pytest.mark.load
+@pytest.mark.stress
 @pytest.mark.regression
 class TestExtremeConfigurationValues:
     """
