@@ -29,47 +29,85 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install deps (cmd)
-        shell: cmd
+      - name: Set up Python
+        shell: powershell
+        run: |
+          # Use existing Python installation instead of setup-python to avoid registry permission issues
+          $pythonVersion = py --version 2>&1 | Select-String -Pattern "Python (\d+\.\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value }
+          if ($pythonVersion) {
+            Write-Host "Found Python $pythonVersion via py launcher"
+            # Add Python to PATH if not already there
+            $pythonPath = py -c "import sys; print(sys.executable)" 2>&1
+            if ($pythonPath) {
+              $pythonDir = Split-Path $pythonPath
+              $env:PATH = "$pythonDir;$env:PATH"
+              Write-Host "Python path: $pythonPath"
+            }
+          } else {
+            Write-Host "Python not found via py launcher, trying python directly..."
+            # Try to find python in common locations
+            $pythonPaths = @(
+              "C:\Python*",
+              "C:\Program Files\Python*",
+              "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python*"
+            )
+            foreach ($pathPattern in $pythonPaths) {
+              $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($foundPython) {
+                $pythonDir = Split-Path $foundPython.FullName
+                $env:PATH = "$pythonDir;$env:PATH"
+                Write-Host "Found Python at: $($foundPython.FullName)"
+                break
+              }
+            }
+          }
+          python --version
+          pip --version
+
+      - name: Install deps
+        shell: powershell
         run: |
           python -m ensurepip --upgrade
           python -m pip install --upgrade pip
-          if exist requirements.txt python -m pip install -r requirements.txt
-          python -m pip install pytest pytest-cov
+          if (Test-Path requirements.txt) {
+            python -m pip install -r requirements.txt
+          }
+          python -m pip install pytest pytest-cov requests
 
-      - name: Verify pytest (cmd)
-        shell: cmd
+      - name: Verify pytest
+        shell: powershell
         run: |
-          where python
+          where.exe python
           python -V
           python -m pytest --version
 
-      - name: Run tests (all or by marker) - cmd
-        shell: cmd
+      - name: Run tests (all or by marker)
+        shell: powershell
         env:
           MARKER: ${{ matrix.marker || github.event.inputs.marker || '' }}
         run: |
-          if not exist test-results mkdir test-results
-          if not "%MARKER%"=="" (
-            echo Running only marker: %MARKER%
-            python -m pytest -q -m "%MARKER%" --junitxml=test-results\junit-%MARKER%.xml --cov=. --cov-report=term-missing
-          ) else (
-            echo Running smoke tests (default when no marker specified)
+          if (-not (Test-Path test-results)) {
+            New-Item -ItemType Directory -Path test-results | Out-Null
+          }
+          if ($env:MARKER -ne "") {
+            Write-Host "Running only marker: $env:MARKER"
+            python -m pytest -q -m "$env:MARKER" --junitxml=test-results\junit-$env:MARKER.xml --cov=. --cov-report=term-missing
+          } else {
+            Write-Host "Running smoke tests (default when no marker specified)"
             python -m pytest -q -m "smoke" --junitxml=test-results\junit-smoke.xml --cov=. --cov-report=term-missing
-          )
+          }
 
       - name: List test result files
-        shell: cmd
+        shell: powershell
         if: always()
         run: |
-          echo Checking for test result files:
-          dir test-results\*.xml
-          if exist test-results\*.xml (
-            echo Files found!
-            for %%f in (test-results\*.xml) do echo Found: %%f
-          ) else (
-            echo No XML files found in test-results
-          )
+          Write-Host "Checking for test result files:"
+          if (Test-Path test-results\*.xml) {
+            Write-Host "Files found!"
+            Get-ChildItem test-results\*.xml | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+          } else {
+            Write-Host "No XML files found in test-results"
+          }
 
       - name: Publish Test Results
         id: test-reporter
@@ -90,17 +128,23 @@ jobs:
       - name: Get Check Run ID
         id: get-check-run
         if: always()
-        shell: cmd
+        shell: powershell
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo Getting check run ID for "Pytest Results"...
-          python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; output_file = os.environ.get('GITHUB_OUTPUT', ''); f = open(output_file, 'a') if output_file else None; (f.write(f'id={check_run_id}\n') or f.close()) if f else None; print(f'CHECK_RUN_ID={check_run_id}')" 2>nul || echo CHECK_RUN_ID=
-          python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; output_file = os.environ.get('GITHUB_OUTPUT', ''); f = open(output_file, 'a') if output_file else None; (f.write(f'id={check_run_id}\n') or f.close()) if f else None; print(f'CHECK_RUN_ID={check_run_id}')" || echo CHECK_RUN_ID=
+          Write-Host "Getting check run ID for 'Pytest Results'..."
+          $checkRunId = python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; print(check_run_id)" 2>&1
+          if ($LASTEXITCODE -eq 0 -and $checkRunId) {
+            Write-Host "CHECK_RUN_ID=$checkRunId"
+            echo "id=$checkRunId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            Write-Host "CHECK_RUN_ID="
+            echo "id=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
 
       - name: Parse and Display Test Results
         if: always()
-        shell: cmd
+        shell: powershell
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_REPOSITORY: ${{ github.repository }}
