@@ -76,17 +76,38 @@ focus_server_automation/
 │   ├── quick_job_capacity_check.py  # Check K8s job capacity
 │   └── [other utilities]
 │
-├── docs/                            # 📚 **NEW** Organized Documentation
+├── docs/                            # 📚 Organized Documentation
 │   ├── 01_getting_started/          # Quick start & installation
+│   │   └── QUICK_REFERENCE_CARD.md  # Quick reference guide
 │   ├── 02_user_guides/              # How-to guides
 │   ├── 03_architecture/             # System design
 │   ├── 04_testing/                  # Test docs, Xray mapping, results
+│   │   ├── ALERTS_TESTS_DOCUMENTATION.md
+│   │   ├── RUN_ALERTS_TESTS.txt     # How to run alert tests
+│   │   ├── RUN_K8S_TESTS.txt        # How to run K8s tests
+│   │   ├── RUN_TESTS_CI.md          # CI test instructions
+│   │   ├── health_report.md         # System health report
+│   │   └── xray_mapping/
+│   │       └── tests_without_xray.csv
 │   ├── 05_development/              # Contributing & standards
+│   │   └── PUSH_WORKFLOWS_INSTRUCTIONS.md
 │   ├── 06_project_management/       # Work plans, meetings, Jira
+│   │   ├── EXECUTIVE_SUMMARY_EN.md  # Executive summary
+│   │   ├── TECHNICAL_STATISTICS_APPENDIX.md
+│   │   ├── meetings/
+│   │   │   └── MEETING_PREPARATION_CHECKLIST.md
+│   │   ├── jira/
+│   │   │   └── jira_test_cases_import.csv
+│   │   └── presentations/
+│   │       ├── QPOINT_PRESENTATION_ANALYSIS_HE.md
+│   │       ├── QPOINT_PRESENTATION_SLIDES_HE.md
+│   │       ├── PRESENTATION_PACKAGE_GUIDE.md
+│   │       └── PRESENTATION_README.md
 │   ├── 07_infrastructure/           # K8s, MongoDB, RabbitMQ
+│   │   └── README_GITHUB_ACTIONS.md # GitHub Actions guide
 │   └── 08_archive/                  # Historical documents
 │
-├── documentation/                   # Legacy documentation (being migrated)
+├── documentation/                   # Legacy documentation (DEPRECATED - use docs/)
 │
 ├── logs/                            # Generated logs
 │   └── pod_logs/                    # Pod monitoring logs
@@ -238,12 +259,29 @@ logs/pod_logs/
 - [📒 Infrastructure](docs/07_infrastructure/) - K8s, MongoDB, RabbitMQ
 - [🗂️ Archive](docs/08_archive/) - Historical documents
 
-### Quick Links to Legacy Docs
+### 📍 Document Locations (Recently Reorganized)
 
-- **Testing Guide:** `documentation/testing/REALTIME_POD_MONITORING.md`
-- **Infrastructure:** `documentation/infrastructure/GRPC_JOB_LIFECYCLE.md`
-- **Configuration:** `documentation/configuration/`
-- **API Reference:** `documentation/testing/API_MIGRATION_LOG.md`
+**Testing Documentation:**
+- Alert Tests: `docs/04_testing/ALERTS_TESTS_DOCUMENTATION.md`
+- Test Execution: `docs/04_testing/RUN_TESTS_CI.md`
+- K8s Tests: `docs/04_testing/RUN_K8S_TESTS.txt`
+- Health Report: `docs/04_testing/health_report.md`
+- Xray Mapping: `docs/04_testing/xray_mapping/`
+
+**Project Management:**
+- Presentations: `docs/06_project_management/presentations/`
+- Jira Integration: `docs/06_project_management/jira/`
+- Meeting Prep: `docs/06_project_management/meetings/MEETING_PREPARATION_CHECKLIST.md`
+
+**Development & Infrastructure:**
+- GitHub Actions: `docs/07_infrastructure/README_GITHUB_ACTIONS.md`
+- Workflows: `docs/05_development/PUSH_WORKFLOWS_INSTRUCTIONS.md`
+- Quick Reference: `docs/01_getting_started/QUICK_REFERENCE_CARD.md`
+
+**Legacy Docs (Still Available):**
+- Real-time Monitoring: `documentation/testing/REALTIME_POD_MONITORING.md`
+- gRPC Job Lifecycle: `documentation/infrastructure/GRPC_JOB_LIFECYCLE.md`
+- Configuration: `documentation/configuration/`
 
 ---
 
@@ -365,6 +403,28 @@ resources:
 ---
 
 
+## 📋 Recent Changes
+
+### Documentation Reorganization (2025-11-24)
+
+All documentation files have been reorganized into the `docs/` structure for better organization:
+
+**Moved Files:**
+- ✅ Test documentation → `docs/04_testing/`
+- ✅ Presentations & analysis → `docs/06_project_management/presentations/`
+- ✅ Project management docs → `docs/06_project_management/`
+- ✅ GitHub Actions guide → `docs/07_infrastructure/`
+- ✅ Development workflows → `docs/05_development/`
+- ✅ Quick reference → `docs/01_getting_started/`
+
+**Benefits:**
+- 📁 Clean project root
+- 🔍 Easy to find documents
+- 📚 Consistent organization
+- 🎯 Clear categories
+
+---
+
 ## Status
 
 ✅ **Production Ready**
@@ -372,4 +432,5 @@ resources:
 **Environment:** `new_production` only  
 **Pod Monitoring:** Fully implemented  
 **Test Coverage:** API, Infrastructure, Performance  
-**Documentation:** Complete
+**Documentation:** Complete & Organized  
+**Last Reorganization:** 2025-11-24

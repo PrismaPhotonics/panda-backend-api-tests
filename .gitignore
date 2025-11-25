@@ -91,3 +91,6 @@ pz/
 logs/
 reports/
 *.log
+
+# GitHub Actions Runner (should not be in git)
+actions-runner/
