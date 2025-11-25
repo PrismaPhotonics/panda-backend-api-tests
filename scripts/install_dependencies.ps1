@@ -26,15 +26,44 @@ function Install-PipWithRetry {
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
       Write-Host "  Attempt $($attempt)/$($maxAttempts)..."
       try {
-        py -m pip install --no-cache-dir --prefer-binary $pkg -v 2>&1 | Tee-Object -FilePath "pip-install-$($groupName)-$($pkg.Replace('==', '-')).log"
-        if ($LASTEXITCODE -eq 0) {
+        # Run pip install and capture exit code properly
+        $logFile = "pip-install-$($groupName)-$($pkg.Replace('==', '-')).log"
+        
+        # Temporarily change error action to Continue to avoid exceptions on warnings
+        $oldErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        
+        # Run pip install and capture exit code properly
+        # Execute command directly (without pipeline) to ensure $LASTEXITCODE is set
+        & py -m pip install --no-cache-dir --prefer-binary $pkg -v *> $logFile
+        $exitCode = $LASTEXITCODE
+        
+        # Restore error action preference
+        $ErrorActionPreference = $oldErrorAction
+        
+        # Read output from log file for display
+        if (Test-Path $logFile) {
+          $output = Get-Content $logFile -Raw
+        } else {
+          $output = ""
+        }
+        
+        # Check if installation succeeded (exit code 0 means success)
+        # Warnings (like "Ignoring invalid distribution") don't cause exit code != 0
+        if ($exitCode -eq 0) {
           Write-Host "  [OK] $pkg installed successfully" -ForegroundColor Green
           $succeededPackages += $pkg
           $installed = $true
           break
+        } else {
+          Write-Host "  pip exit code: $exitCode" -ForegroundColor Yellow
+          # Show last few lines of output for debugging
+          $output | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
         }
       } catch {
         Write-Host "  pip error: $($_.Exception.Message)" -ForegroundColor Red
+        # If exception occurred, exit code is likely non-zero
+        $exitCode = 1
       }
 
       if ($attempt -lt $maxAttempts) {
