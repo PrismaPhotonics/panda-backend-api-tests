@@ -19,7 +19,7 @@ jobs:
   test:
     # IMPORTANT: Use self-hosted Windows runner (slave-laptop-runner) for production environment access
     # Cloud runners cannot access internal network (10.10.10.100)
-    runs-on: [self-hosted, Windows, slave-laptop]
+    runs-on: [self-hosted, windows, "panda_automation"]
     permissions:
       checks: write
       pull-requests: write
