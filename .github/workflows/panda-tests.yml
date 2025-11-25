@@ -112,12 +112,14 @@ jobs:
             Write-Host "Project installed successfully"
           }
 
-      - name: Verify pytest
+      - name: Verify Python and pytest installation
         shell: powershell
         run: |
           where.exe py
           py --version
-          py -m pytest --version
+          # Verify pytest is installed (check if it can be imported, not run)
+          # This avoids loading conftest.py which requires external module
+          py -c "import pytest; print(f'pytest {pytest.__version__}')"
 
       - name: Run tests (all or by marker)
         shell: powershell
@@ -128,8 +130,9 @@ jobs:
           if (-not (Test-Path test-results)) {
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
-          $marker = $env:MARKER.Trim()
-          if ($marker -ne "" -and $marker -ne "null") {
+          # Safely get marker value, handling null/empty cases
+          $marker = if ($env:MARKER) { $env:MARKER.Trim() } else { "" }
+          if ($marker -ne "" -and $marker -ne "null" -and $null -ne $marker) {
             Write-Host "Running only marker: $marker"
             py -m pytest be_focus_server_tests/ `
               -m "$marker" `
