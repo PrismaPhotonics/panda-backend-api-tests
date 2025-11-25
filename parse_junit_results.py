@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Parse JUnit XML files and create GitHub Actions summary."""
+import xml.etree.ElementTree as ET
+import glob
+import os
+import sys
+
+def parse_junit_xml():
+    """Parse all JUnit XML files and create summary."""
+    xml_files = glob.glob('test-results/*.xml')
+    
+    if not xml_files:
+        print("No JUnit XML files found in test-results/")
+        return
+    
+    total_tests = 0
+    total_failures = 0
+    total_errors = 0
+    total_skipped = 0
+    total_time = 0.0
+    failed_tests = []
+    
+    for xml_file in xml_files:
+        try:
+            tree = ET.parse(xml_file)
+            root = tree.getroot()
+            
+            # Handle both testsuites and testsuite elements
+            suites = root.findall('.//testsuite') if root.tag != 'testsuite' else [root]
+            if not suites:
+                suites = [root]
+            
+            for suite in suites:
+                total_tests += int(suite.get('tests', 0))
+                total_failures += int(suite.get('failures', 0))
+                total_errors += int(suite.get('errors', 0))
+                total_skipped += int(suite.get('skipped', 0))
+                total_time += float(suite.get('time', 0))
+                
+                # Find failed/errored tests
+                for testcase in suite.findall('.//testcase'):
+                    failure = testcase.find('failure')
+                    error = testcase.find('error')
+                    skipped = testcase.find('skipped')
+                    
+                    if failure is not None or error is not None:
+                        test_name = f"{testcase.get('classname', '')}::{testcase.get('name', 'unknown')}"
+                        message = (failure or error).text or ''
+                        failed_tests.append({
+                            'name': test_name,
+                            'status': 'failed' if failure else 'error',
+                            'message': message[:200] if message else ''
+                        })
+        except Exception as e:
+            print(f"Error parsing {xml_file}: {e}", file=sys.stderr)
+    
+    # Write to GitHub step summary
+    summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+    if not summary_path:
+        print("GITHUB_STEP_SUMMARY not set")
+        return
+    
+    passed = total_tests - total_failures - total_errors - total_skipped
+    
+    with open(summary_path, 'w', encoding='utf-8') as f:
+        f.write('## 📊 Test Results Summary\n\n')
+        f.write(f'**Total Tests**: {total_tests}  \n')
+        f.write(f'**✅ Passed**: {passed}  \n')
+        f.write(f'**❌ Failed**: {total_failures}  \n')
+        f.write(f'**⚠️ Errors**: {total_errors}  \n')
+        f.write(f'**⏭️ Skipped**: {total_skipped}  \n')
+        f.write(f'**⏱️ Duration**: {total_time:.2f}s  \n\n')
+        
+        f.write('### 📋 View Results\n\n')
+        repo = os.environ.get('GITHUB_REPOSITORY', '')
+        run_id = os.environ.get('GITHUB_RUN_ID', '')
+        check_run_id = os.environ.get('CHECK_RUN_ID', '')
+        
+        if repo and run_id:
+            f.write(f'**Workflow Run ID**: `{run_id}`  \n')
+            if check_run_id:
+                f.write(f'**Check Run ID**: `{check_run_id}`  \n')
+            f.write(f'**Repository**: `{repo}`  \n')
+            f.write('  \n')
+            
+            if check_run_id:
+                # We have the check run ID - create the proper link
+                f.write(f'- [📊 View Pytest Results Check](https://github.com/{repo}/runs/{check_run_id}) - Opens in right panel  \n\n')
+            else:
+                # Fallback - show instructions to find it
+                f.write('**Check Run URL** (from test-reporter logs):  \n')
+                f.write(f'Look for "Check run HTML" in the "Publish Test Results" step logs  \n')
+                f.write(f'Format: `https://github.com/{repo}/runs/{{CHECK_RUN_ID}}`  \n\n')
+                f.write('**To find the Check Run ID**:  \n')
+                f.write('1. Check the "Publish Test Results" step logs  \n')
+                f.write('2. Look for the line: `Check run HTML: https://github.com/.../runs/{{ID}}`  \n')
+                f.write('3. The ID in that URL is the check run ID  \n\n')
+        
+        if failed_tests or total_failures > 0 or total_errors > 0:
+            f.write(f'### ❌ Failed Tests ({len(failed_tests)})\n\n')
+            for test in failed_tests[:20]:  # Limit to 20
+                f.write(f'- **{test["name"]}** ({test["status"]})  \n')
+                if test['message']:
+                    f.write(f'  ```\n  {test["message"][:150]}...\n  ```  \n\n')
+            if len(failed_tests) > 20:
+                f.write(f'\n*... and {len(failed_tests) - 20} more failed tests*  \n')
+        else:
+            f.write('### ✅ All Tests Passed!\n\n')
+
+if __name__ == '__main__':
+    parse_junit_xml()
+

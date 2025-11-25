@@ -116,9 +116,10 @@ jobs:
           if (-not (Test-Path test-results)) {
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
-          if ($env:MARKER -ne "") {
-            Write-Host "Running only marker: $env:MARKER"
-            py -m pytest -q -m "$env:MARKER" --junitxml=test-results\junit-$env:MARKER.xml --cov=. --cov-report=term-missing
+          $marker = $env:MARKER.Trim()
+          if ($marker -ne "" -and $marker -ne "null") {
+            Write-Host "Running only marker: $marker"
+            py -m pytest -q -m "$marker" --junitxml=test-results\junit-$marker.xml --cov=. --cov-report=term-missing
           } else {
             Write-Host "Running smoke tests (default when no marker specified)"
             py -m pytest -q -m "smoke" --junitxml=test-results\junit-smoke.xml --cov=. --cov-report=term-missing
