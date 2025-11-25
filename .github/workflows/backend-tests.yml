@@ -1,0 +1,241 @@
+name: Backend Focus Server Tests
+
+on:
+  push:
+    branches: [ main, develop, master ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      marker:
+        description: "pytest marker to run (e.g., smoke, regression). Leave empty to run all."
+        required: false
+        default: ""
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  test:
+    # IMPORTANT: Use self-hosted Windows runner (slave-laptop-runner) for production environment access
+    # Cloud runners cannot access internal network (10.10.10.100)
+    runs-on: [self-hosted, Windows, slave-laptop]
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
+    timeout-minutes: 120
+
+    env:
+      FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
+      FOCUS_SERVER_PORT: ${{ secrets.FOCUS_SERVER_PORT || '' }}
+      FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'new_production' }}
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # If a marker was provided via workflow_dispatch, we use just that.
+        # Otherwise, run smoke tests by default.
+        include:
+          - marker: ${{ github.event.inputs.marker || 'smoke' }}
+            test_suite: ${{ github.event.inputs.marker || 'smoke' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        shell: cmd
+        run: |
+          @echo off
+          echo Setting up Python...
+          py --version
+          python --version
+          python -m pip --version
+          if errorlevel 1 (
+            echo Python not found, trying to install pip...
+            python -m ensurepip --upgrade
+          )
+          python -m pip install --upgrade pip
+          echo Python setup complete
+
+      - name: Install dependencies
+        shell: cmd
+        run: |
+          @echo off
+          echo Installing dependencies...
+          if exist requirements.txt (
+            python -m pip install -r requirements.txt
+          )
+          if exist be_focus_server_tests\requirements.txt (
+            python -m pip install -r be_focus_server_tests\requirements.txt
+          )
+          python -m pip install pytest pytest-html pytest-json-report pytest-xdist pytest-cov pydantic requests paramiko kubernetes pymongo pika psutil
+          echo Dependencies installed
+
+      - name: Install project in editable mode
+        shell: cmd
+        run: |
+          @echo off
+          echo Installing project in editable mode...
+          python -m pip install -e .
+          if errorlevel 1 (
+            echo ERROR: Failed to install project in editable mode
+            exit /b 1
+          )
+          echo Project installed successfully
+
+      - name: Verify pytest
+        shell: cmd
+        run: |
+          @echo off
+          where python
+          python -V
+          python -m pytest --version
+          python -m pytest --collect-only -q | findstr /C:"test session starts" /C:"tests collected"
+
+      - name: Preflight – check Focus availability
+        id: preflight
+        shell: cmd
+        continue-on-error: true
+        run: |
+          @echo off
+          echo Checking Focus server availability...
+          set BASE=https://%FOCUS_SERVER_HOST%%FOCUS_API_PREFIX%
+          echo Testing %BASE%/channels
+          
+          curl.exe -k -s -w "\n%%{http_code}" "%BASE%/channels" > temp_response.txt 2>&1
+          if errorlevel 0 (
+            for /f "tokens=*" %%a in (temp_response.txt) do set LAST_LINE=%%a
+            echo reachable=true >> %GITHUB_OUTPUT%
+            echo status=%LAST_LINE% >> %GITHUB_OUTPUT%
+            echo [OK] Focus server is reachable
+          ) else (
+            echo reachable=false >> %GITHUB_OUTPUT%
+            echo status=000 >> %GITHUB_OUTPUT%
+            echo [FAIL] Focus server unreachable
+          )
+          del temp_response.txt 2>nul
+
+      - name: Run tests (all or by marker)
+        shell: cmd
+        env:
+          MARKER: ${{ matrix.marker || github.event.inputs.marker || '' }}
+          TEST_SUITE: ${{ matrix.test_suite || 'all' }}
+        run: |
+          @echo off
+          if not exist test-results mkdir test-results
+          
+          set MARKER_CMD=
+          if not "%MARKER%"=="" (
+            echo Running only marker: %MARKER%
+            set MARKER_CMD=-m "%MARKER%"
+          ) else (
+            echo Running all tests
+          )
+          
+          set MAXFAIL=50
+          if "%TEST_SUITE%"=="smoke" set MAXFAIL=10
+          
+          echo Running pytest with marker: %MARKER_CMD%
+          python -m pytest be_focus_server_tests\ %MARKER_CMD% ^
+            -q ^
+            --junitxml=test-results\junit-%TEST_SUITE%.xml ^
+            --cov=be_focus_server_tests ^
+            --cov-report=term-missing
+          
+          if errorlevel 1 (
+            echo Tests failed with exit code %ERRORLEVEL%
+            exit /b %ERRORLEVEL%
+          )
+
+      - name: List test result files
+        shell: cmd
+        if: always()
+        run: |
+          @echo off
+          echo Checking for test result files:
+          dir test-results\*.xml 2>nul
+          if exist test-results\*.xml (
+            echo Files found!
+            for %%f in (test-results\*.xml) do echo Found: %%f
+          ) else (
+            echo No XML files found in test-results
+          )
+
+      - name: Publish Test Results
+        id: test-reporter
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Pytest Results - Backend Focus Server
+          path: test-results/junit-*.xml
+          path-replace-backslashes: true
+          reporter: java-junit
+          list-suites: all
+          list-tests: all
+          max-annotations: 50
+          fail-on-error: false
+          only-summary: false
+          working-directory: ${{ github.workspace }}
+
+      - name: Get Check Run ID
+        id: get-check-run
+        if: always()
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          @echo off
+          echo Getting check run ID for "Pytest Results - Backend Focus Server"...
+          python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results - Backend Focus Server', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; output_file = os.environ.get('GITHUB_OUTPUT', ''); f = open(output_file, 'a') if output_file else None; (f.write(f'id={check_run_id}\n') or f.close()) if f else None; print(f'CHECK_RUN_ID={check_run_id}')" 2>nul || echo CHECK_RUN_ID=
+
+      - name: Generate console summary
+        if: always()
+        shell: cmd
+        run: |
+          @echo off
+          echo.
+          echo ========================================
+          echo TEST EXECUTION SUMMARY
+          echo ========================================
+          if exist scripts\parse_junit_xml.py (
+            if exist test-results\junit-*.xml (
+              python scripts\parse_junit_xml.py test-results\junit-*.xml
+            ) else (
+              echo No test results found
+            )
+          )
+          echo ========================================
+          echo.
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-reports-${{ matrix.test_suite || 'all' }}
+          path: |
+            test-results\*.xml
+            test-results\*.html
+            test-results\*.json
+            test-results\coverage-*\*
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Generate GitHub Actions summary
+        if: always()
+        shell: cmd
+        env:
+          ARTIFACT_DOWNLOAD_URL: ${{ steps.upload-artifact.outputs.url }}
+        run: |
+          @echo off
+          if exist scripts\generate_github_summary.py (
+            if exist test-results\junit-*.xml (
+              python scripts\generate_github_summary.py test-results\junit-*.xml
+            )
+          )
+
