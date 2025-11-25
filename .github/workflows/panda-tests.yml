@@ -32,16 +32,27 @@ jobs:
       - name: Set up Python
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Continue'
           # Use existing Python installation instead of setup-python to avoid registry permission issues
           $pythonVersion = py --version 2>&1 | Select-String -Pattern "Python (\d+\.\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value }
           if ($pythonVersion) {
             Write-Host "Found Python $pythonVersion via py launcher"
-            # Add Python to PATH if not already there
+            # Get Python path and Scripts directory
             $pythonPath = py -c "import sys; print(sys.executable)" 2>&1
-            if ($pythonPath) {
+            if ($pythonPath -and -not ($pythonPath -match "Error|Exception")) {
               $pythonDir = Split-Path $pythonPath
-              $env:PATH = "$pythonDir;$env:PATH"
+              $scriptsDir = Join-Path $pythonDir "Scripts"
+              
+              # Use GITHUB_PATH to persist PATH across steps
+              if ($env:GITHUB_PATH) {
+                echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+              }
+              
               Write-Host "Python path: $pythonPath"
+              Write-Host "Scripts path: $scriptsDir"
+            } else {
+              Write-Host "Warning: Could not get Python path, but py launcher works"
             }
           } else {
             Write-Host "Python not found via py launcher, trying python directly..."
@@ -55,31 +66,47 @@ jobs:
               $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
               if ($foundPython) {
                 $pythonDir = Split-Path $foundPython.FullName
-                $env:PATH = "$pythonDir;$env:PATH"
+                $scriptsDir = Join-Path $pythonDir "Scripts"
+                
+                # Use GITHUB_PATH to persist PATH across steps
+                if ($env:GITHUB_PATH) {
+                  echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                }
+                
                 Write-Host "Found Python at: $($foundPython.FullName)"
                 break
               }
             }
           }
-          python --version
-          pip --version
+          # Verify Python is accessible (use py launcher which is always in PATH)
+          Write-Host "Verifying Python access:"
+          py --version
+          $pipResult = py -m pip --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Warning: pip not accessible via py -m pip, but continuing..."
+            Write-Host "pip output: $pipResult"
+          } else {
+            Write-Host "pip is accessible"
+          }
 
       - name: Install deps
         shell: powershell
         run: |
-          python -m ensurepip --upgrade
-          python -m pip install --upgrade pip
+          # Use py launcher which is always in PATH, or python if PATH was set correctly
+          py -m ensurepip --upgrade
+          py -m pip install --upgrade pip
           if (Test-Path requirements.txt) {
-            python -m pip install -r requirements.txt
+            py -m pip install -r requirements.txt
           }
-          python -m pip install pytest pytest-cov requests
+          py -m pip install pytest pytest-cov requests
 
       - name: Verify pytest
         shell: powershell
         run: |
-          where.exe python
-          python -V
-          python -m pytest --version
+          where.exe py
+          py --version
+          py -m pytest --version
 
       - name: Run tests (all or by marker)
         shell: powershell
@@ -91,10 +118,10 @@ jobs:
           }
           if ($env:MARKER -ne "") {
             Write-Host "Running only marker: $env:MARKER"
-            python -m pytest -q -m "$env:MARKER" --junitxml=test-results\junit-$env:MARKER.xml --cov=. --cov-report=term-missing
+            py -m pytest -q -m "$env:MARKER" --junitxml=test-results\junit-$env:MARKER.xml --cov=. --cov-report=term-missing
           } else {
             Write-Host "Running smoke tests (default when no marker specified)"
-            python -m pytest -q -m "smoke" --junitxml=test-results\junit-smoke.xml --cov=. --cov-report=term-missing
+            py -m pytest -q -m "smoke" --junitxml=test-results\junit-smoke.xml --cov=. --cov-report=term-missing
           }
 
       - name: List test result files
@@ -133,7 +160,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           Write-Host "Getting check run ID for 'Pytest Results'..."
-          $checkRunId = python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; print(check_run_id)" 2>&1
+          $checkRunId = py -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; print(check_run_id)" 2>&1
           if ($LASTEXITCODE -eq 0 -and $checkRunId) {
             Write-Host "CHECK_RUN_ID=$checkRunId"
             echo "id=$checkRunId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -151,7 +178,7 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
         run: |
-          python parse_junit_results.py
+          py parse_junit_results.py
 
       - uses: actions/upload-artifact@v4
         with:
