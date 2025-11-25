@@ -1,0 +1,117 @@
+name: Panda Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      marker:
+        description: "pytest marker to run (e.g., smoke, regression). Leave empty to run all."
+        required: false
+        default: ""
+
+jobs:
+  test:
+    runs-on: [self-hosted, windows, "panda_automation"]
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13.9"]
+        # If a marker was provided via workflow_dispatch, we use just that.
+        # Otherwise, run a matrix of common categories.
+        include:
+          - python-version: "3.13.9"
+            marker: ${{ github.event.inputs.marker }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install deps (cmd)
+        shell: cmd
+        run: |
+          python -m ensurepip --upgrade
+          python -m pip install --upgrade pip
+          if exist requirements.txt python -m pip install -r requirements.txt
+          python -m pip install pytest pytest-cov
+
+      - name: Verify pytest (cmd)
+        shell: cmd
+        run: |
+          where python
+          python -V
+          python -m pytest --version
+
+      - name: Run tests (all or by marker) - cmd
+        shell: cmd
+        env:
+          MARKER: ${{ matrix.marker || github.event.inputs.marker || '' }}
+        run: |
+          if not exist test-results mkdir test-results
+          if not "%MARKER%"=="" (
+            echo Running only marker: %MARKER%
+            python -m pytest -q -m "%MARKER%" --junitxml=test-results\junit-%MARKER%.xml --cov=. --cov-report=term-missing
+          ) else (
+            echo Running smoke tests (default when no marker specified)
+            python -m pytest -q -m "smoke" --junitxml=test-results\junit-smoke.xml --cov=. --cov-report=term-missing
+          )
+
+      - name: List test result files
+        shell: cmd
+        if: always()
+        run: |
+          echo Checking for test result files:
+          dir test-results\*.xml
+          if exist test-results\*.xml (
+            echo Files found!
+            for %%f in (test-results\*.xml) do echo Found: %%f
+          ) else (
+            echo No XML files found in test-results
+          )
+
+      - name: Publish Test Results
+        id: test-reporter
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Pytest Results
+          path: test-results/junit-*.xml
+          path-replace-backslashes: true
+          reporter: java-junit
+          list-suites: all
+          list-tests: all
+          max-annotations: 50
+          fail-on-error: false
+          only-summary: false
+          working-directory: ${{ github.workspace }}
+
+      - name: Get Check Run ID
+        id: get-check-run
+        if: always()
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo Getting check run ID for "Pytest Results"...
+          python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; output_file = os.environ.get('GITHUB_OUTPUT', ''); f = open(output_file, 'a') if output_file else None; (f.write(f'id={check_run_id}\n') or f.close()) if f else None; print(f'CHECK_RUN_ID={check_run_id}')" 2>nul || echo CHECK_RUN_ID=
+          python -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; output_file = os.environ.get('GITHUB_OUTPUT', ''); f = open(output_file, 'a') if output_file else None; (f.write(f'id={check_run_id}\n') or f.close()) if f else None; print(f'CHECK_RUN_ID={check_run_id}')" || echo CHECK_RUN_ID=
+
+      - name: Parse and Display Test Results
+        if: always()
+        shell: cmd
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
+        run: |
+          python parse_junit_results.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: test-results\*.xml
+          if-no-files-found: warn
+
