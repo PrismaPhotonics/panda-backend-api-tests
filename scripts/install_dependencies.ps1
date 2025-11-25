@@ -3,6 +3,24 @@ $ErrorActionPreference = 'Stop'
 # Use py launcher which is always in PATH on Windows
 py -m pip install -U pip setuptools wheel
 
+# Clean up any broken pytest installations that might cause "Ignoring invalid distribution ~ytest" warnings
+Write-Host "Checking for broken pytest installations..." -ForegroundColor Yellow
+try {
+  $sitePackages = py -c "import site; print(site.getsitepackages()[0])" 2>&1
+  if ($sitePackages -and -not ($sitePackages -match "Error|Exception")) {
+    $brokenDirs = Get-ChildItem -Path $sitePackages -Filter "~ytest*" -Directory -ErrorAction SilentlyContinue
+    if ($brokenDirs) {
+      Write-Host "Found broken pytest directories, removing them..." -ForegroundColor Yellow
+      foreach ($dir in $brokenDirs) {
+        Write-Host "  Removing: $($dir.FullName)" -ForegroundColor Yellow
+        Remove-Item -Path $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+      }
+    }
+  }
+} catch {
+  Write-Host "Could not check for broken installations (non-critical): $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 function Install-PipWithRetry {
   param(
     [string]$groupName,
