@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-python -m pip install -U pip setuptools wheel
+# Use py launcher which is always in PATH on Windows
+py -m pip install -U pip setuptools wheel
 
 function Install-PipWithRetry {
   param(
@@ -25,7 +26,7 @@ function Install-PipWithRetry {
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
       Write-Host "  Attempt $($attempt)/$($maxAttempts)..."
       try {
-        pip install --no-cache-dir --prefer-binary $pkg -v 2>&1 | Tee-Object -FilePath "pip-install-$($groupName)-$($pkg.Replace('==', '-')).log"
+        py -m pip install --no-cache-dir --prefer-binary $pkg -v 2>&1 | Tee-Object -FilePath "pip-install-$($groupName)-$($pkg.Replace('==', '-')).log"
         if ($LASTEXITCODE -eq 0) {
           Write-Host "  [OK] $pkg installed successfully" -ForegroundColor Green
           $succeededPackages += $pkg
@@ -66,8 +67,8 @@ function Install-PipWithRetry {
       Write-Host ""
       Write-Host "::error::Failed installing the following packages in $groupName : $($failedPackages -join ', ')"
       Write-Host "Check logs: pip-install-$groupName-*.log"
-      pip --version
-      python -V
+      py -m pip --version
+      py --version
       exit 1
     } else {
       Write-Host ""
@@ -136,7 +137,7 @@ Write-Host "Installed Packages (First 40)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 try {
   $ErrorActionPreference = 'Continue'
-  $packages = pip list --format=freeze 2>&1 | Select-Object -First 40
+  $packages = py -m pip list --format=freeze 2>&1 | Select-Object -First 40
   foreach ($pkg in $packages) {
     Write-Host $pkg
   }
