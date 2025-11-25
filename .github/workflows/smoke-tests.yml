@@ -56,8 +56,9 @@ jobs:
             # Fallback to setup-python if py launcher not available
             # This will still fail on registry access, but at least we tried
           }
-          python --version
-          pip --version
+          # Verify Python is accessible (use py launcher which is always in PATH)
+          py --version
+          py -m pip --version
 
       - name: Install dependencies
         shell: powershell

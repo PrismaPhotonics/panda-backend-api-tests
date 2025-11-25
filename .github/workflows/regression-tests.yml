@@ -58,8 +58,9 @@ jobs:
             Write-Host "Python not found via py launcher, trying setup-python..."
             # Fallback to setup-python if py launcher not available
           }
-          python --version
-          pip --version
+          # Verify Python is accessible (use py launcher which is always in PATH)
+          py --version
+          py -m pip --version
 
       - name: Install dependencies
         shell: powershell
