@@ -71,7 +71,7 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Installing project in editable mode..."
-          pip install -e .
+          py -m pip install -e .
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Failed to install project in editable mode"
             exit 1
@@ -172,7 +172,7 @@ jobs:
           }
           
           # Run regression tests (excluding slow and nightly tests, and UI tests that require playwright)
-          pytest be_focus_server_tests/ `
+          py -m pytest be_focus_server_tests/ `
             -m "regression and not slow and not nightly" `
             --ignore=be_focus_server_tests/ui `
             -v `
@@ -191,7 +191,7 @@ jobs:
           Write-Host "REGRESSION TEST EXECUTION SUMMARY"
           Write-Host "========================================"
           if (Test-Path "reports/junit-regression.xml") {
-            python scripts/parse_junit_xml.py reports/junit-regression.xml
+            py scripts/parse_junit_xml.py reports/junit-regression.xml
             Write-Host "========================================"
             Write-Host ""
           } else {
@@ -225,5 +225,5 @@ jobs:
             exit 0
           }
           
-          python scripts/generate_github_summary.py reports/junit-regression.xml
+          py scripts/generate_github_summary.py reports/junit-regression.xml
 

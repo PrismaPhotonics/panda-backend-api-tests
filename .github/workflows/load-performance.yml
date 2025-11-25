@@ -67,7 +67,7 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Installing project in editable mode..."
-          pip install -e .
+          py -m pip install -e .
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Failed to install project in editable mode"
             exit 1
@@ -181,7 +181,7 @@ jobs:
           }
           
           # Run load and performance tests (excluding UI tests that require playwright)
-          pytest be_focus_server_tests/ `
+          py -m pytest be_focus_server_tests/ `
             -m "load or performance" `
             --ignore=be_focus_server_tests/ui `
             --monitor-pods `
@@ -201,7 +201,7 @@ jobs:
           Write-Host "LOAD AND PERFORMANCE TEST EXECUTION SUMMARY"
           Write-Host "========================================"
           if (Test-Path "reports/junit-load-performance.xml") {
-            python scripts/parse_junit_xml.py reports/junit-load-performance.xml
+            py scripts/parse_junit_xml.py reports/junit-load-performance.xml
             Write-Host "========================================"
             Write-Host ""
           } else {
@@ -235,5 +235,5 @@ jobs:
             exit 0
           }
           
-          python scripts/generate_github_summary.py reports/junit-load-performance.xml
+          py scripts/generate_github_summary.py reports/junit-load-performance.xml
 
