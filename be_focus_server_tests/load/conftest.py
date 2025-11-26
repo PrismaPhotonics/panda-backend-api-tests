@@ -23,6 +23,15 @@ def pytest_configure(config):
         "markers", "load: Load testing marker"
     )
     config.addinivalue_line(
+        "markers", "database: Database performance and query tests"
+    )
+    config.addinivalue_line(
+        "markers", "network: Network bandwidth and connectivity tests"
+    )
+    config.addinivalue_line(
+        "markers", "streaming: Streaming performance tests"
+    )
+    config.addinivalue_line(
         "markers", "baseline: Baseline performance tests"
     )
     config.addinivalue_line(
