@@ -19,6 +19,8 @@ def parse_junit_xml():
     total_skipped = 0
     total_time = 0.0
     failed_tests = []
+    passed_tests = []
+    skipped_tests = []
     
     for xml_file in xml_files:
         try:
@@ -37,19 +39,28 @@ def parse_junit_xml():
                 total_skipped += int(suite.get('skipped', 0))
                 total_time += float(suite.get('time', 0))
                 
-                # Find failed/errored tests
+                # Process all test cases
                 for testcase in suite.findall('.//testcase'):
+                    test_name = f"{testcase.get('classname', '')}::{testcase.get('name', 'unknown')}"
                     failure = testcase.find('failure')
                     error = testcase.find('error')
                     skipped = testcase.find('skipped')
                     
                     if failure is not None or error is not None:
-                        test_name = f"{testcase.get('classname', '')}::{testcase.get('name', 'unknown')}"
                         message = (failure or error).text or ''
                         failed_tests.append({
                             'name': test_name,
                             'status': 'failed' if failure else 'error',
                             'message': message[:200] if message else ''
+                        })
+                    elif skipped is not None:
+                        skipped_tests.append({
+                            'name': test_name,
+                            'message': skipped.text or '' if skipped.text else ''
+                        })
+                    else:
+                        passed_tests.append({
+                            'name': test_name
                         })
         except Exception as e:
             print(f"Error parsing {xml_file}: {e}", file=sys.stderr)
@@ -96,6 +107,40 @@ def parse_junit_xml():
                 f.write('2. Look for the line: `Check run HTML: https://github.com/.../runs/{{ID}}`  \n')
                 f.write('3. The ID in that URL is the check run ID  \n\n')
         
+        # Show passed tests summary (grouped by file/class)
+        if passed_tests:
+            f.write(f'### ✅ Passed Tests ({len(passed_tests)})\n\n')
+            # Group by classname for better readability
+            tests_by_class = {}
+            for test in passed_tests:
+                classname = test['name'].split('::')[0] if '::' in test['name'] else 'Other'
+                if classname not in tests_by_class:
+                    tests_by_class[classname] = []
+                tests_by_class[classname].append(test['name'].split('::')[-1] if '::' in test['name'] else test['name'])
+            
+            # Show summary by class (limit to top 10 classes)
+            for classname, test_names in list(tests_by_class.items())[:10]:
+                f.write(f'**{classname}** ({len(test_names)} tests)  \n')
+                for test_name in test_names[:5]:  # Show first 5 tests per class
+                    f.write(f'  - ✅ {test_name}  \n')
+                if len(test_names) > 5:
+                    f.write(f'  - ... and {len(test_names) - 5} more  \n')
+                f.write('  \n')
+            
+            if len(tests_by_class) > 10:
+                remaining = sum(len(tests) for tests in list(tests_by_class.values())[10:])
+                f.write(f'*... and {remaining} more tests in {len(tests_by_class) - 10} more classes*  \n\n')
+        
+        # Show skipped tests
+        if skipped_tests:
+            f.write(f'### ⏭️ Skipped Tests ({len(skipped_tests)})\n\n')
+            for test in skipped_tests[:10]:  # Limit to 10
+                f.write(f'- **{test["name"]}**  \n')
+            if len(skipped_tests) > 10:
+                f.write(f'\n*... and {len(skipped_tests) - 10} more skipped tests*  \n')
+            f.write('  \n')
+        
+        # Show failed tests
         if failed_tests or total_failures > 0 or total_errors > 0:
             f.write(f'### ❌ Failed Tests ({len(failed_tests)})\n\n')
             for test in failed_tests[:20]:  # Limit to 20
@@ -104,7 +149,7 @@ def parse_junit_xml():
                     f.write(f'  ```\n  {test["message"][:150]}...\n  ```  \n\n')
             if len(failed_tests) > 20:
                 f.write(f'\n*... and {len(failed_tests) - 20} more failed tests*  \n')
-        else:
+        elif not failed_tests:
             f.write('### ✅ All Tests Passed!\n\n')
 
 if __name__ == '__main__':
