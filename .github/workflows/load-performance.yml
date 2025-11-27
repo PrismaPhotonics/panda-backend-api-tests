@@ -88,26 +88,51 @@ jobs:
             } else {
               # Try to find python in common locations
               Write-Host "Python not found in PATH, searching common locations..."
-              $pythonPaths = @(
-                "${env:ProgramFiles}\Python*",
-                "${env:ProgramFiles(x86)}\Python*",
-                "${env:LOCALAPPDATA}\Programs\Python\Python*"
-              )
               
-              foreach ($pathPattern in $pythonPaths) {
-                $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-                if ($foundPython) {
-                  $pythonDir = Split-Path $foundPython.FullName
-                  $scriptsDir = Join-Path $pythonDir "Scripts"
-                  
-                  if ($env:GITHUB_PATH) {
-                    echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-                    echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+              # Try Get-Command first (searches PATH)
+              $foundPythonCmd = Get-Command python.exe -ErrorAction SilentlyContinue
+              if ($foundPythonCmd) {
+                $pythonPath = $foundPythonCmd.Source
+                $pythonDir = Split-Path $pythonPath
+                $scriptsDir = Join-Path $pythonDir "Scripts"
+                
+                if ($env:GITHUB_PATH) {
+                  echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                }
+                
+                Write-Host "Found Python via Get-Command at: $pythonPath"
+                $pythonCmd = $pythonPath
+              } else {
+                # Search common installation paths
+                $pythonPaths = @(
+                  "C:\Python*",
+                  "${env:ProgramFiles}\Python*",
+                  "${env:ProgramFiles(x86)}\Python*",
+                  "${env:LOCALAPPDATA}\Programs\Python\Python*",
+                  "C:\ProgramData\Python*",
+                  "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python*"
+                )
+                
+                foreach ($pathPattern in $pythonPaths) {
+                  try {
+                    $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($foundPython) {
+                      $pythonDir = Split-Path $foundPython.FullName
+                      $scriptsDir = Join-Path $pythonDir "Scripts"
+                      
+                      if ($env:GITHUB_PATH) {
+                        echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                        echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                      }
+                      
+                      Write-Host "Found Python at: $($foundPython.FullName)"
+                      $pythonCmd = $foundPython.FullName
+                      break
+                    }
+                  } catch {
+                    # Continue searching
                   }
-                  
-                  Write-Host "Found Python at: $($foundPython.FullName)"
-                  $pythonCmd = $foundPython.FullName
-                  break
                 }
               }
             }
@@ -116,28 +141,36 @@ jobs:
           # Verify Python is accessible
           Write-Host "Verifying Python access:"
           if ($pythonCmd) {
-            if ($pythonCmd -eq "py" -or $pythonCmd -eq "python") {
-              $versionCheck = & $pythonCmd --version 2>&1
+            # Use the found Python command (could be "py", "python", or full path)
+            $versionCheck = & $pythonCmd --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
               Write-Host "Python version: $versionCheck"
               $pipResult = & $pythonCmd -m pip --version 2>&1
               if ($LASTEXITCODE -ne 0) {
                 Write-Host "Warning: pip not accessible via $pythonCmd -m pip, but continuing..."
+                Write-Host "pip output: $pipResult"
               } else {
                 Write-Host "pip is accessible via $pythonCmd"
               }
             } else {
-              # Full path to python.exe
-              $versionCheck = & $pythonCmd --version 2>&1
-              Write-Host "Python version: $versionCheck"
-              $pipResult = & $pythonCmd -m pip --version 2>&1
-              if ($LASTEXITCODE -ne 0) {
-                Write-Host "Warning: pip not accessible, but continuing..."
-              }
+              Write-Host "::error::Python found but --version failed: $versionCheck"
+              exit 1
             }
           } else {
-            Write-Host "::error::Python not found via py launcher, python command, or common locations"
+            Write-Host "::error::Python not found via py launcher, python command, Get-Command, or common locations"
+            Write-Host "Searched locations:"
+            Write-Host "  - PATH (via Get-Command)"
+            Write-Host "  - C:\Python*"
+            Write-Host "  - ${env:ProgramFiles}\Python*"
+            Write-Host "  - ${env:ProgramFiles(x86)}\Python*"
+            Write-Host "  - ${env:LOCALAPPDATA}\Programs\Python\Python*"
+            Write-Host "  - C:\ProgramData\Python*"
+            Write-Host "  - C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python*"
             exit 1
           }
+          
+          # Store python command for use in later steps
+          Write-Host "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install dependencies
         shell: powershell
@@ -148,19 +181,24 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Installing project in editable mode..."
-          # Try py launcher first, fallback to python if needed
-          $pythonCmd = "py"
-          $testPy = py --version 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            $testPython = python --version 2>&1
+          # Use Python command from previous step (stored in GITHUB_ENV)
+          $pythonCmd = $env:PYTHON_CMD
+          if ([string]::IsNullOrEmpty($pythonCmd)) {
+            # Fallback: try to find Python again
+            $testPy = py --version 2>&1
             if ($LASTEXITCODE -eq 0) {
-              $pythonCmd = "python"
-              Write-Host "Using python command instead of py launcher"
+              $pythonCmd = "py"
             } else {
-              Write-Host "::error::Neither py nor python command found"
-              exit 1
+              $testPython = python --version 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                $pythonCmd = "python"
+              } else {
+                Write-Host "::error::Python command not found and not set in GITHUB_ENV"
+                exit 1
+              }
             }
           }
+          Write-Host "Using Python command: $pythonCmd"
           & $pythonCmd -m pip install -e .
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Failed to install project in editable mode"
@@ -276,19 +314,24 @@ jobs:
           
           # Run load and performance tests (excluding UI tests that require playwright)
           # Runs all tests with @pytest.mark.load or @pytest.mark.performance markers
-          # Try py launcher first, fallback to python if needed
-          $pythonCmd = "py"
-          $testPy = py --version 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            $testPython = python --version 2>&1
+          # Use Python command from setup step
+          $pythonCmd = $env:PYTHON_CMD
+          if ([string]::IsNullOrEmpty($pythonCmd)) {
+            # Fallback: try to find Python again
+            $testPy = py --version 2>&1
             if ($LASTEXITCODE -eq 0) {
-              $pythonCmd = "python"
-              Write-Host "Using python command instead of py launcher"
+              $pythonCmd = "py"
             } else {
-              Write-Host "::error::Neither py nor python command found"
-              exit 1
+              $testPython = python --version 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                $pythonCmd = "python"
+              } else {
+                Write-Host "::error::Python command not found"
+                exit 1
+              }
             }
           }
+          Write-Host "Running tests with Python: $pythonCmd"
           & $pythonCmd -m pytest be_focus_server_tests/ `
             -m "load or performance" `
             --ignore=be_focus_server_tests/ui `
@@ -309,12 +352,13 @@ jobs:
           Write-Host "LOAD AND PERFORMANCE TEST EXECUTION SUMMARY"
           Write-Host "========================================"
           if (Test-Path "reports/junit-load-performance.xml") {
-            # Try py launcher first, fallback to python if needed
-            $pythonCmd = "py"
-            $testPy = py --version 2>&1
-            if ($LASTEXITCODE -ne 0) {
-              $testPython = python --version 2>&1
+            # Use Python command from setup step
+            $pythonCmd = $env:PYTHON_CMD
+            if ([string]::IsNullOrEmpty($pythonCmd)) {
+              $testPy = py --version 2>&1
               if ($LASTEXITCODE -eq 0) {
+                $pythonCmd = "py"
+              } else {
                 $pythonCmd = "python"
               }
             }
@@ -352,12 +396,13 @@ jobs:
             exit 0
           }
           
-          # Try py launcher first, fallback to python if needed
-          $pythonCmd = "py"
-          $testPy = py --version 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            $testPython = python --version 2>&1
+          # Use Python command from setup step
+          $pythonCmd = $env:PYTHON_CMD
+          if ([string]::IsNullOrEmpty($pythonCmd)) {
+            $testPy = py --version 2>&1
             if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "py"
+            } else {
               $pythonCmd = "python"
             }
           }
