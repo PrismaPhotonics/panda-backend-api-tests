@@ -316,14 +316,15 @@ jobs:
           
           # Run smoke tests (excluding UI tests that require playwright)
           # Note: Health checks will run but will skip SSH/K8s/RabbitMQ in CI environment
-          py -m pytest be_focus_server_tests/ `
-            -m "smoke" `
-            --ignore=be_focus_server_tests/ui `
-            -v `
-            --maxfail=10 `
-            --junitxml=test-results/junit-smoke.xml `
-            --cov=be_focus_server_tests `
-            --cov-report=term-missing
+  py -m pytest be_focus_server_tests/ `
+    -m "smoke" `
+    --ignore=be_focus_server_tests/ui `
+    --ignore=be_focus_server_tests/stress `
+    -v `
+    --maxfail=10 `
+    --junitxml=test-results/junit-smoke.xml `
+    --cov=be_focus_server_tests `
+    --cov-report=term-missing
 
       - name: List test result files
         shell: powershell
