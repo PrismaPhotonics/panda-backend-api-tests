@@ -253,6 +253,32 @@ jobs:
             Write-Host "No XML files found in test-results"
           }
 
+      - name: Validate and clean XML files
+        shell: powershell
+        if: always()
+        run: |
+          if (Test-Path test-results\*.xml) {
+            Write-Host "Validating XML files..."
+            $xmlFiles = Get-ChildItem test-results\*.xml
+            foreach ($xmlFile in $xmlFiles) {
+              try {
+                [xml]$xml = Get-Content $xmlFile.FullName -Raw
+                # Remove testcase elements without name or classname attributes
+                $invalidTestCases = $xml.SelectNodes("//testcase[not(@name) and not(@classname)]")
+                if ($invalidTestCases.Count -gt 0) {
+                  Write-Host "Found $($invalidTestCases.Count) invalid testcase(s) in $($xmlFile.Name), removing..."
+                  foreach ($testCase in $invalidTestCases) {
+                    $testCase.ParentNode.RemoveChild($testCase) | Out-Null
+                  }
+                  $xml.Save($xmlFile.FullName)
+                  Write-Host "Cleaned XML file: $($xmlFile.Name)"
+                }
+              } catch {
+                Write-Host "Warning: Could not parse/clean $($xmlFile.Name): $($_.Exception.Message)"
+              }
+            }
+          }
+
       - name: Publish Test Results
         id: test-reporter
         uses: dorny/test-reporter@v1

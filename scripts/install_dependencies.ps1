@@ -61,9 +61,10 @@ function Install-PipWithRetry {
         
         # Read output from log file for display
         if (Test-Path $logFile) {
-          $output = Get-Content $logFile -Raw
+          # Read as array of lines (not Raw) so Select-Object -Last works correctly
+          $outputLines = Get-Content $logFile
         } else {
-          $output = ""
+          $outputLines = @()
         }
         
         # Check if installation succeeded (exit code 0 means success)
@@ -76,7 +77,9 @@ function Install-PipWithRetry {
         } else {
           Write-Host "  pip exit code: $exitCode" -ForegroundColor Yellow
           # Show last few lines of output for debugging
-          $output | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+          if ($outputLines.Count -gt 0) {
+            $outputLines | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+          }
         }
       } catch {
         Write-Host "  pip error: $($_.Exception.Message)" -ForegroundColor Red

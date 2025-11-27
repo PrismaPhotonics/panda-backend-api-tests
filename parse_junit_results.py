@@ -146,7 +146,10 @@ def parse_junit_xml():
             for test in failed_tests[:20]:  # Limit to 20
                 f.write(f'- **{test["name"]}** ({test["status"]})  \n')
                 if test['message']:
-                    f.write(f'  ```\n  {test["message"][:150]}...\n  ```  \n\n')
+                    message = test['message']
+                    truncated_message = message[:150]
+                    ellipsis = '...' if len(message) > 150 else ''
+                    f.write(f'  ```\n  {truncated_message}{ellipsis}\n  ```  \n\n')
             if len(failed_tests) > 20:
                 f.write(f'\n*... and {len(failed_tests) - 20} more failed tests*  \n')
         elif not failed_tests:
