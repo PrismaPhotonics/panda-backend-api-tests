@@ -133,6 +133,55 @@ jobs:
           # This avoids loading conftest.py which requires external module
           py -c "import pytest; print(f'pytest {pytest.__version__}')"
 
+      - name: Verify infrastructure access
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "Verifying Infrastructure Access"
+          Write-Host "========================================"
+          Write-Host ""
+          
+          # Check SSH key
+          $sshKeyPath = "$env:USERPROFILE\.ssh\panda_staging_key"
+          Write-Host "Checking SSH key..."
+          Write-Host "  Path: $sshKeyPath"
+          if (Test-Path $sshKeyPath) {
+            $keyInfo = Get-Item $sshKeyPath
+            Write-Host "  [OK] SSH key found (Size: $($keyInfo.Length) bytes)"
+          } else {
+            Write-Host "  [WARN] SSH key NOT found at $sshKeyPath"
+            Write-Host "  "  Health check will fail if SSH key is required"
+          }
+          Write-Host ""
+          
+          # Check kubeconfig
+          $kubeConfigPath = "$env:USERPROFILE\.kube\config-panda"
+          $kubeConfigDefault = "$env:USERPROFILE\.kube\config"
+          Write-Host "Checking Kubernetes config..."
+          Write-Host "  Path: $kubeConfigPath"
+          if (Test-Path $kubeConfigPath) {
+            Write-Host "  [OK] Kubeconfig found"
+          } elseif (Test-Path $kubeConfigDefault) {
+            Write-Host "  [OK] Default kubeconfig found"
+          } else {
+            Write-Host "  [WARN] Kubeconfig NOT found"
+            Write-Host "  Health check will use SSH fallback if SSH works"
+          }
+          Write-Host ""
+          
+          # Check kubectl
+          $kubectl = Get-Command kubectl -ErrorAction SilentlyContinue
+          if ($kubectl) {
+            Write-Host "  [OK] kubectl found: $($kubectl.Source)"
+          } else {
+            Write-Host "  [WARN] kubectl not found in PATH"
+            Write-Host "  Health check will use SSH fallback if SSH works"
+          }
+          Write-Host ""
+          
+          Write-Host "========================================"
+          Write-Host ""
+
       - name: Preflight – check Focus availability
         id: preflight
         shell: powershell
@@ -196,7 +245,6 @@ jobs:
 
       - name: Run smoke tests
         shell: powershell
-        continue-on-error: true
         run: |
           $FOCUS_URL = "$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$env:VERIFY_SSL"
