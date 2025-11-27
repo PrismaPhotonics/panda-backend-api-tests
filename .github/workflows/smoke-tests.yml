@@ -314,17 +314,16 @@ jobs:
             exit 0
           }
           
-          # Run smoke tests (excluding UI tests that require playwright)
-          # Note: Health checks will run but will skip SSH/K8s/RabbitMQ in CI environment
-  py -m pytest be_focus_server_tests/ `
-    -m "smoke" `
-    --ignore=be_focus_server_tests/ui `
-    --ignore=be_focus_server_tests/stress `
-    -v `
-    --maxfail=10 `
-    --junitxml=test-results/junit-smoke.xml `
-    --cov=be_focus_server_tests `
-    --cov-report=term-missing
+          # Run smoke tests (excluding UI and stress tests)
+          # Note: Health checks will run and verify all infrastructure components
+          py -m pytest be_focus_server_tests/api be_focus_server_tests/load be_focus_server_tests/regression `
+            -m "smoke" `
+            --ignore=be_focus_server_tests/ui `
+            -v `
+            --maxfail=10 `
+            --junitxml=test-results/junit-smoke.xml `
+            --cov=be_focus_server_tests `
+            --cov-report=term-missing
 
       - name: List test result files
         shell: powershell
