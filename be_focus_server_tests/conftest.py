@@ -244,8 +244,14 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
         
         # Expand SSH key path if needed
         if ssh_key_file and ssh_key_file.startswith('~'):
+            import os
+            import sys
             from pathlib import Path
-            home = str(Path.home())
+            # On Windows, prefer USERPROFILE env var (works correctly for services)
+            if sys.platform == 'win32':
+                home = os.environ.get('USERPROFILE') or str(Path.home())
+            else:
+                home = str(Path.home())
             ssh_key_file = ssh_key_file.replace('~', home, 1)
         
         # === Setup RabbitMQ ===
@@ -1366,20 +1372,27 @@ def pytest_configure(config):
                 except Exception as e:
                     logger.warning(f"Failed to create health check XML file: {e}")
                 
-                pytest.exit(
-                    "\n" + "=" * 80 + "\n"
-                    "PRE-TEST HEALTH CHECK FAILED\n"
-                    "=" * 80 + "\n"
-                    "One or more system components are not ready:\n\n"
-                    + "\n".join([
-                        f"  ❌ {r.name}: {r.error or 'Check failed'}"
-                        for r in results if not r.status
-                    ]) + "\n\n"
-                    "Please fix the issues before running tests.\n"
-                    "Use --skip-health-check to bypass this check (not recommended).\n"
+                # Build error message once
+                error_lines = [
                     "=" * 80,
-                    returncode=1
-                )
+                    "PRE-TEST HEALTH CHECK FAILED",
+                    "=" * 80,
+                    "One or more system components are not ready:",
+                    ""
+                ]
+                error_lines.extend([
+                    f"  ❌ {r.name}: {r.error or 'Check failed'}"
+                    for r in results if not r.status
+                ])
+                error_lines.extend([
+                    "",
+                    "Please fix the issues before running tests.",
+                    "Use --skip-health-check to bypass this check (not recommended).",
+                    "=" * 80
+                ])
+                error_msg = "\n".join(error_lines)
+                
+                pytest.exit(error_msg, returncode=1)
         
         except ImportError:
             # If health check script not available, warn but continue
