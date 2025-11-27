@@ -88,6 +88,7 @@ jobs:
             } else {
               # Try to find python in common locations
               Write-Host "Python not found in PATH, searching common locations..."
+<<<<<<< HEAD
               
               # Try Get-Command first (searches PATH)
               $foundPythonCmd = Get-Command python.exe -ErrorAction SilentlyContinue
@@ -171,6 +172,58 @@ jobs:
           
           # Store python command for use in later steps
           Write-Host "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+=======
+              $pythonPaths = @(
+                "${env:ProgramFiles}\Python*",
+                "${env:ProgramFiles(x86)}\Python*",
+                "${env:LOCALAPPDATA}\Programs\Python\Python*"
+              )
+              
+              foreach ($pathPattern in $pythonPaths) {
+                $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($foundPython) {
+                  $pythonDir = Split-Path $foundPython.FullName
+                  $scriptsDir = Join-Path $pythonDir "Scripts"
+                  
+                  if ($env:GITHUB_PATH) {
+                    echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                    echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  }
+                  
+                  Write-Host "Found Python at: $($foundPython.FullName)"
+                  $pythonCmd = $foundPython.FullName
+                  break
+                }
+              }
+            }
+          }
+          
+          # Verify Python is accessible
+          Write-Host "Verifying Python access:"
+          if ($pythonCmd) {
+            if ($pythonCmd -eq "py" -or $pythonCmd -eq "python") {
+              $versionCheck = & $pythonCmd --version 2>&1
+              Write-Host "Python version: $versionCheck"
+              $pipResult = & $pythonCmd -m pip --version 2>&1
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host "Warning: pip not accessible via $pythonCmd -m pip, but continuing..."
+              } else {
+                Write-Host "pip is accessible via $pythonCmd"
+              }
+            } else {
+              # Full path to python.exe
+              $versionCheck = & $pythonCmd --version 2>&1
+              Write-Host "Python version: $versionCheck"
+              $pipResult = & $pythonCmd -m pip --version 2>&1
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host "Warning: pip not accessible, but continuing..."
+              }
+            }
+          } else {
+            Write-Host "::error::Python not found via py launcher, python command, or common locations"
+            exit 1
+          }
+>>>>>>> origin/main
 
       - name: Install dependencies
         shell: powershell
@@ -181,6 +234,7 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Installing project in editable mode..."
+<<<<<<< HEAD
           # Use Python command from previous step (stored in GITHUB_ENV)
           $pythonCmd = $env:PYTHON_CMD
           if ([string]::IsNullOrEmpty($pythonCmd)) {
@@ -199,6 +253,21 @@ jobs:
             }
           }
           Write-Host "Using Python command: $pythonCmd"
+=======
+          # Try py launcher first, fallback to python if needed
+          $pythonCmd = "py"
+          $testPy = py --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $testPython = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "python"
+              Write-Host "Using python command instead of py launcher"
+            } else {
+              Write-Host "::error::Neither py nor python command found"
+              exit 1
+            }
+          }
+>>>>>>> origin/main
           & $pythonCmd -m pip install -e .
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Failed to install project in editable mode"
@@ -314,6 +383,7 @@ jobs:
           
           # Run load and performance tests (excluding UI tests that require playwright)
           # Runs all tests with @pytest.mark.load or @pytest.mark.performance markers
+<<<<<<< HEAD
           # Use Python command from setup step
           $pythonCmd = $env:PYTHON_CMD
           if ([string]::IsNullOrEmpty($pythonCmd)) {
@@ -332,6 +402,21 @@ jobs:
             }
           }
           Write-Host "Running tests with Python: $pythonCmd"
+=======
+          # Try py launcher first, fallback to python if needed
+          $pythonCmd = "py"
+          $testPy = py --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $testPython = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "python"
+              Write-Host "Using python command instead of py launcher"
+            } else {
+              Write-Host "::error::Neither py nor python command found"
+              exit 1
+            }
+          }
+>>>>>>> origin/main
           & $pythonCmd -m pytest be_focus_server_tests/ `
             -m "load or performance" `
             --ignore=be_focus_server_tests/ui `
@@ -352,6 +437,7 @@ jobs:
           Write-Host "LOAD AND PERFORMANCE TEST EXECUTION SUMMARY"
           Write-Host "========================================"
           if (Test-Path "reports/junit-load-performance.xml") {
+<<<<<<< HEAD
             # Use Python command from setup step
             $pythonCmd = $env:PYTHON_CMD
             if ([string]::IsNullOrEmpty($pythonCmd)) {
@@ -359,6 +445,14 @@ jobs:
               if ($LASTEXITCODE -eq 0) {
                 $pythonCmd = "py"
               } else {
+=======
+            # Try py launcher first, fallback to python if needed
+            $pythonCmd = "py"
+            $testPy = py --version 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              $testPython = python --version 2>&1
+              if ($LASTEXITCODE -eq 0) {
+>>>>>>> origin/main
                 $pythonCmd = "python"
               }
             }
@@ -396,6 +490,7 @@ jobs:
             exit 0
           }
           
+<<<<<<< HEAD
           # Use Python command from setup step
           $pythonCmd = $env:PYTHON_CMD
           if ([string]::IsNullOrEmpty($pythonCmd)) {
@@ -403,6 +498,14 @@ jobs:
             if ($LASTEXITCODE -eq 0) {
               $pythonCmd = "py"
             } else {
+=======
+          # Try py launcher first, fallback to python if needed
+          $pythonCmd = "py"
+          $testPy = py --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $testPython = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+>>>>>>> origin/main
               $pythonCmd = "python"
             }
           }
