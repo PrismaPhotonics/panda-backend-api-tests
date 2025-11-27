@@ -1289,7 +1289,7 @@ def pytest_configure(config):
             logger.info("=" * 80)
             
             # Run health checks with explicit output flushing for CI
-            import sys
+            # Note: sys is already imported at the top of the file
             print("=" * 80, flush=True)
             print("PRE-TEST HEALTH CHECK: Verifying system components...", flush=True)
             print("=" * 80, flush=True)
@@ -1361,7 +1361,7 @@ def pytest_configure(config):
             logger.error(traceback.format_exc())
             
             # Also print to stdout for CI visibility
-            import sys
+            # Note: sys is already imported at the top of the file
             print("=" * 80, flush=True)
             print("❌ PRE-TEST HEALTH CHECK FAILED UNEXPECTEDLY", flush=True)
             print("=" * 80, flush=True)
