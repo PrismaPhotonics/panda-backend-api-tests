@@ -409,4 +409,3 @@ jobs:
             }
           }
           & $pythonCmd scripts/generate_github_summary.py reports/junit-load-performance.xml
-
