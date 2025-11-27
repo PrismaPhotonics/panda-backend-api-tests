@@ -19,6 +19,8 @@ import logging
 import socket
 import base64
 import threading
+import os
+import sys
 from typing import Optional, Dict, Tuple
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -247,7 +249,11 @@ class RabbitMQConnectionManager:
             if self.ssh_key_file:
                 from pathlib import Path
                 if self.ssh_key_file.startswith('~'):
-                    home = str(Path.home())
+                    # On Windows, prefer USERPROFILE env var (works correctly for services)
+                    if sys.platform == 'win32':
+                        home = os.environ.get('USERPROFILE') or str(Path.home())
+                    else:
+                        home = str(Path.home())
                     key_file = self.ssh_key_file.replace('~', home, 1)
                 else:
                     key_file = self.ssh_key_file
@@ -364,7 +370,11 @@ class RabbitMQConnectionManager:
                         # Expand tilde in key_file path
                         from pathlib import Path
                         if self.ssh_key_file.startswith('~'):
-                            home = str(Path.home())
+                            # On Windows, prefer USERPROFILE env var (works correctly for services)
+                            if sys.platform == 'win32':
+                                home = os.environ.get('USERPROFILE') or str(Path.home())
+                            else:
+                                home = str(Path.home())
                             key_file = self.ssh_key_file.replace('~', home, 1)
                         else:
                             key_file = self.ssh_key_file

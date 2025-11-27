@@ -8,6 +8,7 @@ SSH infrastructure manager for remote operations and node access.
 import logging
 import time
 import os
+import sys
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -36,6 +37,9 @@ class SSHManager:
         Expand tilde (~) in path to actual home directory.
         Works on both Windows and Unix-like systems.
         
+        On Windows, when running as a service, Path.home() may return the system profile.
+        This method uses USERPROFILE environment variable on Windows to get the correct user profile.
+        
         Args:
             path: Path string that may contain ~
         
@@ -43,8 +47,12 @@ class SSHManager:
             Expanded path string
         """
         if path and path.startswith('~'):
-            # Expand tilde to home directory
-            home = str(Path.home())
+            # On Windows, prefer USERPROFILE env var (works correctly for services)
+            # On Unix-like systems, use Path.home()
+            if sys.platform == 'win32':
+                home = os.environ.get('USERPROFILE') or str(Path.home())
+            else:
+                home = str(Path.home())
             path = path.replace('~', home, 1)
         return path
     
