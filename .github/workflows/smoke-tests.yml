@@ -141,16 +141,53 @@ jobs:
           Write-Host "========================================"
           Write-Host ""
           
-          # Check SSH key
-          $sshKeyPath = "$env:USERPROFILE\.ssh\panda_staging_key"
+          # Check environment variables
+          Write-Host "Environment Variables:"
+          Write-Host "  USERPROFILE: $env:USERPROFILE"
+          Write-Host "  USERNAME: $env:USERNAME"
+          Write-Host "  COMPUTERNAME: $env:COMPUTERNAME"
+          Write-Host ""
+          
+          # Check SSH key in multiple possible locations
           Write-Host "Checking SSH key..."
-          Write-Host "  Path: $sshKeyPath"
-          if (Test-Path $sshKeyPath) {
-            $keyInfo = Get-Item $sshKeyPath
-            Write-Host "  [OK] SSH key found (Size: $($keyInfo.Length) bytes)"
-          } else {
-            Write-Host "  [WARN] SSH key NOT found at $sshKeyPath"
-            Write-Host "  Health check will fail if SSH key is required"
+          $sshKeyFound = $false
+          $sshKeyPaths = @()
+          
+          # Try USERPROFILE first
+          if ($env:USERPROFILE) {
+            $sshKeyPaths += "$env:USERPROFILE\.ssh\panda_staging_key"
+          }
+          
+          # Try USERNAME-based path
+          if ($env:USERNAME) {
+            $sshKeyPaths += "C:\Users\$env:USERNAME\.ssh\panda_staging_key"
+          }
+          
+          # Try common service account paths
+          $sshKeyPaths += "C:\Windows\system32\config\systemprofile\.ssh\panda_staging_key"
+          $sshKeyPaths += "C:\actions-runner\.ssh\panda_staging_key"
+          
+          foreach ($path in $sshKeyPaths) {
+            Write-Host "  Checking: $path"
+            if (Test-Path $path) {
+              $keyInfo = Get-Item $path
+              Write-Host "  [OK] SSH key found at: $path (Size: $($keyInfo.Length) bytes)"
+              $sshKeyFound = $true
+              break
+            }
+          }
+          
+          if (-not $sshKeyFound) {
+            Write-Host "  [ERROR] SSH key NOT found in any of the checked locations!"
+            Write-Host ""
+            Write-Host "  Required: panda_staging_key must be placed in one of:"
+            if ($env:USERNAME) {
+              Write-Host "    - C:\Users\$env:USERNAME\.ssh\panda_staging_key"
+            }
+            Write-Host "    - C:\actions-runner\.ssh\panda_staging_key"
+            Write-Host ""
+            Write-Host "  Health check will FAIL without SSH key!"
+            Write-Host "  SSH is required for: Kubernetes, RabbitMQ checks"
           }
           Write-Host ""
           
