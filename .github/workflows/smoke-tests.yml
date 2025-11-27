@@ -266,6 +266,7 @@ jobs:
           max-annotations: 50
           fail-on-error: false
           only-summary: false
+          fail-on-empty: false
           working-directory: ${{ github.workspace }}
 
       - name: Get Check Run ID
