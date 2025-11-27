@@ -1395,12 +1395,49 @@ def pytest_configure(config):
                 UserWarning
             )
         except Exception as e:
-            # If health check fails unexpectedly, exit pytest
+            # If health check fails unexpectedly, create XML file and exit pytest
             import traceback
             logger = logging.getLogger(__name__)
             error_msg = f"Pre-test health check failed unexpectedly: {e}"
             logger.error(error_msg)
             logger.error(traceback.format_exc())
+            
+            # Create XML file for test-reporter even when health check fails unexpectedly
+            try:
+                import xml.etree.ElementTree as ET
+                
+                # Create test-results directory if it doesn't exist
+                test_results_dir = Path(__file__).parent.parent / "test-results"
+                test_results_dir.mkdir(exist_ok=True)
+                
+                # Create XML with unexpected error
+                testsuite = ET.Element("testsuite", {
+                    "name": "health_check",
+                    "tests": "1",
+                    "failures": "0",
+                    "errors": "1",
+                    "skipped": "0",
+                    "time": "0"
+                })
+                
+                testcase = ET.SubElement(testsuite, "testcase", {
+                    "name": "health_check_unexpected_error",
+                    "classname": "health_check"
+                })
+                error_elem = ET.SubElement(testcase, "error", {
+                    "message": str(e),
+                    "type": type(e).__name__
+                })
+                error_elem.text = traceback.format_exc()
+                
+                # Write XML file
+                xml_file = test_results_dir / "junit-smoke.xml"
+                tree = ET.ElementTree(testsuite)
+                ET.indent(tree, space="  ")
+                tree.write(xml_file, encoding="utf-8", xml_declaration=True)
+                logger.info(f"Created health check error XML: {xml_file}")
+            except Exception as xml_error:
+                logger.warning(f"Failed to create health check XML file: {xml_error}")
             
             # Also print to stdout for CI visibility
             # Note: sys is already imported at the top of the file
