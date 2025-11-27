@@ -61,7 +61,7 @@ if ($service.State -ne "Stopped") {
 Write-Host "Changing service user to: $ServiceUser" -ForegroundColor Yellow
 
 if ([string]::IsNullOrEmpty($ServicePassword)) {
-    Write-Host "Please enter password for $ServiceUser:" -ForegroundColor Yellow
+    Write-Host "Please enter password for ${ServiceUser}:" -ForegroundColor Yellow
     $securePassword = Read-Host -AsSecureString
     $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
     $ServicePassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
