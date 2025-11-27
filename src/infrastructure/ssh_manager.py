@@ -39,6 +39,7 @@ class SSHManager:
         
         On Windows, when running as a service, Path.home() may return the system profile.
         This method uses USERPROFILE environment variable on Windows to get the correct user profile.
+        If USERPROFILE is not set or points to system profile, uses USERNAME to build the path.
         
         Args:
             path: Path string that may contain ~
@@ -50,7 +51,18 @@ class SSHManager:
             # On Windows, prefer USERPROFILE env var (works correctly for services)
             # On Unix-like systems, use Path.home()
             if sys.platform == 'win32':
-                home = os.environ.get('USERPROFILE') or str(Path.home())
+                userprofile = os.environ.get('USERPROFILE')
+                # Check if USERPROFILE is system profile (indicates service context)
+                if userprofile and 'system32\\config\\systemprofile' not in userprofile.lower():
+                    home = userprofile
+                else:
+                    # Fallback: use USERNAME to build path
+                    username = os.environ.get('USERNAME')
+                    if username:
+                        home = f"C:\\Users\\{username}"
+                    else:
+                        # Last resort: use Path.home()
+                        home = str(Path.home())
             else:
                 home = str(Path.home())
             path = path.replace('~', home, 1)
