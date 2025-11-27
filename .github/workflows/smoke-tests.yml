@@ -150,7 +150,7 @@ jobs:
             Write-Host "  [OK] SSH key found (Size: $($keyInfo.Length) bytes)"
           } else {
             Write-Host "  [WARN] SSH key NOT found at $sshKeyPath"
-            Write-Host "  "  Health check will fail if SSH key is required"
+            Write-Host "  Health check will fail if SSH key is required"
           }
           Write-Host ""
           
