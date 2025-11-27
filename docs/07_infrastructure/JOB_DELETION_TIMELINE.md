@@ -26,13 +26,13 @@
 
 **מנגנון:**
 - `cleanup-job-$JOB_ID` בודק את ה-CPU של `grpc-job-$JOB_ID` כל **10 שניות**
-- אם CPU ≤ 1m (millicore) במשך **5 בדיקות רצופות** → מתחיל cleanup
+- אם CPU ≤ 4m (millicores) במשך **5 בדיקות רצופות** → מתחיל cleanup
 - זמן כולל: **5 × 10s = 50 שניות**
 
 **קוד רלוונטי:**
 ```yaml
 Environment Variables:
-  CPU_USAGE_THRESHOLD: 1        # 1 millicore
+  CPU_USAGE_THRESHOLD: 4        # 4 millicores
   ENABLE_CPU_USAGE_CHECK: true
   MAX_CPU_USAGE_COUNT: 5        # 5 consecutive checks
 ```
@@ -41,11 +41,11 @@ Environment Variables:
 ```
 Job Created → Cleanup Job Starts Monitoring
     ↓
-Check 1 (0s): CPU = 0.5m → count = 1
-Check 2 (10s): CPU = 0.3m → count = 2
-Check 3 (20s): CPU = 0.2m → count = 3
-Check 4 (30s): CPU = 0.1m → count = 4
-Check 5 (40s): CPU = 0.0m → count = 5 → CLEANUP TRIGGERED
+Check 1 (0s): CPU ≤ 4m → count = 1
+Check 2 (10s): CPU ≤ 4m → count = 2
+Check 3 (20s): CPU ≤ 4m → count = 3
+Check 4 (30s): CPU ≤ 4m → count = 4
+Check 5 (40s): CPU ≤ 4m → count = 5 → CLEANUP TRIGGERED
     ↓
 Cleanup Process (~10s)
     ↓
@@ -115,7 +115,7 @@ Job Closed Automatically
 | **מנגנון** | CPU monitoring | TTL | gRPC Timeout |
 | **מי מפעיל** | Cleanup Job | Kubernetes | gRPC Server |
 | **תדירות בדיקה** | כל 10 שניות | חד-פעמי | רציף |
-| **תנאי** | CPU ≤ 1m × 5 | Job Complete/Failed | No activity 180s |
+| **תנאי** | CPU ≤ 4m × 5 | Job Complete/Failed | No activity 180s |
 
 ---
 

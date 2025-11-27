@@ -15,6 +15,7 @@ import pytest
 import logging
 import time
 from typing import List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.apis.focus_server_api import FocusServerAPI
 from src.core.exceptions import APIError
@@ -148,11 +149,37 @@ class TestSustainedLoad:
         
         # Cleanup
         logger.info(f"\nCleaning up {len(job_ids)} jobs...")
-        for job_id in job_ids:
+        canceled_count = 0
+        failed_count = 0
+        
+        def cancel_job_safe(job_id: str) -> bool:
+            """Cancel a single job safely."""
             try:
                 focus_server_api.cancel_job(job_id)
-            except Exception:
-                pass
+                logger.debug(f"Canceled job: {job_id}")
+                return True
+            except Exception as e:
+                logger.warning(f"Failed to cancel job {job_id}: {e}")
+                return False
+        
+        # Parallel cleanup (max 10 workers to avoid overwhelming API)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        cleanup_start = time.time()
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(cancel_job_safe, job_id): job_id 
+                      for job_id in job_ids}
+            
+            for future in as_completed(futures):
+                if future.result():
+                    canceled_count += 1
+                else:
+                    failed_count += 1
+        
+        cleanup_time = time.time() - cleanup_start
+        logger.info(f"Cleanup completed: {canceled_count}/{len(job_ids)} jobs canceled in {cleanup_time:.2f}s")
+        
+        if failed_count > 0:
+            logger.warning(f"⚠️ Failed to cancel {failed_count} jobs - they may need manual cleanup")
         
         # Assertions
         assert success_rate >= 0.9, \
