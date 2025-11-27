@@ -316,9 +316,10 @@ jobs:
           
           # Run smoke tests (excluding UI and stress tests)
           # Note: Health checks will run and verify all infrastructure components
-          py -m pytest be_focus_server_tests/api be_focus_server_tests/load be_focus_server_tests/regression `
+          py -m pytest be_focus_server_tests/ `
             -m "smoke" `
             --ignore=be_focus_server_tests/ui `
+            --ignore=be_focus_server_tests/stress `
             -v `
             --maxfail=10 `
             --junitxml=test-results/junit-smoke.xml `
