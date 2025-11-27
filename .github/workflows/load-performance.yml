@@ -166,10 +166,12 @@ jobs:
           
           # Run load and performance tests (excluding UI tests that require playwright)
           # Runs all tests with @pytest.mark.load or @pytest.mark.performance markers
+          # Skip health check for load/performance tests - they only need Focus Server API (already checked in preflight)
           Write-Host "Running tests with Python..."
           python -m pytest be_focus_server_tests/ `
             -m "load or performance" `
             --ignore=be_focus_server_tests/ui `
+            --skip-health-check `
             --monitor-pods `
             -v `
             --junitxml=reports/junit-load-performance.xml `
