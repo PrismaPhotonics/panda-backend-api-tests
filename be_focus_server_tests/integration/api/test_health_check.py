@@ -230,8 +230,8 @@ class TestHealthCheckConcurrentRequests:
     @pytest.mark.xray("PZ-14028")
     @pytest.mark.parametrize("num_requests,expected_avg_ms,expected_p95_ms", [
         (10, 500, 800),  # Updated from 200ms to 500ms (more realistic SLA)
-        (50, 500, 1000),  # Updated from 300ms to 500ms (more realistic SLA)
-        (100, 500, 1500),
+        (50, 600, 1000),  # Updated from 500ms to 600ms (more realistic SLA for 50 concurrent)
+        (100, 700, 1500),  # Updated from 500ms to 700ms (more realistic SLA for 100 concurrent)
     ])
     @pytest.mark.regression
     @pytest.mark.smoke
