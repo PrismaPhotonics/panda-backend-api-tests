@@ -1321,9 +1321,51 @@ def pytest_configure(config):
                 print("=" * 80, flush=True)
             logger.info("=" * 80)
             
-            # If health checks failed, exit pytest
+            # If health checks failed, create XML file and exit pytest
             if not all_passed:
                 failed_components = [r.name for r in results if not r.status]
+                
+                # Create XML file for test-reporter even when health check fails
+                try:
+                    import xml.etree.ElementTree as ET
+                    from datetime import datetime
+                    
+                    # Create test-results directory if it doesn't exist
+                    test_results_dir = Path(__file__).parent.parent / "test-results"
+                    test_results_dir.mkdir(exist_ok=True)
+                    
+                    # Create XML with health check failure
+                    testsuite = ET.Element("testsuite", {
+                        "name": "health_check",
+                        "tests": str(len(results)),
+                        "failures": str(len(failed_components)),
+                        "errors": "0",
+                        "skipped": "0",
+                        "time": "0"
+                    })
+                    
+                    # Add testcase for each failed component
+                    for result in results:
+                        testcase = ET.SubElement(testsuite, "testcase", {
+                            "name": result.name,
+                            "classname": "health_check"
+                        })
+                        if not result.status:
+                            failure = ET.SubElement(testcase, "failure", {
+                                "message": result.error or "Check failed",
+                                "type": "HealthCheckFailure"
+                            })
+                            failure.text = result.error or "Check failed"
+                    
+                    # Write XML file
+                    xml_file = test_results_dir / "junit-smoke.xml"
+                    tree = ET.ElementTree(testsuite)
+                    ET.indent(tree, space="  ")
+                    tree.write(xml_file, encoding="utf-8", xml_declaration=True)
+                    logger.info(f"Created health check failure XML: {xml_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to create health check XML file: {e}")
+                
                 pytest.exit(
                     "\n" + "=" * 80 + "\n"
                     "PRE-TEST HEALTH CHECK FAILED\n"
