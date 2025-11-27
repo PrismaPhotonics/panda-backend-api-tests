@@ -168,17 +168,20 @@ jobs:
           # Runs all tests with @pytest.mark.load or @pytest.mark.performance markers
           # Skip health check for load/performance tests - they only need Focus Server API (already checked in preflight)
           Write-Host "Running tests with Python..."
-          python -m pytest be_focus_server_tests/ `
-            -m "load or performance" `
-            --ignore=be_focus_server_tests/ui `
-            --skip-health-check `
-            --monitor-pods `
-            -v `
-            --junitxml=reports/junit-load-performance.xml `
-            --html=reports/load-performance-report.html `
-            --self-contained-html `
-            --json-report `
-            --json-report-file=reports/load-performance-report.json
+          $pytestArgs = @(
+            "be_focus_server_tests/",
+            "-m", "load or performance",
+            "--ignore=be_focus_server_tests/ui",
+            "--skip-health-check",
+            "--monitor-pods",
+            "-v",
+            "--junitxml=reports/junit-load-performance.xml",
+            "--html=reports/load-performance-report.html",
+            "--self-contained-html",
+            "--json-report",
+            "--json-report-file=reports/load-performance-report.json"
+          )
+          python -m pytest @pytestArgs
 
       - name: Generate console summary
         if: always()
