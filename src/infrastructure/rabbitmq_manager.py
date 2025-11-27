@@ -382,7 +382,17 @@ class RabbitMQConnectionManager:
                         if self.ssh_key_file.startswith('~'):
                             # On Windows, prefer USERPROFILE env var (works correctly for services)
                             if sys.platform == 'win32':
-                                home = os.environ.get('USERPROFILE') or str(Path.home())
+                                userprofile = os.environ.get('USERPROFILE')
+                                # Check if USERPROFILE is system profile (indicates service context)
+                                if userprofile and 'system32\\config\\systemprofile' not in userprofile.lower():
+                                    home = userprofile
+                                else:
+                                    # Fallback: use USERNAME to build path
+                                    username = os.environ.get('USERNAME')
+                                    if username:
+                                        home = f"C:\\Users\\{username}"
+                                    else:
+                                        home = str(Path.home())
                             else:
                                 home = str(Path.home())
                             key_file = self.ssh_key_file.replace('~', home, 1)
