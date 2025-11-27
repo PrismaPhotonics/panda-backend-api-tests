@@ -375,80 +375,147 @@ class TestConcurrentTaskLimit:
             1. Gradually increase concurrent task count
             2. Find the point where tasks start failing
             3. Document maximum supported concurrent tasks
+            4. Cleanup all created jobs
         
         Expected:
             - System supports at least [MIN] concurrent tasks
             - Graceful degradation when limit exceeded
+            - All jobs are cleaned up after test
         
         Jira: PZ-13771
         Priority: HIGH
         """
         logger.info("Test PZ-13771.3: Maximum concurrent task limit")
         
-        # Try increasing numbers of concurrent tasks
-        test_counts = [10, 20, 30, 40, 50]
-        results_by_count = {}
+        # Track all job IDs created during test for explicit cleanup
+        all_job_ids = []
         
-        for count in test_counts:
-            logger.info(f"\n{'='*60}")
-            logger.info(f"Testing {count} concurrent tasks...")
-            logger.info(f"{'='*60}")
+        try:
+            # Try increasing numbers of concurrent tasks
+            test_counts = [10, 20, 30, 40, 50]
+            results_by_count = {}
             
-            def create_task(task_num: int) -> bool:
-                try:
-                    config_request = ConfigureRequest(**performance_config_payload)
-                    response = focus_server_api.configure_streaming_job(config_request)
-                    return hasattr(response, 'job_id') and response.job_id is not None
-                except:
-                    return False
+            for count in test_counts:
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Testing {count} concurrent tasks...")
+                logger.info(f"{'='*60}")
+                
+                def create_task(task_num: int) -> tuple[bool, str | None]:
+                    """
+                    Create a single task and return success status and job_id.
+                    
+                    Returns:
+                        tuple: (success: bool, job_id: str or None)
+                    job_id = None
+                    try:
+                        config_request = ConfigureRequest(**performance_config_payload)
+                        response = focus_server_api.configure_streaming_job(config_request)
+                        success = hasattr(response, 'job_id') and response.job_id is not None
+                        if success:
+                            job_id = response.job_id
+                        return success, job_id
+                    except Exception as e:
+                        logger.error(f"Task {task_num} failed: {e}")
+                        return False, None
+                
+                with ThreadPoolExecutor(max_workers=min(count, 20)) as executor:
+                    futures = [executor.submit(create_task, i) for i in range(count)]
+                    results = [f.result() for f in as_completed(futures)]
+                
+                # Extract outcomes and job_ids
+                outcomes = [success for success, _ in results]
+                job_ids_from_round = [job_id for _, job_id in results if job_id is not None]
+                
+                # Track all job IDs for cleanup
+                all_job_ids.extend(job_ids_from_round)
+                
+                success_count = sum(outcomes)
+                success_rate = success_count / count
+                
+                results_by_count[count] = {
+                    'success_count': success_count,
+                    'success_rate': success_rate,
+                    'job_ids': job_ids_from_round
+                }
+                
+                logger.info(f"Result: {success_count}/{count} succeeded ({success_rate:.1%})")
+                logger.debug(f"Created {len(job_ids_from_round)} jobs in this round")
+                
+                # If success rate drops below 80%, we've likely hit the limit
+                if success_rate < 0.80:
+                    logger.info(f"⚠️ Success rate dropped below 80% at {count} tasks")
+                    break
+                
+                # Small delay between test rounds
+                time.sleep(2)
             
-            with ThreadPoolExecutor(max_workers=min(count, 20)) as executor:
-                futures = [executor.submit(create_task, i) for i in range(count)]
-                outcomes = [f.result() for f in as_completed(futures)]
+            # Report findings
+            logger.info("\n" + "=" * 60)
+            logger.info("Maximum Concurrent Task Limit - Summary:")
+            logger.info("=" * 60)
             
-            success_count = sum(outcomes)
-            success_rate = success_count / count
+            for count, result in results_by_count.items():
+                logger.info(f"  {count:3d} tasks: {result['success_count']:3d} succeeded ({result['success_rate']:.1%})")
             
-            results_by_count[count] = {
-                'success_count': success_count,
-                'success_rate': success_rate
-            }
+            logger.info("=" * 60)
             
-            logger.info(f"Result: {success_count}/{count} succeeded ({success_rate:.1%})")
+            # TODO: Update minimum after specs meeting
+            MIN_CONCURRENT_TASKS = 10
             
-            # If success rate drops below 80%, we've likely hit the limit
-            if success_rate < 0.80:
-                logger.info(f"⚠️ Success rate dropped below 80% at {count} tasks")
-                break
+            # Find highest count with >= 90% success rate
+            high_success_counts = [count for count, result in results_by_count.items() 
+                                  if result['success_rate'] >= 0.90]
             
-            # Small delay between test rounds
-            time.sleep(2)
+            if high_success_counts:
+                max_reliable = max(high_success_counts)
+                logger.info(f"✅ System reliably supports at least {max_reliable} concurrent tasks")
+                
+                assert max_reliable >= MIN_CONCURRENT_TASKS, \
+                    f"Max reliable concurrent tasks {max_reliable} < minimum {MIN_CONCURRENT_TASKS}"
+            else:
+                pytest.fail("Could not find reliable concurrent task count")
         
-        # Report findings
-        logger.info("\n" + "=" * 60)
-        logger.info("Maximum Concurrent Task Limit - Summary:")
-        logger.info("=" * 60)
-        
-        for count, result in results_by_count.items():
-            logger.info(f"  {count:3d} tasks: {result['success_count']:3d} succeeded ({result['success_rate']:.1%})")
-        
-        logger.info("=" * 60)
-        
-        # TODO: Update minimum after specs meeting
-        MIN_CONCURRENT_TASKS = 10
-        
-        # Find highest count with >= 90% success rate
-        high_success_counts = [count for count, result in results_by_count.items() 
-                              if result['success_rate'] >= 0.90]
-        
-        if high_success_counts:
-            max_reliable = max(high_success_counts)
-            logger.info(f"✅ System reliably supports at least {max_reliable} concurrent tasks")
-            
-            assert max_reliable >= MIN_CONCURRENT_TASKS, \
-                f"Max reliable concurrent tasks {max_reliable} < minimum {MIN_CONCURRENT_TASKS}"
-        else:
-            pytest.fail("Could not find reliable concurrent task count")
+        finally:
+            # Explicit cleanup of all created jobs
+            if all_job_ids:
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Cleaning up {len(all_job_ids)} jobs created during test...")
+                logger.info(f"{'='*60}")
+                
+                cleanup_start = time.time()
+                canceled_count = 0
+                failed_count = 0
+                
+                def cancel_job_safe(job_id: str) -> bool:
+                    """Cancel a single job safely."""
+                    try:
+                        focus_server_api.cancel_job(job_id)
+                        logger.debug(f"Canceled job: {job_id}")
+                        return True
+                    except Exception as e:
+                        logger.warning(f"Failed to cancel job {job_id}: {e}")
+                        return False
+                
+                # Parallel cleanup (max 10 workers to avoid overwhelming API)
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = {executor.submit(cancel_job_safe, job_id): job_id 
+                              for job_id in all_job_ids}
+                    
+                    for future in as_completed(futures):
+                        if future.result():
+                            canceled_count += 1
+                        else:
+                            failed_count += 1
+                
+                cleanup_time = time.time() - cleanup_start
+                logger.info(f"Cleanup completed: {canceled_count}/{len(all_job_ids)} jobs canceled in {cleanup_time:.2f}s")
+                
+                if failed_count > 0:
+                    logger.warning(f"⚠️ Failed to cancel {failed_count} jobs - they may need manual cleanup")
+                else:
+                    logger.info("✅ All jobs cleaned up successfully")
+            else:
+                logger.debug("No jobs to cleanup")
 
 
 # ===================================================================

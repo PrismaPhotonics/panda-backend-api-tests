@@ -13,7 +13,7 @@ on:
         options: [ "true", "false" ]
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.13'
 
 jobs:
   load-performance:
@@ -39,23 +39,105 @@ jobs:
       - name: Set up Python
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Continue'
           # Use existing Python installation instead of setup-python to avoid registry permission issues
-          $pythonVersion = py --version 2>&1 | Select-String -Pattern "Python (\d+\.\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value }
-          if ($pythonVersion) {
-            Write-Host "Found Python $pythonVersion via py launcher"
-            # Add Python to PATH if not already there
+          # Try py launcher first
+          $pythonCmd = $null
+          $pythonVersion = py --version 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            $pythonCmd = "py"
+            Write-Host "Found Python via py launcher: $pythonVersion"
+            # Get Python path and Scripts directory
             $pythonPath = py -c "import sys; print(sys.executable)" 2>&1
-            if ($pythonPath) {
+            if ($pythonPath -and -not ($pythonPath -match "Error|Exception")) {
               $pythonDir = Split-Path $pythonPath
-              $env:PATH = "$pythonDir;$env:PATH"
+              $scriptsDir = Join-Path $pythonDir "Scripts"
+              
+              # Use GITHUB_PATH to persist PATH across steps
+              if ($env:GITHUB_PATH) {
+                echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+              }
+              
               Write-Host "Python path: $pythonPath"
+              Write-Host "Scripts path: $scriptsDir"
+            } else {
+              Write-Host "Warning: Could not get Python path, but py launcher works"
             }
           } else {
-            Write-Host "Python not found via py launcher, trying setup-python..."
-            # Fallback to setup-python if py launcher not available
+            Write-Host "Python not found via py launcher, trying python directly..."
+            # Try python command
+            $pythonVersion = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "python"
+              Write-Host "Found Python via python command: $pythonVersion"
+              # Get Python path
+              $pythonPath = python -c "import sys; print(sys.executable)" 2>&1
+              if ($pythonPath -and -not ($pythonPath -match "Error|Exception")) {
+                $pythonDir = Split-Path $pythonPath
+                $scriptsDir = Join-Path $pythonDir "Scripts"
+                
+                if ($env:GITHUB_PATH) {
+                  echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                }
+                
+                Write-Host "Python path: $pythonPath"
+                Write-Host "Scripts path: $scriptsDir"
+              }
+            } else {
+              # Try to find python in common locations
+              Write-Host "Python not found in PATH, searching common locations..."
+              $pythonPaths = @(
+                "${env:ProgramFiles}\Python*",
+                "${env:ProgramFiles(x86)}\Python*",
+                "${env:LOCALAPPDATA}\Programs\Python\Python*"
+              )
+              
+              foreach ($pathPattern in $pythonPaths) {
+                $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($foundPython) {
+                  $pythonDir = Split-Path $foundPython.FullName
+                  $scriptsDir = Join-Path $pythonDir "Scripts"
+                  
+                  if ($env:GITHUB_PATH) {
+                    echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                    echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  }
+                  
+                  Write-Host "Found Python at: $($foundPython.FullName)"
+                  $pythonCmd = $foundPython.FullName
+                  break
+                }
+              }
+            }
           }
-          python --version
-          pip --version
+          
+          # Verify Python is accessible
+          Write-Host "Verifying Python access:"
+          if ($pythonCmd) {
+            if ($pythonCmd -eq "py" -or $pythonCmd -eq "python") {
+              $versionCheck = & $pythonCmd --version 2>&1
+              Write-Host "Python version: $versionCheck"
+              $pipResult = & $pythonCmd -m pip --version 2>&1
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host "Warning: pip not accessible via $pythonCmd -m pip, but continuing..."
+              } else {
+                Write-Host "pip is accessible via $pythonCmd"
+              }
+            } else {
+              # Full path to python.exe
+              $versionCheck = & $pythonCmd --version 2>&1
+              Write-Host "Python version: $versionCheck"
+              $pipResult = & $pythonCmd -m pip --version 2>&1
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host "Warning: pip not accessible, but continuing..."
+              }
+            }
+          } else {
+            Write-Host "::error::Python not found via py launcher, python command, or common locations"
+            exit 1
+          }
 
       - name: Install dependencies
         shell: powershell
@@ -66,7 +148,20 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Installing project in editable mode..."
-          pip install -e .
+          # Try py launcher first, fallback to python if needed
+          $pythonCmd = "py"
+          $testPy = py --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $testPython = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "python"
+              Write-Host "Using python command instead of py launcher"
+            } else {
+              Write-Host "::error::Neither py nor python command found"
+              exit 1
+            }
+          }
+          & $pythonCmd -m pip install -e .
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Failed to install project in editable mode"
             exit 1
@@ -180,7 +275,21 @@ jobs:
           }
           
           # Run load and performance tests (excluding UI tests that require playwright)
-          pytest be_focus_server_tests/ `
+          # Runs all tests with @pytest.mark.load or @pytest.mark.performance markers
+          # Try py launcher first, fallback to python if needed
+          $pythonCmd = "py"
+          $testPy = py --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $testPython = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "python"
+              Write-Host "Using python command instead of py launcher"
+            } else {
+              Write-Host "::error::Neither py nor python command found"
+              exit 1
+            }
+          }
+          & $pythonCmd -m pytest be_focus_server_tests/ `
             -m "load or performance" `
             --ignore=be_focus_server_tests/ui `
             --monitor-pods `
@@ -200,7 +309,16 @@ jobs:
           Write-Host "LOAD AND PERFORMANCE TEST EXECUTION SUMMARY"
           Write-Host "========================================"
           if (Test-Path "reports/junit-load-performance.xml") {
-            python scripts/parse_junit_xml.py reports/junit-load-performance.xml
+            # Try py launcher first, fallback to python if needed
+            $pythonCmd = "py"
+            $testPy = py --version 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              $testPython = python --version 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                $pythonCmd = "python"
+              }
+            }
+            & $pythonCmd scripts/parse_junit_xml.py reports/junit-load-performance.xml
             Write-Host "========================================"
             Write-Host ""
           } else {
@@ -234,5 +352,14 @@ jobs:
             exit 0
           }
           
-          python scripts/generate_github_summary.py reports/junit-load-performance.xml
+          # Try py launcher first, fallback to python if needed
+          $pythonCmd = "py"
+          $testPy = py --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $testPython = python --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCmd = "python"
+            }
+          }
+          & $pythonCmd scripts/generate_github_summary.py reports/junit-load-performance.xml
 

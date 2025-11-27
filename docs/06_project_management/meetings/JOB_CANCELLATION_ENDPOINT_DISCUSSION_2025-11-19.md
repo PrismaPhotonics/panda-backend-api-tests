@@ -42,7 +42,7 @@
 | **Stream ללא פעילות** | **3 דקות** | gRPC Timeout (180s) |
 
 **פירוט:**
-- **Job לא פותחים:** Cleanup job בודק CPU כל 10 שניות, אם CPU ≤ 1m במשך 5 בדיקות → cleanup (~50 שניות)
+- **Job לא פותחים:** Cleanup job בודק CPU כל 10 שניות, אם CPU ≤ 4m (millicores) במשך 5 בדיקות → cleanup (~50 שניות)
 - **Job מסתיים:** Kubernetes Job נמחק אוטומטית אחרי 2 דקות (TTL)
 - **Stream ללא פעילות:** gRPC timeout של 3 דקות → Job נסגר
 - **GRPC Disconnection:** ניתוק הלקוח → Job עובר למצב "off"

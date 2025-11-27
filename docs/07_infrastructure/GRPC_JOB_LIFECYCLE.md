@@ -91,7 +91,7 @@ serviceAccountName: cleanup-sa       # Needs permissions to delete jobs/services
 ```
 
 **Environment Variables:**
-- `CPU_USAGE_THRESHOLD`: `1` (CPU usage threshold in millicores)
+- `CPU_USAGE_THRESHOLD`: `4` (CPU usage threshold in millicores)
 - `ENABLE_CPU_USAGE_CHECK`: `true` (Enable CPU-based cleanup)
 - `MAX_CPU_USAGE_COUNT`: `5` (Number of consecutive low CPU readings before cleanup)
 
@@ -113,7 +113,7 @@ serviceAccountName: cleanup-sa       # Needs permissions to delete jobs/services
 
 1. **Job לא פותחים אותו (~50 שניות):**
    - Cleanup job בודק CPU כל 10 שניות
-   - אם CPU ≤ 1m (millicore) במשך 5 בדיקות רצופות → מתחיל cleanup
+   - אם CPU ≤ 4m (millicores) במשך 5 בדיקות רצופות → מתחיל cleanup
    - זמן כולל: 5 × 10s = **50 שניות**
 
 2. **Job מסתיים (2 דקות):**
@@ -164,7 +164,7 @@ Monitors grpc-job-$JOB_ID every 10 seconds
     ↓
 Checks:
   1. Job status (Complete/Failed)
-  2. CPU usage < 1m for 5 consecutive checks
+  2. CPU usage ≤ 4m (millicores) for 5 consecutive checks
     ↓
 When done → Cleanup Phase
 ```

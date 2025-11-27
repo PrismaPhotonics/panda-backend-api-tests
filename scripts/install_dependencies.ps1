@@ -1,6 +1,25 @@
 $ErrorActionPreference = 'Stop'
 
-python -m pip install -U pip setuptools wheel
+# Use py launcher which is always in PATH on Windows
+py -m pip install -U pip setuptools wheel
+
+# Clean up any broken pytest installations that might cause "Ignoring invalid distribution ~ytest" warnings
+Write-Host "Checking for broken pytest installations..." -ForegroundColor Yellow
+try {
+  $sitePackages = py -c "import site; print(site.getsitepackages()[0])" 2>&1
+  if ($sitePackages -and -not ($sitePackages -match "Error|Exception")) {
+    $brokenDirs = Get-ChildItem -Path $sitePackages -Filter "~ytest*" -Directory -ErrorAction SilentlyContinue
+    if ($brokenDirs) {
+      Write-Host "Found broken pytest directories, removing them..." -ForegroundColor Yellow
+      foreach ($dir in $brokenDirs) {
+        Write-Host "  Removing: $($dir.FullName)" -ForegroundColor Yellow
+        Remove-Item -Path $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+      }
+    }
+  }
+} catch {
+  Write-Host "Could not check for broken installations (non-critical): $($_.Exception.Message)" -ForegroundColor Yellow
+}
 
 function Install-PipWithRetry {
   param(
@@ -25,15 +44,47 @@ function Install-PipWithRetry {
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
       Write-Host "  Attempt $($attempt)/$($maxAttempts)..."
       try {
-        pip install --no-cache-dir --prefer-binary $pkg -v 2>&1 | Tee-Object -FilePath "pip-install-$($groupName)-$($pkg.Replace('==', '-')).log"
-        if ($LASTEXITCODE -eq 0) {
+        # Run pip install and capture exit code properly
+        $logFile = "pip-install-$($groupName)-$($pkg.Replace('==', '-')).log"
+        
+        # Temporarily change error action to Continue to avoid exceptions on warnings
+        $oldErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        
+        # Run pip install and capture exit code properly
+        # Execute command directly (without pipeline) to ensure $LASTEXITCODE is set
+        & py -m pip install --no-cache-dir --prefer-binary $pkg -v *> $logFile
+        $exitCode = $LASTEXITCODE
+        
+        # Restore error action preference
+        $ErrorActionPreference = $oldErrorAction
+        
+        # Read output from log file for display
+        if (Test-Path $logFile) {
+          # Read as array of lines (not Raw) so Select-Object -Last works correctly
+          $outputLines = Get-Content $logFile
+        } else {
+          $outputLines = @()
+        }
+        
+        # Check if installation succeeded (exit code 0 means success)
+        # Warnings (like "Ignoring invalid distribution") don't cause exit code != 0
+        if ($exitCode -eq 0) {
           Write-Host "  [OK] $pkg installed successfully" -ForegroundColor Green
           $succeededPackages += $pkg
           $installed = $true
           break
+        } else {
+          Write-Host "  pip exit code: $exitCode" -ForegroundColor Yellow
+          # Show last few lines of output for debugging
+          if ($outputLines.Count -gt 0) {
+            $outputLines | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+          }
         }
       } catch {
         Write-Host "  pip error: $($_.Exception.Message)" -ForegroundColor Red
+        # If exception occurred, exit code is likely non-zero
+        $exitCode = 1
       }
 
       if ($attempt -lt $maxAttempts) {
@@ -66,8 +117,8 @@ function Install-PipWithRetry {
       Write-Host ""
       Write-Host "::error::Failed installing the following packages in $groupName : $($failedPackages -join ', ')"
       Write-Host "Check logs: pip-install-$groupName-*.log"
-      pip --version
-      python -V
+      py -m pip --version
+      py --version
       exit 1
     } else {
       Write-Host ""
@@ -136,7 +187,7 @@ Write-Host "Installed Packages (First 40)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 try {
   $ErrorActionPreference = 'Continue'
-  $packages = pip list --format=freeze 2>&1 | Select-Object -First 40
+  $packages = py -m pip list --format=freeze 2>&1 | Select-Object -First 40
   foreach ($pkg in $packages) {
     Write-Host $pkg
   }
