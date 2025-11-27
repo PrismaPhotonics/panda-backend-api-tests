@@ -357,11 +357,18 @@ jobs:
             # Use Python command from setup step
             $pythonCmd = $env:PYTHON_CMD
             if ([string]::IsNullOrEmpty($pythonCmd)) {
+              # Fallback: try to find Python again
               $testPy = py --version 2>&1
               if ($LASTEXITCODE -eq 0) {
                 $pythonCmd = "py"
               } else {
-                $pythonCmd = "python"
+                $testPython = python --version 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                  $pythonCmd = "python"
+                } else {
+                  Write-Host "::error::Python command not found"
+                  exit 1
+                }
               }
             }
             & $pythonCmd scripts/parse_junit_xml.py reports/junit-load-performance.xml
@@ -401,11 +408,18 @@ jobs:
           # Use Python command from setup step
           $pythonCmd = $env:PYTHON_CMD
           if ([string]::IsNullOrEmpty($pythonCmd)) {
+            # Fallback: try to find Python again
             $testPy = py --version 2>&1
             if ($LASTEXITCODE -eq 0) {
               $pythonCmd = "py"
             } else {
-              $pythonCmd = "python"
+              $testPython = python --version 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                $pythonCmd = "python"
+              } else {
+                Write-Host "::error::Python command not found"
+                exit 1
+              }
             }
           }
           & $pythonCmd scripts/generate_github_summary.py reports/junit-load-performance.xml
