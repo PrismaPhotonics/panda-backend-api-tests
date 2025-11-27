@@ -33,7 +33,7 @@ jobs:
       FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
       REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'true' }}
-      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'new_production' }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
 
@@ -230,6 +230,7 @@ jobs:
           }
           
           # Run smoke tests (excluding UI tests that require playwright)
+          # Note: Health checks will run but will skip SSH/K8s/RabbitMQ in CI environment
           py -m pytest be_focus_server_tests/ `
             -m "smoke" `
             --ignore=be_focus_server_tests/ui `

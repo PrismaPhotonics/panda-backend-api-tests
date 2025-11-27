@@ -1288,20 +1288,37 @@ def pytest_configure(config):
             logger.info("PRE-TEST HEALTH CHECK: Verifying system components...")
             logger.info("=" * 80)
             
-            # Run health checks
+            # Run health checks with explicit output flushing for CI
+            import sys
+            print("=" * 80, flush=True)
+            print("PRE-TEST HEALTH CHECK: Verifying system components...", flush=True)
+            print("=" * 80, flush=True)
+            
             checker = PreTestHealthChecker(environment=env)
             all_passed, results = checker.run_all_checks()
+            
+            # Force flush output for CI visibility
+            sys.stdout.flush()
+            sys.stderr.flush()
             
             # Log results summary
             logger.info("=" * 80)
             if all_passed:
                 logger.info("✅ PRE-TEST HEALTH CHECK: All components OK - Proceeding with tests")
+                print("=" * 80, flush=True)
+                print("✅ PRE-TEST HEALTH CHECK: All components OK - Proceeding with tests", flush=True)
+                print("=" * 80, flush=True)
             else:
                 logger.error("❌ PRE-TEST HEALTH CHECK: Some components failed - Tests will not run")
+                print("=" * 80, flush=True)
+                print("❌ PRE-TEST HEALTH CHECK: Some components failed - Tests will not run", flush=True)
                 # Print failed components
                 for result in results:
                     if not result.status:
-                        logger.error(f"   ❌ {result.name}: {result.error or 'Check failed'}")
+                        error_msg = f"   ❌ {result.name}: {result.error or 'Check failed'}"
+                        logger.error(error_msg)
+                        print(error_msg, flush=True)
+                print("=" * 80, flush=True)
             logger.info("=" * 80)
             
             # If health checks failed, exit pytest
@@ -1337,8 +1354,25 @@ def pytest_configure(config):
             )
         except Exception as e:
             # If health check fails unexpectedly, exit pytest
+            import traceback
             logger = logging.getLogger(__name__)
-            logger.error(f"Pre-test health check failed unexpectedly: {e}")
+            error_msg = f"Pre-test health check failed unexpectedly: {e}"
+            logger.error(error_msg)
+            logger.error(traceback.format_exc())
+            
+            # Also print to stdout for CI visibility
+            import sys
+            print("=" * 80, flush=True)
+            print("❌ PRE-TEST HEALTH CHECK FAILED UNEXPECTEDLY", flush=True)
+            print("=" * 80, flush=True)
+            print(f"Error: {e}", flush=True)
+            print("", flush=True)
+            print("Full traceback:", flush=True)
+            print(traceback.format_exc(), flush=True)
+            print("=" * 80, flush=True)
+            sys.stdout.flush()
+            sys.stderr.flush()
+            
             pytest.exit(
                 f"\nPre-test health check failed unexpectedly: {e}\n"
                 "Use --skip-health-check to bypass this check (not recommended).",
