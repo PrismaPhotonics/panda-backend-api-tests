@@ -380,6 +380,22 @@ jobs:
             Write-Host ""
           }
 
+      - name: Publish Test Results
+        id: test-reporter
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Pytest Results - Load and Performance Tests
+          path: reports/junit-*.xml
+          path-replace-backslashes: true
+          reporter: java-junit
+          list-suites: all
+          list-tests: all
+          max-annotations: 50
+          fail-on-error: false
+          only-summary: false
+          working-directory: ${{ github.workspace }}
+
       - name: Upload test reports
         if: always()
         id: upload-artifact
