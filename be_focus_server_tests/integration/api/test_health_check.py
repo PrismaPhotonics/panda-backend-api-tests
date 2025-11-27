@@ -22,11 +22,14 @@ import pytest
 import logging
 import asyncio
 import time
+import os
 from typing import Dict, List, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from requests.exceptions import RequestException
+
+from src.apis.focus_server_api import FocusServerAPI
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +38,27 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ===================================================================
 
-BASE_URL = "https://10.10.100.100/focus-server"
+def get_base_url() -> str:
+    """
+    Get the base URL from environment variables or configuration.
+    
+    Returns:
+        Base URL from FOCUS_SERVER_HOST and FOCUS_API_PREFIX,
+    or fallback to staging default.
+    """
+    host = os.getenv("FOCUS_SERVER_HOST", "10.10.10.100")
+    prefix = os.getenv("FOCUS_API_PREFIX", "/focus-server")
+    # Remove leading slash if present in host, add protocol
+    if not host.startswith("http"):
+        host = f"https://{host}"
+    # Ensure prefix starts with /
+    if not prefix.startswith("/"):
+        prefix = f"/{prefix}"
+    return f"{host}{prefix}"
+
+BASE_URL = get_base_url()
 ENDPOINT = "/ack"
-SSL_VERIFY = False
+SSL_VERIFY = os.getenv("VERIFY_SSL", "false").lower() == "true"
 
 
 # ===================================================================
