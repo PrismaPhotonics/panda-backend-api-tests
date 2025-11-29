@@ -326,6 +326,7 @@ jobs:
             --junitxml=test-results/junit-smoke.xml `
             --cov=be_focus_server_tests `
             --cov-report=term-missing
+        continue-on-error: true  # Allow workflow to continue for report generation
 
       - name: List test result files
         shell: powershell

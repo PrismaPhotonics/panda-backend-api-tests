@@ -261,21 +261,34 @@ class SmartLoadTester:
                     for _ in range(batch_size)
                 ]
                 
-                for future in as_completed(futures, timeout=self.request_timeout_seconds):
-                    try:
-                        success, response_time, failure_type = future.result()
-                        response_times.append(response_time)
-                        
-                        if success:
-                            successes += 1
-                        else:
+                # Use try/except to handle TimeoutError from as_completed
+                # This ensures all futures are processed even if some timeout
+                try:
+                    for future in as_completed(futures, timeout=self.request_timeout_seconds * 2):
+                        try:
+                            success, response_time, failure_type = future.result(timeout=self.request_timeout_seconds)
+                            response_times.append(response_time)
+                            
+                            if success:
+                                successes += 1
+                            else:
+                                failures += 1
+                                if failure_type:
+                                    failures_by_type[failure_type] += 1
+                        except TimeoutError:
+                            # Individual request timed out
                             failures += 1
-                            if failure_type:
-                                failures_by_type[failure_type] += 1
-                    except Exception as e:
-                        failures += 1
-                        failure_type = self._classify_failure(e)
-                        failures_by_type[failure_type] += 1
+                            failures_by_type[FailureType.TIMEOUT] += 1
+                        except Exception as e:
+                            failures += 1
+                            failure_type = self._classify_failure(e)
+                            failures_by_type[failure_type] += 1
+                except TimeoutError:
+                    # Batch iteration timed out - count remaining futures as failures
+                    remaining = sum(1 for f in futures if not f.done())
+                    failures += remaining
+                    failures_by_type[FailureType.TIMEOUT] += remaining
+                    logger.warning(f"Batch timeout: {remaining} requests did not complete")
         
         # Calculate statistics
         total_requests = successes + failures

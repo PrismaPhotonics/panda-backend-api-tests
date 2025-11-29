@@ -298,7 +298,7 @@ class KubernetesManager:
                         "name": parts[0],
                         "namespace": parts[1] if parts[1] != '<none>' else namespace,
                         "status": parts[2] if parts[2] != '<none>' else "Unknown",
-                        "ready": "True" if parts[2] == "Running" else "False",
+                        "ready": parts[2] == "Running",  # Boolean, not string
                         "restart_count": restart_count,
                         "node_name": parts[3] if parts[3] != '<none>' else None,
                         "labels": {}  # Labels not available in lightweight format
