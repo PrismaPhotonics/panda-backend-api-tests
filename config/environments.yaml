@@ -45,9 +45,9 @@ environments:
     
     # Focus Server (Staging)
     focus_server:
-      base_url: "https://10.10.10.100/focus-server/"  # NEW Backend URL
+      base_url: "https://10.10.10.100/focus-server/"  # Backend URL
       frontend_url: "https://10.10.10.100/liveView"    # Frontend URL
-      frontend_api_url: "https://10.10.10.100/prisma/api/internal/sites/prisma-210-1000"  # NEW API URL
+      frontend_api_url: "https://10.10.10.150:30443/prisma/api/internal/sites/prisma-210-1000"  # Frontend API URL (NodePort)
       site_id: "prisma-210-1000"
       ssl: true
       verify_ssl: false  # Self-signed cert

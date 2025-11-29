@@ -28,7 +28,7 @@ jobs:
       FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
       REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'true' }}
-      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'new_production' }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
 
@@ -335,6 +335,7 @@ jobs:
           Write-Host "Running tests with Python: $pythonCmd"
           & $pythonCmd -m pytest be_focus_server_tests/ `
             -m "load or performance" `
+            --env staging `
             --ignore=be_focus_server_tests/ui `
             --skip-health-check `
             --monitor-pods `

@@ -36,7 +36,7 @@ jobs:
       FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
       REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'true' }}
-      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'new_production' }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
 
@@ -235,6 +235,7 @@ jobs:
           # Run regression tests (excluding slow and nightly tests, and UI tests that require playwright)
           py -m pytest be_focus_server_tests/ `
             -m "regression and not slow and not nightly" `
+            --env staging `
             --ignore=be_focus_server_tests/ui `
             -v `
             --junitxml=test-results/junit-regression.xml `

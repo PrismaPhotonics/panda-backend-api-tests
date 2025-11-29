@@ -318,6 +318,7 @@ jobs:
           # Note: Health checks will run and verify all infrastructure components
           py -m pytest be_focus_server_tests/ `
             -m "smoke" `
+            --env staging `
             --ignore=be_focus_server_tests/ui `
             --ignore=be_focus_server_tests/stress `
             -v `
