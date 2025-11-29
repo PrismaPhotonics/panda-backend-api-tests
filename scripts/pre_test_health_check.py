@@ -333,7 +333,7 @@ class PreTestHealthChecker:
                     
                     thread = threading.Thread(target=get_pods_thread, daemon=True)
                     thread.start()
-                    thread.join(timeout=60)  # 60 second timeout for get_pods
+                    thread.join(timeout=90)  # 90 second timeout for get_pods (increased from 60s)
                     
                     # Check if we got pods data (even if thread timed out, we might have partial data)
                     pods = None
@@ -345,11 +345,11 @@ class PreTestHealthChecker:
                         if pods is not None:
                             # We got partial data before timeout - show it
                             details["Pods"] = "Timeout (partial data)"
-                            self.logger.warning(f"{name}: get_pods() timed out after 60 seconds (but got partial data)")
+                            self.logger.warning(f"{name}: get_pods() timed out after 90 seconds (but got partial data)")
                         else:
                             # No data at all
-                            details["Pods"] = "Timeout (took >60s)"
-                            self.logger.warning(f"{name}: get_pods() timed out after 60 seconds")
+                            details["Pods"] = "Timeout (took >90s)"
+                            self.logger.warning(f"{name}: get_pods() timed out after 90 seconds")
                     elif not exception_queue.empty():
                         e = exception_queue.get()
                         if pods is not None:

@@ -254,12 +254,14 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "panda")
         
-        # Build kubectl command
-        cmd = f"get pods -o json"
+        # Build kubectl command with field selector to improve performance
+        # Only get pods that are not in Succeeded or Failed state (for health checks)
+        cmd = f"get pods -o json --field-selector=status.phase!=Succeeded,status.phase!=Failed"
         if label_selector:
             cmd += f" -l {label_selector}"
         
-        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+        # Increased timeout to 60 seconds (matching health check wrapper timeout)
+        result = self._execute_kubectl_via_ssh(cmd, timeout=60)
         
         if not result["success"]:
             raise InfrastructureError(f"Failed to get pods via SSH: {result['stderr']}")
