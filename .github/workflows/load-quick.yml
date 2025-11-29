@@ -85,21 +85,44 @@ jobs:
           Write-Host "========================================"
           Write-Host "QUICK LOAD TEST SUITE"
           Write-Host "========================================"
+          Write-Host "Target: https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "Concurrent requests: $env:LOAD_TEST_CONCURRENT_REQUESTS"
           Write-Host "Duration: $env:LOAD_TEST_DURATION_SECONDS seconds"
+          Write-Host "Quick mode: $env:QUICK_LOAD_MODE"
           Write-Host "========================================"
           
           # Run ONLY the quick load tests (marked with @pytest.mark.quick_load)
+          # --capture=no ensures print statements are visible in CI
           & $env:PYTHON_CMD -m pytest `
             be_focus_server_tests/load/test_quick_load_metrics.py `
             -m "quick_load" `
             --env staging `
             --skip-health-check `
             -v `
-            --tb=short `
+            --tb=long `
+            --capture=no `
+            --log-cli-level=INFO `
             --junitxml=reports/junit-quick-load.xml `
             --json-report `
             --json-report-file=reports/quick-load-metrics.json
+          
+          $exitCode = $LASTEXITCODE
+          
+          # Show test summary even on failure
+          if (Test-Path "reports/junit-quick-load.xml") {
+            Write-Host "========================================"
+            Write-Host "TEST RESULTS SUMMARY"
+            Write-Host "========================================"
+            $xml = [xml](Get-Content "reports/junit-quick-load.xml")
+            $testsuite = $xml.testsuite
+            Write-Host "Tests: $($testsuite.tests)"
+            Write-Host "Failures: $($testsuite.failures)"
+            Write-Host "Errors: $($testsuite.errors)"
+            Write-Host "Time: $($testsuite.time)s"
+            Write-Host "========================================"
+          }
+          
+          exit $exitCode
 
       - name: Generate Metrics Report
         if: always()
