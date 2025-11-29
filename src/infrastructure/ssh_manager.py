@@ -9,6 +9,7 @@ import logging
 import time
 import os
 import sys
+import socket
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -365,13 +366,26 @@ class SSHManager:
             raise InfrastructureError("SSH not connected")
         
         try:
-            self.logger.debug(f"Executing command: {command}")
+            self.logger.debug(f"Executing command: {command} (timeout: {timeout}s)")
             
             # Execute command
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
             
-            # Wait for command to complete
-            exit_code = stdout.channel.recv_exit_status()
+            # Set timeout on channel to prevent hanging
+            stdout.channel.settimeout(timeout)
+            stderr.channel.settimeout(timeout)
+            
+            # Wait for command to complete with timeout
+            try:
+                exit_code = stdout.channel.recv_exit_status()
+            except socket.timeout:
+                # Command timed out - try to get partial output
+                self.logger.warning(f"Command timed out after {timeout}s: {command}")
+                try:
+                    stdout.channel.close()
+                except:
+                    pass
+                raise InfrastructureError(f"Command timed out after {timeout} seconds: {command}")
             
             # Get output
             stdout_data = stdout.read().decode('utf-8')
@@ -393,6 +407,8 @@ class SSHManager:
             
             return result
             
+        except socket.timeout:
+            raise InfrastructureError(f"Command timed out after {timeout} seconds: {command}") from None
         except paramiko.SSHException as e:
             raise InfrastructureError(f"SSH command execution failed: {e}") from e
         except Exception as e:
