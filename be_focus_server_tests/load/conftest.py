@@ -1,187 +1,60 @@
 """
-Pytest Configuration for Load Tests
-===================================
+Pytest Configuration for Quick Load Tests
+==========================================
 
-Fixtures and configuration specific to load testing.
+Minimal fixtures for fast load testing.
+No cleanup waits, no K8s integration - just pure API performance testing.
 """
 
 import pytest
 import logging
+import os
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
 
-# ===================================================================
-# Pytest Configuration
-# ===================================================================
-
 def pytest_configure(config):
-    """Configure pytest for load tests."""
-    # Register custom markers
+    """Register custom markers."""
     config.addinivalue_line(
-        "markers", "load: Load testing marker"
-    )
-    config.addinivalue_line(
-        "markers", "database: Database performance and query tests"
-    )
-    config.addinivalue_line(
-        "markers", "network: Network bandwidth and connectivity tests"
-    )
-    config.addinivalue_line(
-        "markers", "streaming: Streaming performance tests"
-    )
-    config.addinivalue_line(
-        "markers", "baseline: Baseline performance tests"
-    )
-    config.addinivalue_line(
-        "markers", "linear: Linear load progression tests"
-    )
-    config.addinivalue_line(
-        "markers", "stress: Stress testing (high load)"
-    )
-    config.addinivalue_line(
-        "markers", "soak: Soak testing (sustained load over time)"
-    )
-    config.addinivalue_line(
-        "markers", "recovery: System recovery tests"
+        "markers", 
+        "quick_load: Mark test as quick load test (runs in < 2 min)"
     )
 
-
-def pytest_collection_modifyitems(config, items):
-    """Modify test collection."""
-    for item in items:
-        # Auto-mark slow tests
-        if "stress" in item.keywords or "soak" in item.keywords:
-            item.add_marker(pytest.mark.slow)
-
-
-# ===================================================================
-# Shared Fixtures
-# ===================================================================
 
 @pytest.fixture(scope="session")
+def quick_load_mode() -> bool:
+    """Check if running in quick load mode."""
+    return os.getenv("QUICK_LOAD_MODE", "false").lower() == "true"
+
+
+@pytest.fixture(scope="session") 
 def load_test_config() -> Dict[str, Any]:
     """
-    קונפיגורציה משותפת לכל בדיקות העומס.
+    Load test configuration from environment.
+    
+    Environment Variables:
+        LOAD_TEST_CONCURRENT_REQUESTS: Number of concurrent requests (default: 50)
+        LOAD_TEST_DURATION_SECONDS: Test duration in seconds (default: 60)
+        QUICK_LOAD_MODE: Enable quick mode with reduced timeouts (default: false)
     """
     return {
-        "default_timeout": 60,
-        "max_retries": 3,
-        "recovery_wait_time": 30,
-        "between_tests_delay": 5
+        "concurrent_requests": int(os.getenv("LOAD_TEST_CONCURRENT_REQUESTS", "50")),
+        "duration_seconds": int(os.getenv("LOAD_TEST_DURATION_SECONDS", "60")),
+        "quick_mode": os.getenv("QUICK_LOAD_MODE", "false").lower() == "true",
+        "request_timeout": 10,  # 10 seconds max per request
+        "warmup_requests": 5,
     }
 
 
-@pytest.fixture(scope="function")
-def cleanup_jobs(focus_server_api):
+@pytest.fixture(scope="function", autouse=False)
+def skip_cleanup():
     """
-    Fixture שמנקה jobs אחרי כל test.
+    Fixture to skip cleanup for quick load tests.
     
-    Usage:
-        def test_something(focus_server_api, cleanup_jobs):
-            # Your test code
-            # Jobs will be cleaned up automatically after test
+    Quick load tests don't create jobs, so no cleanup is needed.
+    This is a no-op fixture that can be used to explicitly mark
+    tests that should skip the auto cleanup.
     """
-    created_job_ids = []
-    
-    # Yield to test
-    yield created_job_ids
-    
-    # Cleanup after test
-    if created_job_ids:
-        logger.info(f"Cleaning up {len(created_job_ids)} jobs...")
-        for job_id in created_job_ids:
-            try:
-                focus_server_api.cancel_job(job_id)
-            except Exception as e:
-                logger.debug(f"Failed to clean up job {job_id}: {e}")
-
-
-@pytest.fixture(scope="function")
-def system_monitor():
-    """
-    Fixture למעקב אחר משאבי מערכת.
-    
-    Usage:
-        def test_something(system_monitor):
-            system_monitor.start()
-            # Your test code
-            metrics = system_monitor.stop()
-    """
-    import psutil
-    from datetime import datetime
-    
-    class SystemMonitor:
-        def __init__(self):
-            self.monitoring = False
-            self.samples = []
-            self.start_time = None
-            self.end_time = None
-        
-        def start(self):
-            """התחל ניטור."""
-            self.monitoring = True
-            self.start_time = datetime.now()
-            self.samples = []
-            self._sample()
-        
-        def stop(self) -> Dict[str, Any]:
-            """עצור ניטור והחזר מטריקות."""
-            self.monitoring = False
-            self.end_time = datetime.now()
-            self._sample()
-            
-            if not self.samples:
-                return {}
-            
-            cpu_values = [s['cpu'] for s in self.samples]
-            mem_values = [s['memory'] for s in self.samples]
-            
-            return {
-                'duration_seconds': (self.end_time - self.start_time).total_seconds(),
-                'cpu': {
-                    'mean': sum(cpu_values) / len(cpu_values),
-                    'max': max(cpu_values),
-                    'min': min(cpu_values)
-                },
-                'memory': {
-                    'mean': sum(mem_values) / len(mem_values),
-                    'max': max(mem_values),
-                    'min': min(mem_values)
-                },
-                'samples_count': len(self.samples)
-            }
-        
-        def _sample(self):
-            """אסוף דגימה."""
-            self.samples.append({
-                'timestamp': datetime.now(),
-                'cpu': psutil.cpu_percent(interval=0.1),
-                'memory': psutil.virtual_memory().percent
-            })
-    
-    return SystemMonitor()
-
-
-# ===================================================================
-# Hooks
-# ===================================================================
-
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    """
-    Hook לתיעוד תוצאות בדיקות.
-    """
-    outcome = yield
-    report = outcome.get_result()
-    
-    # Log test results
-    if report.when == "call":
-        if report.passed:
-            logger.info(f"✅ {item.name} - PASSED")
-        elif report.failed:
-            logger.error(f"❌ {item.name} - FAILED")
-        elif report.skipped:
-            logger.warning(f"⏭️ {item.name} - SKIPPED")
-
+    yield
+    # No cleanup needed for quick load tests

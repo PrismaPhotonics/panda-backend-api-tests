@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 _job_ids_created: Set[str] = set()
 
 # Cleanup configuration
-AUTO_CLEANUP_WAIT_TIME = 180  # Wait 3 minutes for system cleanup (max time from docs)
-AUTO_CLEANUP_CHECK_INTERVAL = 10  # Check every 10 seconds
+# Reduced timeouts for faster test execution (was 180s/10s)
+AUTO_CLEANUP_WAIT_TIME = 30  # Wait 30 seconds for system cleanup (fast mode)
+AUTO_CLEANUP_CHECK_INTERVAL = 5  # Check every 5 seconds
 
 
 @pytest.fixture(scope="function", autouse=True)

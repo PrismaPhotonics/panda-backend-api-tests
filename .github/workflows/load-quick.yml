@@ -1,0 +1,127 @@
+name: Quick Load Tests (5-10 min)
+
+on:
+  workflow_dispatch:
+    inputs:
+      concurrent_requests:
+        description: "Number of concurrent requests"
+        default: "50"
+        type: string
+      duration_seconds:
+        description: "Test duration in seconds"
+        default: "60"
+        type: string
+  pull_request:
+    branches: [main]
+    paths:
+      - 'be_focus_server_tests/load/**'
+      - 'be_focus_server_tests/integration/load/**'
+      - 'src/apis/**'
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  quick-load:
+    # Use self-hosted Windows runner for production environment access
+    runs-on: [self-hosted, windows, "panda_automation"]
+    timeout-minutes: 15  # Hard limit - never exceed 15 minutes
+
+    env:
+      FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
+      FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      VERIFY_SSL: 'false'
+      ENVIRONMENT: 'staging'
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      # Quick test settings - override defaults
+      LOAD_TEST_CONCURRENT_REQUESTS: ${{ inputs.concurrent_requests || '50' }}
+      LOAD_TEST_DURATION_SECONDS: ${{ inputs.duration_seconds || '60' }}
+      QUICK_LOAD_MODE: 'true'  # Flag for tests to use quick settings
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python (Quick)
+        shell: powershell
+        run: |
+          # Quick Python setup - try py launcher first
+          $pythonCmd = $null
+          if ((py --version 2>&1) -match "Python") {
+            $pythonCmd = "py"
+          } elseif ((python --version 2>&1) -match "Python") {
+            $pythonCmd = "python"
+          } else {
+            Write-Host "::error::Python not found"
+            exit 1
+          }
+          Write-Host "Using Python: $pythonCmd"
+          echo "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install dependencies (cached)
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          & $env:PYTHON_CMD -m pip install -e . --quiet
+
+      - name: Quick server check
+        shell: powershell
+        run: |
+          $url = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/ack"
+          Write-Host "Checking server: $url"
+          $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
+          if ($result -ne "200") {
+            Write-Host "::error::Server not reachable (HTTP $result)"
+            exit 1
+          }
+          Write-Host "Server OK (HTTP 200)"
+
+      - name: Run Quick Load Tests
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
+          Write-Host "========================================"
+          Write-Host "QUICK LOAD TEST SUITE"
+          Write-Host "========================================"
+          Write-Host "Concurrent requests: $env:LOAD_TEST_CONCURRENT_REQUESTS"
+          Write-Host "Duration: $env:LOAD_TEST_DURATION_SECONDS seconds"
+          Write-Host "========================================"
+          
+          # Run ONLY the quick load tests (marked with @pytest.mark.quick_load)
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_quick_load_metrics.py `
+            -m "quick_load" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --junitxml=reports/junit-quick-load.xml `
+            --json-report `
+            --json-report-file=reports/quick-load-metrics.json
+
+      - name: Generate Metrics Report
+        if: always()
+        shell: powershell
+        run: |
+          if (Test-Path "reports/quick-load-metrics.json") {
+            & $env:PYTHON_CMD scripts/generate_load_metrics_report.py `
+              reports/quick-load-metrics.json `
+              --output reports/load-metrics-summary.md
+            
+            # Output to GitHub Summary
+            if (Test-Path "reports/load-metrics-summary.md") {
+              Get-Content reports/load-metrics-summary.md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            }
+          }
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quick-load-reports
+          path: reports/
+          retention-days: 7
+          if-no-files-found: warn
+
