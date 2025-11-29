@@ -504,16 +504,16 @@ class AlertLoadTester(SmartLoadTester):
         self._alert_counter = 0
         self._counter_lock = threading.Lock()
         
-        # Get API URL
+        # Get API URL - build from frontend_api_url which includes full path with site_id
+        # Expected format: https://host:port/prisma/api/internal/sites/{site_id}
+        # Target URL: https://host:port/prisma/api/internal/sites/{site_id}/api/push-to-rabbit
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
-        if not base_url.endswith("/"):
-            base_url += "/"
-        
-        site_id = config_manager.get("site_id", "prisma-210-1000")
-        self.alert_url = base_url + f"{site_id}/api/push-to-rabbit"
+        frontend_api_url = api_config.get(
+            "frontend_api_url", 
+            "https://10.10.10.150:30443/prisma/api/internal/sites/prisma-210-1000"
+        )
+        # Remove trailing slash if present, then append the push-to-rabbit endpoint
+        self.alert_url = frontend_api_url.rstrip("/") + "/api/push-to-rabbit"
         
         # Initialize parent with our request function
         super().__init__(
