@@ -20,7 +20,7 @@ jobs:
     # IMPORTANT: Use self-hosted Windows runner for production environment access
     # Cloud runners cannot access internal network (10.10.10.100)
     runs-on: [self-hosted, windows, "panda_automation"]
-    timeout-minutes: 30  # Optimized from 120 - tests now run in ~15-20 minutes
+    timeout-minutes: 45  # Adjusted from 30 - tests need ~30-35 minutes to complete
 
     env:
       FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
