@@ -254,53 +254,62 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "panda")
         
-        # Build kubectl command with field selector to improve performance
-        # Only get pods that are not in Succeeded or Failed state (for health checks)
-        cmd = f"get pods -o json --field-selector=status.phase!=Succeeded,status.phase!=Failed"
+        # Use lightweight custom-columns format instead of full JSON for better performance
+        # This is MUCH faster than -o json, especially with many pods
+        cmd = (
+            "get pods --field-selector=status.phase!=Succeeded,status.phase!=Failed "
+            "-o=custom-columns="
+            "NAME:.metadata.name,"
+            "NAMESPACE:.metadata.namespace,"
+            "STATUS:.status.phase,"
+            "NODE:.spec.nodeName,"
+            "RESTARTS:.status.containerStatuses[0].restartCount "
+            "--no-headers"
+        )
         if label_selector:
             cmd += f" -l {label_selector}"
         
-        # Increased timeout to 60 seconds (matching health check wrapper timeout)
-        result = self._execute_kubectl_via_ssh(cmd, timeout=60)
+        # Timeout of 30 seconds should be enough for lightweight format
+        result = self._execute_kubectl_via_ssh(cmd, timeout=30)
         
         if not result["success"]:
             raise InfrastructureError(f"Failed to get pods via SSH: {result['stderr']}")
         
-        # Parse JSON output
+        # Parse custom-columns output (lightweight format)
         try:
-            pods_data = json.loads(result["stdout"])
             pod_list = []
+            lines = result["stdout"].strip().split('\n')
             
-            for pod_item in pods_data.get("items", []):
-                metadata = pod_item.get("metadata", {})
-                status = pod_item.get("status", {})
-                spec = pod_item.get("spec", {})
+            for line in lines:
+                if not line.strip():
+                    continue
                 
-                conditions = status.get("conditions", [])
-                ready_condition = next(
-                    (c for c in conditions if c.get("type") == "Ready"),
-                    None
-                )
-                
-                container_statuses = status.get("containerStatuses", [])
-                restart_count = container_statuses[0].get("restartCount", 0) if container_statuses else 0
-                
-                pod_info = {
-                    "name": metadata.get("name"),
-                    "namespace": metadata.get("namespace"),
-                    "status": status.get("phase", "Unknown"),
-                    "ready": ready_condition.get("status", "Unknown") if ready_condition else "Unknown",
-                    "restart_count": restart_count,
-                    "node_name": spec.get("nodeName"),
-                    "labels": metadata.get("labels", {})
-                }
-                pod_list.append(pod_info)
+                # Parse space-separated columns: NAME NAMESPACE STATUS NODE RESTARTS
+                parts = line.split()
+                if len(parts) >= 4:
+                    restart_count = 0
+                    if len(parts) >= 5:
+                        try:
+                            restart_count = int(parts[4]) if parts[4] != '<none>' else 0
+                        except (ValueError, IndexError):
+                            restart_count = 0
+                    
+                    pod_info = {
+                        "name": parts[0],
+                        "namespace": parts[1] if parts[1] != '<none>' else namespace,
+                        "status": parts[2] if parts[2] != '<none>' else "Unknown",
+                        "ready": "True" if parts[2] == "Running" else "False",
+                        "restart_count": restart_count,
+                        "node_name": parts[3] if parts[3] != '<none>' else None,
+                        "labels": {}  # Labels not available in lightweight format
+                    }
+                    pod_list.append(pod_info)
             
             self.logger.debug(f"Retrieved {len(pod_list)} pods from namespace '{namespace}' via SSH")
             return pod_list
             
-        except json.JSONDecodeError as e:
-            raise InfrastructureError(f"Failed to parse kubectl output as JSON: {e}")
+        except Exception as e:
+            raise InfrastructureError(f"Failed to parse kubectl output: {e}")
     
     def get_deployments(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """

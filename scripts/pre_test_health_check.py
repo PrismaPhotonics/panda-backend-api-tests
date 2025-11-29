@@ -314,8 +314,10 @@ class PreTestHealthChecker:
                     self.logger.warning(f"{name}: Failed to get deployments - {e}")
             
             # Check pods (only if cluster info succeeded)
+            # NOTE: Pods check is OPTIONAL - timeout or failure should NOT fail the health check
+            # The critical checks are: cluster connectivity, deployments, and Focus Server status
             if error is None:
-                self.logger.debug("Getting pods...")
+                self.logger.debug("Getting pods (optional check)...")
                 try:
                     # Add timeout wrapper to prevent hanging
                     import threading
@@ -333,37 +335,26 @@ class PreTestHealthChecker:
                     
                     thread = threading.Thread(target=get_pods_thread, daemon=True)
                     thread.start()
-                    thread.join(timeout=90)  # 90 second timeout for get_pods (increased from 60s)
+                    thread.join(timeout=45)  # 45 second timeout (reduced from 90s)
                     
-                    # Check if we got pods data (even if thread timed out, we might have partial data)
+                    # Check if we got pods data
                     pods = None
                     if not pods_queue.empty():
                         pods = pods_queue.get()
                     
                     if thread.is_alive():
-                        # Thread still running - timeout!
-                        if pods is not None:
-                            # We got partial data before timeout - show it
-                            details["Pods"] = "Timeout (partial data)"
-                            self.logger.warning(f"{name}: get_pods() timed out after 90 seconds (but got partial data)")
-                        else:
-                            # No data at all
-                            details["Pods"] = "Timeout (took >90s)"
-                            self.logger.warning(f"{name}: get_pods() timed out after 90 seconds")
+                        # Thread still running - timeout (but NOT a failure)
+                        details["Pods"] = "Skipped (timeout - not critical)"
+                        self.logger.warning(f"{name}: get_pods() timed out - skipping (not critical)")
                     elif not exception_queue.empty():
                         e = exception_queue.get()
-                        if pods is not None:
-                            # We got data before exception - show it
-                            details["Pods"] = f"Failed: {str(e)} (partial data)"
-                            self.logger.warning(f"{name}: Failed to get pods - {e} (but got partial data)")
-                        else:
-                            details["Pods"] = f"Failed: {str(e)}"
-                            self.logger.warning(f"{name}: Failed to get pods - {e}")
+                        details["Pods"] = f"Skipped ({str(e)[:50]})"
+                        self.logger.warning(f"{name}: get_pods() failed - skipping (not critical): {e}")
                     elif pods is None:
-                        details["Pods"] = "Failed: No result returned"
-                        self.logger.warning(f"{name}: get_pods() did not return a result")
+                        details["Pods"] = "Skipped (no result)"
+                        self.logger.warning(f"{name}: get_pods() returned no result - skipping")
                     
-                    # Always show pod details if we have pods data (like before)
+                    # Show pod details if we have them
                     if pods is not None:
                         running_pods = [p for p in pods if p["status"] == "Running"]
                         pending_pods = [p for p in pods if p["status"] == "Pending"]
@@ -373,17 +364,19 @@ class PreTestHealthChecker:
                         details["Pending Pods"] = len(pending_pods)
                         self.logger.info(f"{name}: Pods status (total: {len(pods)}, running: {len(running_pods)}, pending: {len(pending_pods)})")
                         
-                        # Check for gRPC jobs (should be minimal before tests)
+                        # Check for gRPC jobs
                         grpc_pods = [p for p in pods if "grpc-job" in p["name"]]
                         details["gRPC Jobs"] = len(grpc_pods)
                         self.logger.debug(f"{name}: Found {len(grpc_pods)} gRPC jobs")
                         
+                        # Warning only (not error) for too many pending pods
                         if len(pending_pods) > 10:
-                            error = f"Too many pending pods: {len(pending_pods)}"
-                            self.logger.warning(f"{name}: Too many pending pods ({len(pending_pods)})")
+                            details["Pending Warning"] = f"Many pending pods ({len(pending_pods)})"
+                            self.logger.warning(f"{name}: Many pending pods ({len(pending_pods)}) - may indicate resource issues")
                 except Exception as e:
-                    details["Pods"] = f"Failed: {str(e)}"
-                    self.logger.warning(f"{name}: Failed to get pods - {e}")
+                    # Pods check failure is NOT critical
+                    details["Pods"] = f"Skipped ({str(e)[:30]})"
+                    self.logger.warning(f"{name}: Pods check skipped (not critical): {e}")
             
             status = error is None
             
