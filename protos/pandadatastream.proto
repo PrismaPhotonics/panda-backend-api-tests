@@ -1,0 +1,62 @@
+// =============================================================================
+// Panda DataStream gRPC Protocol Definition
+// =============================================================================
+// 
+// This is the ACTUAL proto file used by Focus Server's gRPC jobs.
+// Retrieved from: /home/prisma/debug-codebase/pz/microservices/pzpy/recording/backends/protocols/panda_datastream/pandadatastream.proto
+//
+// Service Flow:
+//   1. Client calls POST /configure to create a job and get stream_url, stream_port
+//   2. Client connects to gRPC server at stream_url:stream_port
+//   3. Client calls StreamData(stream_id) to start receiving data
+//   4. Server streams DataStream messages with spectrogram data
+//
+// To regenerate Python stubs (run from focus_server_automation):
+//   python scripts/generate_proto.py
+//
+// Author: Retrieved from production Kubernetes pod
+// Date: 2025-11-29
+// =============================================================================
+
+syntax = "proto3";
+
+package pandadatastream;
+
+// =============================================================================
+// Main Data Message
+// =============================================================================
+
+message DataStream {
+  int32 start_channel = 1;
+  int32 end_channel = 2;
+  repeated int64 timestamp_in_milis = 3;
+  repeated int32 row_index = 4;
+  int32 data_shape_x = 5;
+  int32 data_shape_y = 6;
+  // Optional third dimension for the data shape. If unset, treat as 1.
+  optional int32 data_shape_z = 11;
+  float global_maximum = 7;
+  float global_minimum = 8;
+  repeated bytes main_data = 9;
+  optional int32 job_id = 10;
+}
+
+// =============================================================================
+// Service Definition
+// =============================================================================
+
+// Define a service with a server-streaming RPC
+service DataStreamService {
+  // Server streaming RPC method to stream DataStream messages
+  rpc StreamData (StreamDataRequest) returns (stream DataStream) {}
+}
+
+// =============================================================================
+// Request Message
+// =============================================================================
+
+// Define a request message for streaming data
+message StreamDataRequest {
+  int32 stream_id = 1;  // For stream separation from the same server
+}
+

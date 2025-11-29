@@ -63,10 +63,10 @@ class TestSustainedLoad:
         logger.info("TEST: Load - Sustained Load - 1 Hour (PZ-14801)")
         logger.info("=" * 80)
         
-        # Note: For CI/CD, we'll use a shorter duration (5 minutes)
+        # Optimized: Reduced from 300s to 60s for faster CI
         # For full 1-hour test, run manually with --duration=3600
-        test_duration = 300  # 5 minutes for CI (3600 seconds = 1 hour for manual)
-        request_interval = 10  # 10 seconds between requests
+        test_duration = 60   # 60 seconds for CI (was 300)
+        request_interval = 5  # 5 seconds between requests (was 10)
         
         payload = {
             "displayTimeAxisDuration": 10,

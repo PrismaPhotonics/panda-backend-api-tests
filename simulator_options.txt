@@ -1,0 +1,20 @@
+﻿=== Check for simulator deployments ===
+python : Traceback (most recent call last):
+At line:1 char:1
++ python scripts/check_simulator_options.py 2>&1 | Out-File -FilePath " ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last) 
+   ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File 
+"C:\Projects\focus_server_automation\scripts\check_simulator_options.py", line 
+110, in <module>
+    main()
+    ~~~~^^
+  File 
+"C:\Projects\focus_server_automation\scripts\check_simulator_options.py", line 
+29, in main
+    print(result.stdout if result.stdout else "No deployments found")
+                           ^^^^^^^^^^^^^
+AttributeError: 'dict' object has no attribute 'stdout'
