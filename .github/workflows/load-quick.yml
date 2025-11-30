@@ -1,4 +1,4 @@
-name: Quick Load Tests (5-10 min)
+name: Quick Load
 
 on:
   workflow_dispatch:
