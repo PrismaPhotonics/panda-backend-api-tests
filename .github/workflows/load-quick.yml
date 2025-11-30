@@ -142,13 +142,8 @@ jobs:
             Write-Host "Report added to summary!"
           } else {
             # Generate minimal summary if no report
-            @"
-# 🚀 Quick Load Tests Report
-
-> ⚠️ **Report generation failed**
-
-No metrics report was generated. Check the test execution logs for details.
-"@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            $fallback = "# Quick Load Tests Report`n`nReport generation failed. Check test logs."
+            $fallback | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
 
       - name: Upload Reports
