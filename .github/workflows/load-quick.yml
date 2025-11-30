@@ -128,15 +128,27 @@ jobs:
         if: always()
         shell: powershell
         run: |
-          if (Test-Path "reports/quick-load-metrics.json") {
-            & $env:PYTHON_CMD scripts/generate_load_metrics_report.py `
-              reports/quick-load-metrics.json `
-              --output reports/load-metrics-summary.md
-            
-            # Output to GitHub Summary
-            if (Test-Path "reports/load-metrics-summary.md") {
-              Get-Content reports/load-metrics-summary.md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-            }
+          Write-Host "Generating load test report..."
+          
+          # Always generate report (script handles missing file gracefully)
+          & $env:PYTHON_CMD scripts/generate_load_metrics_report.py `
+            reports/quick-load-metrics.json `
+            --output reports/load-metrics-summary.md
+          
+          # Output to GitHub Summary
+          if (Test-Path "reports/load-metrics-summary.md") {
+            Write-Host "Adding report to GitHub Summary..."
+            Get-Content reports/load-metrics-summary.md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            Write-Host "Report added to summary!"
+          } else {
+            # Generate minimal summary if no report
+            @"
+# 🚀 Quick Load Tests Report
+
+> ⚠️ **Report generation failed**
+
+No metrics report was generated. Check the test execution logs for details.
+"@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
 
       - name: Upload Reports
