@@ -116,11 +116,16 @@ jobs:
             Write-Host "TEST RESULTS SUMMARY"
             Write-Host "========================================"
             $xml = [xml](Get-Content "reports/junit-quick-load.xml")
-            $testsuite = $xml.testsuite
-            Write-Host "Tests: $($testsuite.tests)"
-            Write-Host "Failures: $($testsuite.failures)"
-            Write-Host "Errors: $($testsuite.errors)"
-            Write-Host "Time: $($testsuite.time)s"
+            # Handle both testsuite (single) and testsuites (wrapper) formats
+            $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+            if ($testsuite) {
+              Write-Host "Tests: $($testsuite.tests)"
+              Write-Host "Failures: $($testsuite.failures)"
+              Write-Host "Errors: $($testsuite.errors)"
+              Write-Host "Time: $([math]::Round([double]$testsuite.time, 1))s"
+            } else {
+              Write-Host "Could not parse JUnit XML"
+            }
             Write-Host "========================================"
           }
           
