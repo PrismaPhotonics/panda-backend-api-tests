@@ -243,9 +243,12 @@ def load_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def base_url(config_manager) -> str:
+def focus_server_url(config_manager) -> str:
     """
-    Get base URL from configuration.
+    Get Focus Server base URL from configuration.
+    
+    NOTE: Named 'focus_server_url' to avoid conflict with pytest-base-url plugin's
+    'base_url' fixture which has session scope.
     
     Uses config_manager.get_section() which correctly accesses the merged
     environment configuration (not get_environment_config() which looks 
@@ -272,16 +275,16 @@ class TestQuickLoadMetrics:
     """
     
     @pytest.mark.xray("PZ-LOAD-000")
-    def test_server_connectivity(self, base_url: str):
+    def test_server_connectivity(self, focus_server_url: str):
         """
         Test: Verify server is reachable before running load tests.
         
         This is a prerequisite check - if server is unreachable, 
         all other load tests will fail. Run this first to fail fast.
         """
-        url = f"{base_url}/ack"
+        url = f"{focus_server_url}/ack"
         logger.info(f"\n🔗 Verifying server connectivity...")
-        logger.info(f"   Base URL: {base_url}")
+        logger.info(f"   Base URL: {focus_server_url}")
         logger.info(f"   Health check URL: {url}")
         
         try:
@@ -302,7 +305,7 @@ class TestQuickLoadMetrics:
             pytest.fail(f"Unexpected error connecting to {url}: {e}")
     
     @pytest.mark.xray("PZ-LOAD-001")
-    def test_api_latency_percentiles(self, base_url: str, load_config: Dict[str, Any]):
+    def test_api_latency_percentiles(self, focus_server_url: str, load_config: Dict[str, Any]):
         """
         Test: Measure API latency percentiles under load.
         
@@ -314,12 +317,12 @@ class TestQuickLoadMetrics:
         - P95 < 500ms (95% of requests)
         - P99 < 1000ms (worst case for normal traffic)
         """
-        url = f"{base_url}/channels"
+        url = f"{focus_server_url}/channels"
         workers = load_config["concurrent_requests"]
         timeout = load_config["request_timeout"]
         
         logger.info(f"\n📊 Testing API Latency with {workers} concurrent requests...")
-        logger.info(f"   Base URL: {base_url}")
+        logger.info(f"   Base URL: {focus_server_url}")
         logger.info(f"   Test URL: {url}")
         
         # Warmup
@@ -360,7 +363,7 @@ class TestQuickLoadMetrics:
         assert result.latency_p99 < 1000, f"P99 latency {result.latency_p99:.1f}ms exceeds 1000ms SLA"
     
     @pytest.mark.xray("PZ-LOAD-002")
-    def test_sustained_throughput(self, base_url: str, load_config: Dict[str, Any]):
+    def test_sustained_throughput(self, focus_server_url: str, load_config: Dict[str, Any]):
         """
         Test: Measure sustained throughput over time.
         
@@ -372,7 +375,7 @@ class TestQuickLoadMetrics:
         - Error rate < 5%
         - No degradation over time (last 10s vs first 10s)
         """
-        url = f"{base_url}/ack"
+        url = f"{focus_server_url}/ack"
         duration = min(load_config["duration_seconds"], 60)  # Cap at 60s for quick tests
         workers = 10  # Moderate concurrency for sustained test
         timeout = load_config["request_timeout"]
@@ -409,7 +412,7 @@ class TestQuickLoadMetrics:
             f"Throughput {result.requests_per_second:.1f} req/s below 10 req/s minimum"
     
     @pytest.mark.xray("PZ-LOAD-003")
-    def test_concurrent_request_handling(self, base_url: str, load_config: Dict[str, Any]):
+    def test_concurrent_request_handling(self, focus_server_url: str, load_config: Dict[str, Any]):
         """
         Test: Verify system handles high concurrency gracefully.
         
@@ -421,7 +424,7 @@ class TestQuickLoadMetrics:
         - Error rate < 10% under burst
         - P99 < 2000ms (acceptable under burst)
         """
-        url = f"{base_url}/channels"
+        url = f"{focus_server_url}/channels"
         workers = min(load_config["concurrent_requests"], 100)  # Cap at 100
         timeout = load_config["request_timeout"]
         
@@ -462,7 +465,7 @@ class TestQuickLoadMetrics:
             f"P99 latency {result.latency_p99:.1f}ms exceeds 2000ms under burst"
     
     @pytest.mark.xray("PZ-LOAD-004")
-    def test_error_rate_under_load(self, base_url: str, load_config: Dict[str, Any]):
+    def test_error_rate_under_load(self, focus_server_url: str, load_config: Dict[str, Any]):
         """
         Test: Measure error rate under sustained load.
         
@@ -474,7 +477,7 @@ class TestQuickLoadMetrics:
         - No timeout errors
         - No connection errors
         """
-        url = f"{base_url}/ack"
+        url = f"{focus_server_url}/ack"
         workers = 20
         total_requests = 500
         timeout = load_config["request_timeout"]
@@ -522,7 +525,7 @@ class TestEndpointLoad:
     """
     
     @pytest.mark.xray("PZ-LOAD-010")
-    def test_channels_endpoint_performance(self, base_url: str, load_config: Dict[str, Any]):
+    def test_channels_endpoint_performance(self, focus_server_url: str, load_config: Dict[str, Any]):
         """
         Test: /channels endpoint performance.
         
@@ -531,7 +534,7 @@ class TestEndpointLoad:
         
         SLA: P95 < 800ms
         """
-        url = f"{base_url}/channels"
+        url = f"{focus_server_url}/channels"
         workers = 20
         timeout = load_config["request_timeout"]
         
@@ -559,7 +562,7 @@ class TestEndpointLoad:
             f"/channels P95 latency {result.latency_p95:.1f}ms exceeds 800ms SLA"
     
     @pytest.mark.xray("PZ-LOAD-011")
-    def test_ack_endpoint_performance(self, base_url: str, load_config: Dict[str, Any]):
+    def test_ack_endpoint_performance(self, focus_server_url: str, load_config: Dict[str, Any]):
         """
         Test: /ack (health check) endpoint performance.
         
@@ -572,7 +575,7 @@ class TestEndpointLoad:
         - P99 < 500ms (worst case acceptable)
         - Error rate < 1%
         """
-        url = f"{base_url}/ack"
+        url = f"{focus_server_url}/ack"
         workers = 50
         timeout = 5
         
