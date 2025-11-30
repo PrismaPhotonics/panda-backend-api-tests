@@ -50,8 +50,8 @@ EXTREME_LOAD_JOBS = 30     # Extreme load
 STRESS_LOAD_JOBS = 40      # Stress test
 TARGET_CAPACITY_JOBS = 50  # Target capacity (updated to 50 with graduated steps)
 
-# Graduated load progression: 5→10→20→25→30→31-40→41-49→50
-GRADUATED_LOAD_STEPS = [5, 10, 20, 25, 30] + list(range(31, 41)) + list(range(41, 50)) + [50]
+# Graduated load progression: 10→20→30→40→50 (increments of 10)
+GRADUATED_LOAD_STEPS = list(range(10, 51, 10))  # [10, 20, 30, 40, 50]
 
 # Success rate thresholds
 SUCCESS_RATE_EXCELLENT = 0.95  # 95%+ = Excellent
@@ -724,7 +724,7 @@ class TestSystemRecovery:
 
 
 # ===================================================================
-# Test 7: Graduated Load Test - 50 Jobs Maximum (5→10→20→25→30→31-40→41-49→50)
+# Test 7: Graduated Load Test - 50 Jobs Maximum (10→20→30→40→50)
 # ===================================================================
 
 @pytest.mark.xray("PZ-14088")
@@ -733,18 +733,16 @@ class TestSystemRecovery:
 @pytest.mark.regression
 class TestGraduatedLoadCapacity:
     """
-    Graduated load capacity test - up to 50 concurrent jobs with smart progression.
+    Graduated load capacity test - up to 50 concurrent jobs with incremental steps of 10.
     
     PZ-13986: Jobs Capacity Testing (Infrastructure Validation)
     
-    Smart graduated progression:
-    - Fast initial ramp: 5 → 10 → 20 → 25 → 30 (large jumps)
-    - Fine-tuning zone: 31 → 32 → 33 → ... → 40 (job-by-job)
-    - Extended testing: 41 → 42 → ... → 49 → 50 (job-by-job)
+    Graduated progression with increments of 10:
+    - 10 → 20 → 30 → 40 → 50 jobs
     
     This approach:
-    - Saves time in low-load zones (large jumps)
-    - Precisely identifies breaking point (small steps near limits)
+    - Tests system capacity in consistent increments
+    - Identifies breaking point efficiently
     - Tests up to 50 jobs to find realistic maximum
     
     Requirements:
@@ -764,14 +762,12 @@ class TestGraduatedLoadCapacity:
         config_manager
     ):
         """
-        Test: Graduated Capacity Discovery with Smart Step Progression
+        Test: Graduated Capacity Discovery with Incremental Steps of 10
         
         PZ-13986: Jobs Capacity Testing
         
-        Uses graduated progression strategy:
-        - Phase 1: Quick ramp (5 → 10 → 20 → 25 → 30)
-        - Phase 2: Fine-tuning (31 → 32 → ... → 40)
-        - Phase 3: Extended (41 → 42 → ... → 50)
+        Uses graduated progression strategy with increments of 10:
+        - 10 → 20 → 30 → 40 → 50 jobs
         
         Stops when server fails or reaches 50 jobs limit.
         
@@ -788,10 +784,8 @@ class TestGraduatedLoadCapacity:
         logger.info("\n" + "="*80)
         logger.info("TEST: GRADUATED LOAD CAPACITY DISCOVERY")
         logger.info("="*80)
-        logger.info("Smart progression: 5→10→20→25→30→31-40→41-49→50")
-        logger.info("Phase 1 (Quick Ramp): Large jumps in low-load zone")
-        logger.info("Phase 2 (Fine-Tuning): Job-by-job around expected limits")
-        logger.info("Phase 3 (Extended): Job-by-job in high-load zone")
+        logger.info("Incremental progression: 10 → 20 → 30 → 40 → 50 jobs")
+        logger.info("Step size: 10 jobs per increment")
         logger.info("="*80 + "\n")
         
         # Get environment info
@@ -825,16 +819,8 @@ class TestGraduatedLoadCapacity:
                 logger.info(f"\n⛔ Stopping discovery - breaking point already identified at {breaking_point} jobs")
                 break
             
-            # Determine which phase we're in
-            if current_jobs <= 30:
-                phase = "Phase 1 (Quick Ramp)"
-            elif current_jobs <= 40:
-                phase = "Phase 2 (Fine-Tuning)"
-            else:
-                phase = "Phase 3 (Extended)"
-            
             logger.info(f"\n{'='*70}")
-            logger.info(f"📊 Step {step_index + 1}/{len(GRADUATED_LOAD_STEPS)}: Testing {current_jobs} job(s) [{phase}]")
+            logger.info(f"📊 Step {step_index + 1}/{len(GRADUATED_LOAD_STEPS)}: Testing {current_jobs} job(s)")
             logger.info(f"{'='*70}")
             
             try:

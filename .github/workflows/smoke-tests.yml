@@ -33,7 +33,7 @@ jobs:
       FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
       VERIFY_SSL: ${{ secrets.VERIFY_SSL || 'false' }}
       REQUIRE_SERVER: ${{ inputs.require_server || secrets.REQUIRE_SERVER || 'true' }}
-      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'new_production' }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
 
@@ -133,6 +133,92 @@ jobs:
           # This avoids loading conftest.py which requires external module
           py -c "import pytest; print(f'pytest {pytest.__version__}')"
 
+      - name: Verify infrastructure access
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "Verifying Infrastructure Access"
+          Write-Host "========================================"
+          Write-Host ""
+          
+          # Check environment variables
+          Write-Host "Environment Variables:"
+          Write-Host "  USERPROFILE: $env:USERPROFILE"
+          Write-Host "  USERNAME: $env:USERNAME"
+          Write-Host "  COMPUTERNAME: $env:COMPUTERNAME"
+          Write-Host ""
+          
+          # Check SSH key in multiple possible locations
+          Write-Host "Checking SSH key..."
+          $sshKeyFound = $false
+          $sshKeyPaths = @()
+          
+          # Try USERPROFILE first
+          if ($env:USERPROFILE) {
+            $sshKeyPaths += "$env:USERPROFILE\.ssh\panda_staging_key"
+          }
+          
+          # Try USERNAME-based path
+          if ($env:USERNAME) {
+            $sshKeyPaths += "C:\Users\$env:USERNAME\.ssh\panda_staging_key"
+          }
+          
+          # Try common service account paths
+          $sshKeyPaths += "C:\Windows\system32\config\systemprofile\.ssh\panda_staging_key"
+          $sshKeyPaths += "C:\actions-runner\.ssh\panda_staging_key"
+          
+          foreach ($path in $sshKeyPaths) {
+            Write-Host "  Checking: $path"
+            if (Test-Path $path) {
+              $keyInfo = Get-Item $path
+              Write-Host "  [OK] SSH key found at: $path (Size: $($keyInfo.Length) bytes)"
+              $sshKeyFound = $true
+              break
+            }
+          }
+          
+          if (-not $sshKeyFound) {
+            Write-Host "  [ERROR] SSH key NOT found in any of the checked locations!"
+            Write-Host ""
+            Write-Host "  Required: panda_staging_key must be placed in one of:"
+            if ($env:USERNAME) {
+              Write-Host "    - C:\Users\$env:USERNAME\.ssh\panda_staging_key"
+            }
+            Write-Host "    - C:\actions-runner\.ssh\panda_staging_key"
+            Write-Host ""
+            Write-Host "  Health check will FAIL without SSH key!"
+            Write-Host "  SSH is required for: Kubernetes, RabbitMQ checks"
+          }
+          Write-Host ""
+          
+          # Check kubeconfig
+          $kubeConfigPath = "$env:USERPROFILE\.kube\config-panda"
+          $kubeConfigDefault = "$env:USERPROFILE\.kube\config"
+          Write-Host "Checking Kubernetes config..."
+          Write-Host "  Path: $kubeConfigPath"
+          if (Test-Path $kubeConfigPath) {
+            Write-Host "  [OK] Kubeconfig found"
+          } elseif (Test-Path $kubeConfigDefault) {
+            Write-Host "  [OK] Default kubeconfig found"
+          } else {
+            Write-Host "  [WARN] Kubeconfig NOT found"
+            Write-Host "  Health check will use SSH fallback if SSH works"
+          }
+          Write-Host ""
+          
+          # Check kubectl
+          $kubectl = Get-Command kubectl -ErrorAction SilentlyContinue
+          if ($kubectl) {
+            Write-Host "  [OK] kubectl found: $($kubectl.Source)"
+          } else {
+            Write-Host "  [WARN] kubectl not found in PATH"
+            Write-Host "  Health check will use SSH fallback if SSH works"
+          }
+          Write-Host ""
+          
+          Write-Host "========================================"
+          Write-Host ""
+
       - name: Preflight – check Focus availability
         id: preflight
         shell: powershell
@@ -196,7 +282,7 @@ jobs:
 
       - name: Run smoke tests
         shell: powershell
-        continue-on-error: true
+        continue-on-error: true  # Allow workflow to continue for report generation
         run: |
           $FOCUS_URL = "$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$env:VERIFY_SSL"
@@ -229,10 +315,13 @@ jobs:
             exit 0
           }
           
-          # Run smoke tests (excluding UI tests that require playwright)
+          # Run smoke tests (excluding UI and stress tests)
+          # Note: Health checks will run and verify all infrastructure components
           py -m pytest be_focus_server_tests/ `
             -m "smoke" `
+            --env staging `
             --ignore=be_focus_server_tests/ui `
+            --ignore=be_focus_server_tests/stress `
             -v `
             --maxfail=10 `
             --junitxml=test-results/junit-smoke.xml `
@@ -265,6 +354,7 @@ jobs:
           max-annotations: 50
           fail-on-error: false
           only-summary: false
+          fail-on-empty: false
           working-directory: ${{ github.workspace }}
 
       - name: Get Check Run ID

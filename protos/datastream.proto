@@ -1,0 +1,116 @@
+// =============================================================================
+// Focus Server gRPC Protocol Definition
+// =============================================================================
+// 
+// This proto file defines the gRPC service for streaming spectrogram data
+// from Focus Server's gRPC jobs to clients (PandaApp, automation tests, etc.)
+//
+// Service Flow:
+//   1. Client calls POST /configure to create a job and get stream_url, stream_port
+//   2. Client connects to gRPC server at stream_url:stream_port
+//   3. Client calls StreamSpectrograms(job_id) to start receiving data
+//   4. Server streams DataStream messages with spectrogram rows
+//
+// Author: QA Automation Architect
+// Date: 2025-11-29
+// =============================================================================
+
+syntax = "proto3";
+
+package datastream;
+
+// =============================================================================
+// Service Definition
+// =============================================================================
+
+// Main service for streaming spectrogram data
+service DataStreamService {
+    // Stream spectrogram data for a given job
+    // Returns a continuous stream of DataStream messages until:
+    //   - Client disconnects
+    //   - Job completes (historic mode)
+    //   - Timeout (180 seconds of inactivity)
+    rpc StreamSpectrograms(StreamRequest) returns (stream DataStream) {}
+    
+    // Health check endpoint (optional)
+    rpc CheckHealth(HealthRequest) returns (HealthResponse) {}
+}
+
+// =============================================================================
+// Request Messages
+// =============================================================================
+
+// Request to start streaming spectrogram data
+message StreamRequest {
+    // Job ID returned from POST /configure endpoint
+    // Format: "{window_index}-{unique_id}" e.g., "12-70788"
+    string job_id = 1;
+    
+    // Optional: Maximum number of frames to receive (0 = unlimited)
+    int32 max_frames = 2;
+    
+    // Optional: Stream ID for stream separation (default: 0)
+    int32 stream_id = 3;
+}
+
+// Health check request (empty)
+message HealthRequest {}
+
+// =============================================================================
+// Response Messages
+// =============================================================================
+
+// Health check response
+message HealthResponse {
+    // True if server is healthy
+    bool healthy = 1;
+    
+    // Server version string
+    string version = 2;
+    
+    // Optional: Additional status info
+    string status = 3;
+}
+
+// Main streaming data message - one frame of spectrogram data
+message DataStream {
+    // List of spectrogram rows in this frame
+    repeated SpectrogramRow rows = 1;
+    
+    // Current maximum amplitude value across all data
+    double current_max_amp = 2;
+    
+    // Current minimum amplitude value across all data
+    double current_min_amp = 3;
+    
+    // Optional: Frame sequence number
+    int64 frame_number = 4;
+    
+    // Optional: Server timestamp when frame was generated
+    int64 server_timestamp = 5;
+}
+
+// Single row of spectrogram data
+message SpectrogramRow {
+    // Canvas identifier (for multi-canvas displays)
+    string canvasId = 1;
+    
+    // List of sensor intensity data
+    repeated SensorIntensity sensors = 2;
+    
+    // Start timestamp of this row (epoch milliseconds)
+    int64 startTimestamp = 3;
+    
+    // End timestamp of this row (epoch milliseconds)
+    int64 endTimestamp = 4;
+}
+
+// Sensor intensity data
+message SensorIntensity {
+    // Sensor ID (channel number)
+    int32 id = 1;
+    
+    // Intensity values array (frequency bins)
+    repeated float intensity = 2;
+}
+

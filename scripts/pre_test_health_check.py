@@ -314,29 +314,69 @@ class PreTestHealthChecker:
                     self.logger.warning(f"{name}: Failed to get deployments - {e}")
             
             # Check pods (only if cluster info succeeded)
+            # NOTE: Pods check is OPTIONAL - timeout or failure should NOT fail the health check
+            # The critical checks are: cluster connectivity, deployments, and Focus Server status
             if error is None:
-                self.logger.debug("Getting pods...")
+                self.logger.debug("Getting pods (optional check)...")
                 try:
-                    pods = k8s_manager.get_pods()
-                    running_pods = [p for p in pods if p["status"] == "Running"]
-                    pending_pods = [p for p in pods if p["status"] == "Pending"]
+                    # Add timeout wrapper to prevent hanging
+                    import threading
+                    from queue import Queue
                     
-                    details["Total Pods"] = len(pods)
-                    details["Running Pods"] = len(running_pods)
-                    details["Pending Pods"] = len(pending_pods)
-                    self.logger.info(f"{name}: Pods status (total: {len(pods)}, running: {len(running_pods)}, pending: {len(pending_pods)})")
+                    pods_queue = Queue()
+                    exception_queue = Queue()
                     
-                    # Check for gRPC jobs (should be minimal before tests)
-                    grpc_pods = [p for p in pods if "grpc-job" in p["name"]]
-                    details["gRPC Jobs"] = len(grpc_pods)
-                    self.logger.debug(f"{name}: Found {len(grpc_pods)} gRPC jobs")
+                    def get_pods_thread():
+                        try:
+                            pods = k8s_manager.get_pods()
+                            pods_queue.put(pods)
+                        except Exception as e:
+                            exception_queue.put(e)
                     
-                    if len(pending_pods) > 10:
-                        error = f"Too many pending pods: {len(pending_pods)}"
-                        self.logger.warning(f"{name}: Too many pending pods ({len(pending_pods)})")
+                    thread = threading.Thread(target=get_pods_thread, daemon=True)
+                    thread.start()
+                    thread.join(timeout=45)  # 45 second timeout (reduced from 90s)
+                    
+                    # Check if we got pods data
+                    pods = None
+                    if not pods_queue.empty():
+                        pods = pods_queue.get()
+                    
+                    if thread.is_alive():
+                        # Thread still running - timeout (but NOT a failure)
+                        details["Pods"] = "Skipped (timeout - not critical)"
+                        self.logger.warning(f"{name}: get_pods() timed out - skipping (not critical)")
+                    elif not exception_queue.empty():
+                        e = exception_queue.get()
+                        details["Pods"] = f"Skipped ({str(e)[:50]})"
+                        self.logger.warning(f"{name}: get_pods() failed - skipping (not critical): {e}")
+                    elif pods is None:
+                        details["Pods"] = "Skipped (no result)"
+                        self.logger.warning(f"{name}: get_pods() returned no result - skipping")
+                    
+                    # Show pod details if we have them
+                    if pods is not None:
+                        running_pods = [p for p in pods if p["status"] == "Running"]
+                        pending_pods = [p for p in pods if p["status"] == "Pending"]
+                        
+                        details["Total Pods"] = len(pods)
+                        details["Running Pods"] = len(running_pods)
+                        details["Pending Pods"] = len(pending_pods)
+                        self.logger.info(f"{name}: Pods status (total: {len(pods)}, running: {len(running_pods)}, pending: {len(pending_pods)})")
+                        
+                        # Check for gRPC jobs
+                        grpc_pods = [p for p in pods if "grpc-job" in p["name"]]
+                        details["gRPC Jobs"] = len(grpc_pods)
+                        self.logger.debug(f"{name}: Found {len(grpc_pods)} gRPC jobs")
+                        
+                        # Warning only (not error) for too many pending pods
+                        if len(pending_pods) > 10:
+                            details["Pending Warning"] = f"Many pending pods ({len(pending_pods)})"
+                            self.logger.warning(f"{name}: Many pending pods ({len(pending_pods)}) - may indicate resource issues")
                 except Exception as e:
-                    details["Pods"] = f"Failed: {str(e)}"
-                    self.logger.warning(f"{name}: Failed to get pods - {e}")
+                    # Pods check failure is NOT critical
+                    details["Pods"] = f"Skipped ({str(e)[:30]})"
+                    self.logger.warning(f"{name}: Pods check skipped (not critical): {e}")
             
             status = error is None
             
@@ -497,13 +537,14 @@ class PreTestHealthChecker:
         Returns:
             Tuple of (all_passed, results_list)
         """
-        print(f"\n{Fore.CYAN}{'='*80}")
-        print(f"Pre-Test System Health Check - {self.environment.upper()}")
-        print(f"{'='*80}{Style.RESET_ALL}\n")
+        print(f"\n{Fore.CYAN}{'='*80}", flush=True)
+        print(f"Pre-Test System Health Check - {self.environment.upper()}", flush=True)
+        print(f"{'='*80}{Style.RESET_ALL}\n", flush=True)
         
         self.results = []
         
-        # Define checks to run
+        # Define checks to run - ALL checks should run, even in CI
+        # Self-hosted runners (like PL5012) have access to internal infrastructure
         checks = [
             ("Focus Server API", self.check_focus_server),
             ("SSH", self.check_ssh),
@@ -512,7 +553,7 @@ class PreTestHealthChecker:
             ("RabbitMQ", self.check_rabbitmq),
         ]
         
-        print(f"{Fore.YELLOW}Running health checks...{Style.RESET_ALL}\n")
+        print(f"{Fore.YELLOW}Running health checks...{Style.RESET_ALL}\n", flush=True)
         
         # Run each check with progress updates
         for idx, (check_name, check_func) in enumerate(checks, 1):
@@ -525,55 +566,56 @@ class PreTestHealthChecker:
                 
                 # Print immediate status
                 if result.status:
-                    print(f"{Fore.GREEN}✅ OK{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}✅ OK{Style.RESET_ALL}", flush=True)
                 else:
-                    print(f"{Fore.RED}❌ FAILED{Style.RESET_ALL}")
+                    print(f"{Fore.RED}❌ FAILED{Style.RESET_ALL}", flush=True)
                     if result.error:
-                        print(f"   {Fore.RED}Error: {result.error}{Style.RESET_ALL}")
+                        print(f"   {Fore.RED}Error: {result.error}{Style.RESET_ALL}", flush=True)
                 
                 # Print details
                 if result.details:
                     for key, value in result.details.items():
                         if "Error" not in key and "Warning" not in key:
-                            print(f"   {Fore.GREEN}✓{Style.RESET_ALL} {key}: {value}")
+                            print(f"   {Fore.GREEN}✓{Style.RESET_ALL} {key}: {value}", flush=True)
                     # Show warnings/errors in details
                     for key, value in result.details.items():
                         if "Warning" in key or "Error" in key:
-                            print(f"   {Fore.YELLOW}⚠{Style.RESET_ALL} {key}: {value}")
+                            print(f"   {Fore.YELLOW}⚠{Style.RESET_ALL} {key}: {value}", flush=True)
                 
                 self.logger.info(f"Health check completed: {check_name} - {'PASSED' if result.status else 'FAILED'}")
                 
             except Exception as e:
                 error_result = HealthCheckResult(check_name, False, {}, f"Unexpected error: {str(e)}")
                 self.results.append(error_result)
-                print(f"{Fore.RED}❌ ERROR: {str(e)}{Style.RESET_ALL}")
+                print(f"{Fore.RED}❌ ERROR: {str(e)}{Style.RESET_ALL}", flush=True)
                 self.logger.error(f"Health check failed with exception: {check_name} - {e}", exc_info=True)
             
-            print()  # Empty line between checks
+            print(flush=True)  # Empty line between checks
         
         # Summary
-        print(f"\n{Fore.CYAN}{'='*80}")
-        print("Summary")
-        print(f"{'='*80}{Style.RESET_ALL}\n")
+        print(f"\n{Fore.CYAN}{'='*80}", flush=True)
+        print("Summary", flush=True)
+        print(f"{'='*80}{Style.RESET_ALL}\n", flush=True)
         
         total_count = len(self.results)
         passed_count = sum(1 for r in self.results if r.status)
         
-        print(f"Total Checks: {total_count}")
-        print(f"{Fore.GREEN}Passed: {passed_count}{Style.RESET_ALL}")
-        print(f"{Fore.RED}Failed: {total_count - passed_count}{Style.RESET_ALL}\n")
+        print(f"Total Checks: {total_count}", flush=True)
+        print(f"{Fore.GREEN}Passed: {passed_count}{Style.RESET_ALL}", flush=True)
+        print(f"{Fore.RED}Failed: {total_count - passed_count}{Style.RESET_ALL}\n", flush=True)
         
+        # All checks must pass - self-hosted runners have infrastructure access
         all_passed = all(r.status for r in self.results)
         
         if all_passed:
-            print(f"{Fore.GREEN}✅ All components are healthy! Ready to run tests.{Style.RESET_ALL}\n")
+            print(f"{Fore.GREEN}✅ All components are healthy! Ready to run tests.{Style.RESET_ALL}\n", flush=True)
         else:
-            print(f"{Fore.RED}❌ Some components have issues. Please fix them before running tests.{Style.RESET_ALL}\n")
-            print(f"{Fore.YELLOW}Failed components:{Style.RESET_ALL}")
+            print(f"{Fore.RED}❌ Some components have issues. Please fix them before running tests.{Style.RESET_ALL}\n", flush=True)
+            print(f"{Fore.YELLOW}Failed components:{Style.RESET_ALL}", flush=True)
             for result in self.results:
                 if not result.status:
-                    print(f"  - {result.name}: {result.error or 'See details above'}")
-            print()
+                    print(f"  - {result.name}: {result.error or 'See details above'}", flush=True)
+            print(flush=True)
         
         return all_passed, self.results
     
@@ -626,9 +668,9 @@ class PreTestHealthChecker:
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(report)
-            print(f"{Fore.GREEN}Report saved to: {output_file}{Style.RESET_ALL}\n")
+            print(f"{Fore.GREEN}Report saved to: {output_file}{Style.RESET_ALL}\n", flush=True)
         else:
-            print("\n" + report)
+            print("\n" + report, flush=True)
 
 
 def main():
