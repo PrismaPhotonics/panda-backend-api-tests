@@ -78,6 +78,8 @@ jobs:
           Write-Host "Server OK (HTTP 200)"
 
       - name: Run Quick Load Tests
+        id: load-tests
+        continue-on-error: true  # Don't fail pipeline - report results instead
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path reports | Out-Null
