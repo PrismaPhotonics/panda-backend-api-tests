@@ -131,12 +131,18 @@ class TestAlertGenerationLoad:
         logger.info("=" * 80)
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session
         session = authenticate_session(base_url)
@@ -207,12 +213,18 @@ class TestAlertGenerationLoad:
         total_alerts = duration_seconds * alerts_per_second
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session to avoid rate limiting
         session = authenticate_session(base_url)
@@ -311,12 +323,18 @@ class TestAlertGenerationLoad:
         logger.info("=" * 80)
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session
         session = authenticate_session(base_url)
@@ -380,12 +398,18 @@ class TestAlertGenerationLoad:
         severities = [1, 2, 3]
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session to avoid rate limiting
         session = authenticate_session(base_url)
@@ -582,12 +606,18 @@ class TestAlertGenerationLoad:
         logger.info("=" * 80)
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session
         session = authenticate_session(base_url)
@@ -678,12 +708,18 @@ class TestSmartLoadScenarios:
         logger.info("=" * 80)
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session
         session = authenticate_session(base_url)
@@ -737,12 +773,18 @@ class TestSmartLoadScenarios:
         logger.info("=" * 80)
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session
         session = authenticate_session(base_url)
@@ -795,12 +837,18 @@ class TestSmartLoadScenarios:
         logger.info("=" * 80)
         
         # Get base URL for authentication
+        # Use frontend_url or base_url for auth (not frontend_api_url which is NodePort)
         api_config = config_manager.get("focus_server", {})
-        base_url = api_config.get("frontend_api_url", "https://10.10.10.100/prisma/api/")
-        if "/internal/sites/" in base_url:
-            base_url = base_url.split("/internal/sites/")[0]
+        # Try frontend_url first, fallback to base_url, then default
+        base_url = api_config.get("frontend_url") or api_config.get("base_url") or "https://10.10.10.100/prisma/api/"
+        # Convert frontend URL to API base URL if needed
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "/prisma/api/")
         if not base_url.endswith("/"):
             base_url += "/"
+        # Ensure we have /prisma/api/ in the path
+        if "/prisma/api" not in base_url:
+            base_url = base_url.rstrip("/") + "/prisma/api/"
         
         # Create shared session
         session = authenticate_session(base_url)
