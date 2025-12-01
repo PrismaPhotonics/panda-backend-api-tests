@@ -389,11 +389,11 @@ def standard_investigation_config():
 
 @pytest.mark.stress
 @pytest.mark.load
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestInvestigationStressLoop:
     """Stress test loop for investigations."""
     
-    @pytest.mark.regression
     def test_investigation_stress_loop(
         self,
         focus_server_api: FocusServerAPI,
@@ -521,11 +521,11 @@ class TestInvestigationStressLoop:
 
 @pytest.mark.stress
 @pytest.mark.load
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestInvestigationStressLoopLimited:
     """Limited stress test loop (for CI/CD)."""
     
-    @pytest.mark.regression
     def test_investigation_stress_loop_limited(
         self,
         focus_server_api: FocusServerAPI,

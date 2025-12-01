@@ -97,7 +97,6 @@ def grpc_client(config_manager) -> GrpcStreamClient:
 
 @pytest.mark.slow
 @pytest.mark.load
-@pytest.mark.regression
 class TestLiveInvestigationGrpcData:
     """
     Test suite for validating real data flows through gRPC pipeline.
@@ -114,7 +113,6 @@ class TestLiveInvestigationGrpcData:
     """
     
     @pytest.mark.xray("PZ-15200")
-    @pytest.mark.regression
     def test_live_investigation_has_realtime_data(
         self,
         focus_server_api: FocusServerAPI,
@@ -295,7 +293,6 @@ class TestLiveInvestigationGrpcData:
                     logger.warning(f"Failed to cancel job {job_id}: {e}")
     
     @pytest.mark.xray("PZ-15201")
-    @pytest.mark.regression
     def test_investigation_pipeline_data_validity(
         self,
         focus_server_api: FocusServerAPI,
@@ -416,7 +413,6 @@ class TestLiveInvestigationGrpcData:
 
 @pytest.mark.slow
 @pytest.mark.load
-@pytest.mark.regression
 class TestGrpcStreamPerformance:
     """
     Test suite for gRPC stream performance validation.
@@ -427,7 +423,6 @@ class TestGrpcStreamPerformance:
     """
     
     @pytest.mark.xray("PZ-15202")
-    @pytest.mark.regression
     def test_grpc_stream_minimum_frames(
         self,
         focus_server_api: FocusServerAPI,
@@ -504,7 +499,6 @@ class TestGrpcStreamPerformance:
 # =============================================================================
 
 @pytest.mark.summary
-@pytest.mark.regression
 def test_grpc_data_validation_summary():
     """
     Summary test for gRPC data validation tests.

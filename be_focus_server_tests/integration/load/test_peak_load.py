@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestPeakLoad:
     """
     Test suite for peak load testing.
@@ -38,8 +37,6 @@ class TestPeakLoad:
     
     @pytest.mark.xray("PZ-14802")
     @pytest.mark.xray("PZ-14800")
-
-    @pytest.mark.regression
     def test_peak_load_high_rps(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14802: Load - Peak Load - High RPS.

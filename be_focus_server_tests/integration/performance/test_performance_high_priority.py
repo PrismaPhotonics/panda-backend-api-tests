@@ -201,7 +201,6 @@ class TestAPILatencyP95:
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.performance
-@pytest.mark.regression
 class TestConcurrentTaskLimit:
     """
     Test suite for PZ-13771: Performance - Concurrent Task Limit
@@ -212,9 +211,6 @@ class TestConcurrentTaskLimit:
     """
     
     @pytest.mark.xray("PZ-13771")
-
-    
-    @pytest.mark.regression
     def test_concurrent_task_creation(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13771.1: Create multiple concurrent tasks.
@@ -317,9 +313,6 @@ class TestConcurrentTaskLimit:
         logger.info(f"✅ Concurrent task creation: {success_rate:.1%} success rate")
     
     @pytest.mark.xray("PZ-13771")
-
-    
-    @pytest.mark.regression
     def test_concurrent_task_polling(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13771.2: Poll multiple tasks concurrently.
@@ -364,9 +357,6 @@ class TestConcurrentTaskLimit:
         logger.info(f"✅ Concurrent task creation completed")
     
     @pytest.mark.xray("PZ-13771")
-
-    
-    @pytest.mark.regression
     def test_concurrent_task_max_limit(self, focus_server_api, performance_config_payload):
         """
         Test PZ-13771.3: Find maximum concurrent task limit.
@@ -524,9 +514,6 @@ class TestConcurrentTaskLimit:
 # ===================================================================
 
 @pytest.mark.summary
-
-
-@pytest.mark.regression
 def test_performance_high_priority_summary():
     """
     Summary test for performance (high priority tests).

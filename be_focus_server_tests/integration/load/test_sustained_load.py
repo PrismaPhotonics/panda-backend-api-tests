@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestSustainedLoad:
     """
     Test suite for sustained load testing.
@@ -38,8 +37,6 @@ class TestSustainedLoad:
     
     @pytest.mark.xray("PZ-14801")
     @pytest.mark.xray("PZ-14800")
-
-    @pytest.mark.regression
     def test_api_sustained_load_1_hour(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14801: Load - Sustained Load - 1 Hour.

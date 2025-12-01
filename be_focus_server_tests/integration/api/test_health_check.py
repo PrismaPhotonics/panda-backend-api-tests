@@ -594,16 +594,10 @@ class TestHealthCheckSSL:
 
 @pytest.mark.slow
 @pytest.mark.nightly
-@pytest.mark.regression
 class TestHealthCheckLoadTesting:
     """Test suite for health check load testing."""
     
     @pytest.mark.xray("PZ-14033")
-
-    
-    @pytest.mark.regression
-
-    
     @pytest.mark.smoke
     def test_ack_load_testing(self):
         """
@@ -701,11 +695,6 @@ class TestHealthCheckLoadTesting:
 # ===================================================================
 
 @pytest.mark.summary
-
-
-@pytest.mark.regression
-
-
 @pytest.mark.smoke
 def test_health_check_summary():
     """

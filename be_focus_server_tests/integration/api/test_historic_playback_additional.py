@@ -182,8 +182,6 @@ class TestHistoricPlaybackEdgeCases:
     @pytest.mark.xray("PZ-13868")
     @pytest.mark.slow
     @pytest.mark.nightly
-
-    @pytest.mark.regression
     def test_historic_playback_status_208_completion(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13868: Historic playback reaches status 208 (completion).
@@ -290,8 +288,6 @@ class TestHistoricPlaybackDataQuality:
     @pytest.mark.xray("PZ-13867")
     @pytest.mark.slow
     @pytest.mark.nightly
-
-    @pytest.mark.regression
     def test_historic_playback_data_integrity(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13867: Data integrity validation for historic playback.
@@ -351,8 +347,6 @@ class TestHistoricPlaybackDataQuality:
     @pytest.mark.xray("PZ-13871")
     @pytest.mark.slow
     @pytest.mark.nightly
-
-    @pytest.mark.regression
     def test_historic_playback_timestamp_ordering(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13871: Timestamp ordering validation in historic playback.

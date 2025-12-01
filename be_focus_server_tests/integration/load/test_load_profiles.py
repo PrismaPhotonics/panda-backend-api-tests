@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestLoadProfiles:
     """
     Test suite for load profile testing.
@@ -41,9 +40,6 @@ class TestLoadProfiles:
     """
     
     @pytest.mark.xray("PZ-14803")
-
-    
-    @pytest.mark.regression
     def test_ramp_up_load_profile(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14803: Load - Ramp-Up Load Profile.
@@ -168,9 +164,6 @@ class TestLoadProfiles:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14804")
-
-    
-    @pytest.mark.regression
     def test_spike_load_profile(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14804: Load - Spike Load Profile.
@@ -308,8 +301,6 @@ class TestLoadProfiles:
     
     @pytest.mark.xray("PZ-14805")
     @pytest.mark.xray("PZ-14800")
-
-    @pytest.mark.regression
     def test_steady_state_load_profile(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14805: Load - Steady-State Load Profile.

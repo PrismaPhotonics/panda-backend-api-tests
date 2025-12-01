@@ -86,7 +86,6 @@ def _get_rabbitmq_connection_manager(config_manager):
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestAlertGenerationLoad:
     """
     Test suite for load scenarios in alert generation.
@@ -100,7 +99,6 @@ class TestAlertGenerationLoad:
     """
     
     @pytest.mark.xray("PZ-14953")
-    @pytest.mark.regression
     def test_high_volume_load(self, config_manager):
         """
         Test PZ-14953: Alert Generation - High Volume Load (SMART).
@@ -186,7 +184,6 @@ class TestAlertGenerationLoad:
         logger.info("✅ TEST PASSED: High volume SMART load detection completed")
     
     @pytest.mark.xray("PZ-14954")
-    @pytest.mark.regression
     def test_sustained_load(self, config_manager):
         """
         Test PZ-14954: Alert Generation - Sustained Load.
@@ -293,7 +290,6 @@ class TestAlertGenerationLoad:
         logger.info("✅ TEST PASSED: Sustained load handled successfully")
     
     @pytest.mark.xray("PZ-14955")
-    @pytest.mark.regression
     def test_burst_load(self, config_manager):
         """
         Test PZ-14955: Alert Generation - Burst Load (SMART).
@@ -372,7 +368,6 @@ class TestAlertGenerationLoad:
         logger.info("✅ TEST PASSED: Burst load SMART detection completed")
     
     @pytest.mark.xray("PZ-14956")
-    @pytest.mark.regression
     def test_mixed_alert_types_load(self, config_manager):
         """
         Test PZ-14956: Alert Generation - Mixed Alert Types Load.
@@ -463,7 +458,6 @@ class TestAlertGenerationLoad:
     
     @pytest.mark.xray("PZ-14957")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
-    @pytest.mark.regression
     def test_rabbitmq_queue_capacity(self, config_manager):
         """
         Test PZ-14957: Alert Generation - RabbitMQ Queue Capacity.
@@ -556,8 +550,6 @@ class TestAlertGenerationLoad:
     
     @pytest.mark.xray("PZ-15035")
     @pytest.mark.skip(reason="Alerts are NOT stored in MongoDB - this test is invalid")
-
-    @pytest.mark.regression
     def test_mongodb_write_load(self, config_manager):
         """
         Test PZ-15035: Alert Generation - MongoDB Write Load.
@@ -572,7 +564,6 @@ class TestAlertGenerationLoad:
         pytest.skip("Alerts are NOT stored in MongoDB - this test is invalid")
     
     @pytest.mark.xray("PZ-15100")
-    @pytest.mark.regression
     def test_smart_breakpoint_detection(self, config_manager):
         """
         Test PZ-15100: Smart Breakpoint Detection.
@@ -666,7 +657,6 @@ class TestAlertGenerationLoad:
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestSmartLoadScenarios:
     """
     Smart Load Test scenarios with gradual increase and breakpoint detection.
@@ -684,7 +674,6 @@ class TestSmartLoadScenarios:
     """
     
     @pytest.mark.xray("PZ-15101")
-    @pytest.mark.regression
     def test_gradual_load_increase(self, config_manager):
         """
         Test PZ-15101: Gradual Load Increase with Breakpoint Detection.
@@ -749,7 +738,6 @@ class TestSmartLoadScenarios:
         logger.info("✅ TEST PASSED: Gradual load increase completed")
     
     @pytest.mark.xray("PZ-15102")
-    @pytest.mark.regression
     def test_rapid_burst_detection(self, config_manager):
         """
         Test PZ-15102: Rapid Burst Breakpoint Detection.
@@ -813,7 +801,6 @@ class TestSmartLoadScenarios:
         logger.info("✅ TEST PASSED: Rapid burst detection completed")
     
     @pytest.mark.xray("PZ-15103")
-    @pytest.mark.regression
     def test_sustained_smart_load(self, config_manager):
         """
         Test PZ-15103: Sustained Smart Load with Extended Steps.

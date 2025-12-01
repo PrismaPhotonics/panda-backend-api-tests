@@ -503,6 +503,61 @@ pytest be_focus_server_tests/ --env=local -v
 
 ---
 
+## Gradual Load Tests (טסטי עומס הדרגתיים)
+
+טסטים אלה בודקים את יציבות המערכת תחת עומס עולה הדרגתית של Live Jobs.
+
+### הרצה עם סקריפט ייעודי:
+```bash
+# הרצה מלאה (5 → 50 jobs, +5 כל 10 שניות)
+python scripts/run_gradual_load_test.py --env staging
+
+# הרצה מהירה לבדיקת CI (2 → 10 jobs)
+python scripts/run_gradual_load_test.py --quick --env staging
+
+# הרצה עם הגדרות מותאמות אישית
+python scripts/run_gradual_load_test.py --initial 5 --step 5 --max-jobs 30 --interval 5
+```
+
+### הרצה עם pytest:
+```bash
+# טסט מלא (הדרגתי ל-50 jobs)
+pytest be_focus_server_tests/load/test_gradual_live_job_load.py -m gradual_load -v
+
+# טסט מהיר (לבדיקות CI)
+pytest be_focus_server_tests/load/test_gradual_live_job_load.py::TestGradualLiveJobLoad::test_quick_gradual_load -v
+
+# כל טסטי ה-gradual load
+pytest -m gradual_load -v --env staging
+
+# עם דוח HTML
+pytest -m gradual_load -v --html=reports/gradual_load_report.html --self-contained-html
+```
+
+### פרמטרים של הסקריפט:
+| פרמטר | ברירת מחדל | תיאור |
+|-------|-------------|--------|
+| `--env` | staging | סביבה (staging/production) |
+| `--initial` | 5 | מספר jobs התחלתי |
+| `--step` | 5 | כמות jobs להוספה בכל שלב |
+| `--max-jobs` | 50 | מקסימום jobs |
+| `--interval` | 10 | שניות בין שלבים |
+| `--quick` | - | מצב מהיר (2→10 jobs) |
+
+### דוגמאות שימוש:
+```bash
+# בדיקת יציבות עד 30 jobs
+python scripts/run_gradual_load_test.py --max-jobs 30 --env staging
+
+# בדיקה מהירה יותר (5 שניות בין שלבים)
+python scripts/run_gradual_load_test.py --interval 5 --env staging
+
+# הרצה על production עם הגדרות שמרניות
+python scripts/run_gradual_load_test.py --max-jobs 20 --step 2 --interval 15 --env production
+```
+
+---
+
 ## סיכום - פקודות מהירות
 
 ```bash

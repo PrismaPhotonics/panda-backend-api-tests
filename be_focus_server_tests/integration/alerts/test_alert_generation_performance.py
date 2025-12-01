@@ -75,7 +75,6 @@ def _get_rabbitmq_connection_manager(config_manager):
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.performance
-@pytest.mark.regression
 class TestAlertGenerationPerformance:
     """
     Test suite for performance scenarios in alert generation.
@@ -90,7 +89,6 @@ class TestAlertGenerationPerformance:
     """
     
     @pytest.mark.xray("PZ-14958")
-    @pytest.mark.regression
     def test_alert_response_time(self, config_manager):
         """
         Test PZ-14958: Alert Generation - Response Time.
@@ -173,7 +171,6 @@ class TestAlertGenerationPerformance:
         logger.info("✅ TEST PASSED: Response time meets requirements")
     
     @pytest.mark.xray("PZ-14959")
-    @pytest.mark.regression
     def test_alert_throughput(self, config_manager):
         """
         Test PZ-14959: Alert Generation - Throughput.
@@ -246,7 +243,6 @@ class TestAlertGenerationPerformance:
         logger.info("✅ TEST PASSED: Throughput meets requirements")
     
     @pytest.mark.xray("PZ-14960")
-    @pytest.mark.regression
     def test_alert_latency(self, config_manager):
         """
         Test PZ-14960: Alert Generation - Latency.
@@ -328,7 +324,6 @@ class TestAlertGenerationPerformance:
         logger.info("✅ TEST PASSED: Latency meets requirements")
     
     @pytest.mark.xray("PZ-14961")
-    @pytest.mark.regression
     def test_resource_usage(self, config_manager):
         """
         Test PZ-14961: Alert Generation - Resource Usage.
@@ -418,7 +413,6 @@ class TestAlertGenerationPerformance:
         logger.info("✅ TEST PASSED: Resource usage is acceptable")
     
     @pytest.mark.xray("PZ-14962")
-    @pytest.mark.regression
     def test_end_to_end_performance(self, config_manager):
         """
         Test PZ-14962: Alert Generation - End-to-End Performance.
@@ -506,7 +500,6 @@ class TestAlertGenerationPerformance:
     
     @pytest.mark.xray("PZ-14963")
     @pytest.mark.skipif(not PIKA_AVAILABLE, reason="pika not installed")
-    @pytest.mark.regression
     def test_rabbitmq_performance(self, config_manager):
         """
         Test PZ-14963: Alert Generation - RabbitMQ Performance.
@@ -601,8 +594,6 @@ class TestAlertGenerationPerformance:
     
     @pytest.mark.xray("PZ-15046")
     @pytest.mark.skip(reason="Alerts are NOT stored in MongoDB - this test is invalid")
-
-    @pytest.mark.regression
     def test_mongodb_performance(self, config_manager):
         """
         Test PZ-15046: Alert Generation - MongoDB Performance.

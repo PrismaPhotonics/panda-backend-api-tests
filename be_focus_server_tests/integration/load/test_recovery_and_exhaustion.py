@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestRecoveryAndExhaustion:
     """
     Test suite for recovery and resource exhaustion testing.
@@ -39,9 +38,6 @@ class TestRecoveryAndExhaustion:
     """
     
     @pytest.mark.xray("PZ-14806")
-
-    
-    @pytest.mark.regression
     def test_recovery_after_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14806: Load - Recovery After Load.
@@ -199,9 +195,6 @@ class TestRecoveryAndExhaustion:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14807")
-
-    
-    @pytest.mark.regression
     def test_resource_exhaustion_under_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14807: Load - Resource Exhaustion Under Load.

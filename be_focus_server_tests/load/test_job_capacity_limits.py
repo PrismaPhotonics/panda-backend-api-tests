@@ -390,11 +390,11 @@ def cleanup_jobs(api: FocusServerAPI, job_ids: List[str]):
 @pytest.mark.xray("PZ-14088")
 @pytest.mark.load
 @pytest.mark.performance
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestBaselinePerformance:
     """Baseline performance test - single job."""
     
-    @pytest.mark.regression
     def test_single_job_baseline(self, focus_server_api, standard_config_payload):
         """
         Baseline performance test for a single job.
@@ -441,11 +441,11 @@ class TestBaselinePerformance:
 @pytest.mark.xray("PZ-14088")
 @pytest.mark.load
 @pytest.mark.performance
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestLinearLoad:
     """Linear load test - finding breaking point."""
     
-    @pytest.mark.regression
     def test_linear_load_progression(self, focus_server_api, lightweight_config_payload):
         """
         Linear load test: 5 → 10 → 20 → 50 jobs.
@@ -537,11 +537,11 @@ class TestLinearLoad:
 @pytest.mark.jira("PZ-13986", "PZ-13268")  # Bugs: 200 Jobs Capacity Issue, CNI IP Exhaustion
 @pytest.mark.load
 @pytest.mark.stress
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestStressLoad:
     """Stress test - pushing system to the limit."""
     
-    @pytest.mark.regression
     def test_extreme_concurrent_load(self, focus_server_api, lightweight_config_payload):
         """
         Extreme load test: 100 concurrent jobs.
@@ -596,11 +596,11 @@ class TestStressLoad:
 @pytest.mark.jira("PZ-13986")  # Bug: 200 Jobs Capacity Issue
 @pytest.mark.load
 @pytest.mark.stress
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestHeavyConfigurationStress:
     """Stress test with heavy configuration."""
     
-    @pytest.mark.regression
     def test_heavy_config_concurrent(self, focus_server_api, heavy_config_payload):
         """
         Heavy configuration test (200 channels, NFFT 2048) with concurrent jobs.
@@ -648,11 +648,11 @@ class TestHeavyConfigurationStress:
 @pytest.mark.xray("PZ-14088")
 @pytest.mark.load
 @pytest.mark.performance
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestSystemRecovery:
     """System recovery test after load."""
     
-    @pytest.mark.regression
     def test_recovery_after_stress(self, focus_server_api, standard_config_payload):
         """
         Check that system recovers after heavy load.
@@ -730,7 +730,8 @@ class TestSystemRecovery:
 @pytest.mark.xray("PZ-14088")
 @pytest.mark.load
 @pytest.mark.performance
-@pytest.mark.regression
+@pytest.mark.slow
+@pytest.mark.nightly
 class TestGraduatedLoadCapacity:
     """
     Graduated load capacity test - up to 50 concurrent jobs with incremental steps of 10.
@@ -753,8 +754,6 @@ class TestGraduatedLoadCapacity:
     
     @pytest.mark.xray("PZ-14088")
     @pytest.mark.xray("PZ-13986")
-
-    @pytest.mark.regression
     def test_graduated_load_capacity(
         self, 
         focus_server_api, 
