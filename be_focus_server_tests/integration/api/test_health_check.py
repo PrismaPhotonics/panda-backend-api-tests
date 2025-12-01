@@ -598,7 +598,6 @@ class TestHealthCheckLoadTesting:
     """Test suite for health check load testing."""
     
     @pytest.mark.xray("PZ-14033")
-    @pytest.mark.smoke
     def test_ack_load_testing(self):
         """
         Test PZ-14033: Health check load testing.

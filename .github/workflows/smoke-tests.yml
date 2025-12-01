@@ -282,7 +282,7 @@ jobs:
 
       - name: Run smoke tests
         shell: powershell
-        continue-on-error: true  # Allow workflow to continue for report generation
+        # Remove continue-on-error to fail workflow if tests fail
         run: |
           $FOCUS_URL = "$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$env:VERIFY_SSL"
@@ -352,7 +352,7 @@ jobs:
           list-suites: all
           list-tests: all
           max-annotations: 50
-          fail-on-error: false
+          fail-on-error: true
           only-summary: false
           fail-on-empty: false
           working-directory: ${{ github.workspace }}
