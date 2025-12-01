@@ -118,18 +118,18 @@ def parse_junit_xml():
                     tests_by_class[classname] = []
                 tests_by_class[classname].append(test['name'].split('::')[-1] if '::' in test['name'] else test['name'])
             
-            # Show summary by class (limit to top 10 classes)
-            for classname, test_names in list(tests_by_class.items())[:10]:
+            # Show summary by class (limit to top 20 classes for better visibility)
+            for classname, test_names in list(tests_by_class.items())[:20]:
                 f.write(f'**{classname}** ({len(test_names)} tests)  \n')
-                for test_name in test_names[:5]:  # Show first 5 tests per class
+                for test_name in test_names[:10]:  # Show first 10 tests per class (increased from 5)
                     f.write(f'  - ✅ {test_name}  \n')
-                if len(test_names) > 5:
-                    f.write(f'  - ... and {len(test_names) - 5} more  \n')
+                if len(test_names) > 10:
+                    f.write(f'  - ... and {len(test_names) - 10} more  \n')
                 f.write('  \n')
             
-            if len(tests_by_class) > 10:
-                remaining = sum(len(tests) for tests in list(tests_by_class.values())[10:])
-                f.write(f'*... and {remaining} more tests in {len(tests_by_class) - 10} more classes*  \n\n')
+            if len(tests_by_class) > 20:
+                remaining = sum(len(tests) for tests in list(tests_by_class.values())[20:])
+                f.write(f'*... and {remaining} more tests in {len(tests_by_class) - 20} more classes*  \n\n')
         
         # Show skipped tests
         if skipped_tests:
@@ -142,16 +142,18 @@ def parse_junit_xml():
         
         # Show failed tests
         if failed_tests or total_failures > 0 or total_errors > 0:
-            f.write(f'### ❌ Failed Tests ({len(failed_tests)})\n\n')
-            for test in failed_tests[:20]:  # Limit to 20
+            f.write(f'### ❌ Failed Tests ({len(failed_tests)} total, {total_failures} failures, {total_errors} errors)\n\n')
+            # Show all failed tests (increased limit from 20 to 50)
+            for test in failed_tests[:50]:
                 f.write(f'- **{test["name"]}** ({test["status"]})  \n')
                 if test['message']:
                     message = test['message']
-                    truncated_message = message[:150]
-                    ellipsis = '...' if len(message) > 150 else ''
+                    truncated_message = message[:200]  # Increased from 150 to 200 chars
+                    ellipsis = '...' if len(message) > 200 else ''
                     f.write(f'  ```\n  {truncated_message}{ellipsis}\n  ```  \n\n')
-            if len(failed_tests) > 20:
-                f.write(f'\n*... and {len(failed_tests) - 20} more failed tests*  \n')
+            if len(failed_tests) > 50:
+                f.write(f'\n*... and {len(failed_tests) - 50} more failed tests*  \n')
+            f.write('\n')
         elif not failed_tests:
             f.write('### ✅ All Tests Passed!\n\n')
 

@@ -199,7 +199,7 @@ jobs:
 
       - name: Run regression tests
         shell: powershell
-        continue-on-error: true
+        # Removed continue-on-error: true - workflow should fail if tests fail
         run: |
           $FOCUS_URL = "$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$env:VERIFY_SSL"
@@ -292,7 +292,7 @@ jobs:
           list-suites: all
           list-tests: all
           max-annotations: 50
-          fail-on-error: false
+          fail-on-error: true  # Changed to true - workflow should fail if tests fail
           only-summary: false
           working-directory: ${{ github.workspace }}
 
@@ -323,6 +323,33 @@ jobs:
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
         run: |
           py parse_junit_results.py
+
+      - name: Fail workflow if tests failed
+        if: always()
+        shell: powershell
+        run: |
+          # Check if test results exist and have failures
+          if (Test-Path test-results\junit-regression.xml) {
+            [xml]$xml = Get-Content test-results\junit-regression.xml -Raw
+            $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+            
+            if ($testsuite) {
+              $failures = [int]$testsuite.failures
+              $errors = [int]$testsuite.errors
+              
+              if ($failures -gt 0 -or $errors -gt 0) {
+                Write-Host "::error::Tests failed: $failures failures, $errors errors"
+                exit 1
+              } else {
+                Write-Host "All tests passed!"
+                exit 0
+              }
+            }
+          } else {
+            Write-Host "::warning::No test results file found"
+            # Don't fail if no results file (might be skipped)
+            exit 0
+          }
 
       - uses: actions/upload-artifact@v4
         if: always()
