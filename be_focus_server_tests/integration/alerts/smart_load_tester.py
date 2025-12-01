@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 class FailureType(Enum):
     """Types of failures detected during load testing."""
     RATE_LIMITED = "429_rate_limited"
+    UNAUTHORIZED = "401_unauthorized"  # Auth failure - stop immediately
     CONNECTION_POOL_FULL = "connection_pool_full"
     TIMEOUT = "timeout"
     SERVER_ERROR = "5xx_server_error"
@@ -204,7 +205,10 @@ class SmartLoadTester:
         """Classify the type of failure from exception."""
         error_str = str(exception).lower()
         
-        if "429" in error_str or "too many requests" in error_str or "rate limit" in error_str:
+        # Auth failures should stop immediately - usually indicates wrong URL/config
+        if "401" in error_str or "unauthorized" in error_str:
+            return FailureType.UNAUTHORIZED
+        elif "429" in error_str or "too many requests" in error_str or "rate limit" in error_str:
             return FailureType.RATE_LIMITED
         elif "connection pool" in error_str or "pool is full" in error_str:
             return FailureType.CONNECTION_POOL_FULL
@@ -235,7 +239,7 @@ class SmartLoadTester:
             return (False, response_time, failure_type)
     
     def _run_step(self, step: int, concurrent: int) -> LoadTestResult:
-        """Run a single load test step."""
+        """Run a single load test step with circuit breaker protection."""
         logger.info(f"📈 Step {step}: Testing with {concurrent} concurrent requests...")
         
         successes = 0
@@ -243,11 +247,26 @@ class SmartLoadTester:
         response_times: List[float] = []
         failures_by_type: Dict[FailureType, int] = {ft: 0 for ft in FailureType}
         
+        # Circuit breaker: Track consecutive failures within this step
+        consecutive_failures_in_batch = 0
+        circuit_breaker_threshold = 10  # Stop batch after 10 consecutive failures
+        
         # Calculate batches
         num_batches = (self.requests_per_step + concurrent - 1) // concurrent
         
         for batch_num in range(num_batches):
             if self._stop_requested:
+                break
+            
+            # Circuit breaker: If too many consecutive failures in this step, abort early
+            if consecutive_failures_in_batch >= circuit_breaker_threshold:
+                logger.warning(f"⚡ Circuit breaker triggered: {consecutive_failures_in_batch} consecutive failures in batch")
+                # Mark remaining requests as failures of the most common type
+                remaining_requests = self.requests_per_step - (successes + failures)
+                if remaining_requests > 0:
+                    most_common_failure = max(failures_by_type.items(), key=lambda x: x[1], default=(FailureType.UNKNOWN, 0))[0]
+                    failures += remaining_requests
+                    failures_by_type[most_common_failure] += remaining_requests
                 break
                 
             batch_size = min(concurrent, self.requests_per_step - batch_num * concurrent)
@@ -271,22 +290,27 @@ class SmartLoadTester:
                             
                             if success:
                                 successes += 1
+                                consecutive_failures_in_batch = 0  # Reset on success
                             else:
                                 failures += 1
+                                consecutive_failures_in_batch += 1
                                 if failure_type:
                                     failures_by_type[failure_type] += 1
                         except TimeoutError:
                             # Individual request timed out
                             failures += 1
+                            consecutive_failures_in_batch += 1
                             failures_by_type[FailureType.TIMEOUT] += 1
                         except Exception as e:
                             failures += 1
+                            consecutive_failures_in_batch += 1
                             failure_type = self._classify_failure(e)
                             failures_by_type[failure_type] += 1
                 except TimeoutError:
                     # Batch iteration timed out - count remaining futures as failures
                     remaining = sum(1 for f in futures if not f.done())
                     failures += remaining
+                    consecutive_failures_in_batch += remaining
                     failures_by_type[FailureType.TIMEOUT] += remaining
                     logger.warning(f"Batch timeout: {remaining} requests did not complete")
         
@@ -327,6 +351,11 @@ class SmartLoadTester:
         """
         Check if we've hit a breakpoint based on consecutive failures.
         
+        Special handling:
+        - 401 Unauthorized: Immediate breakpoint (configuration error)
+        - 429 Rate Limited: After max_consecutive_failures steps
+        - Other errors: After max_consecutive_failures steps
+        
         Returns:
             Tuple of (is_breakpoint, failure_type, message)
         """
@@ -337,6 +366,18 @@ class SmartLoadTester:
                     self._consecutive_failures.get(failure_type, 0) + 1
             else:
                 self._consecutive_failures[failure_type] = 0
+        
+        # IMMEDIATE BREAKPOINT: 401 Unauthorized errors indicate config problem
+        # No point in retrying - stop immediately
+        if FailureType.UNAUTHORIZED in result.failures_by_type:
+            auth_failures = result.failures_by_type.get(FailureType.UNAUTHORIZED, 0)
+            if auth_failures > 0:
+                message = (
+                    f"⛔ IMMEDIATE BREAKPOINT: {auth_failures} Unauthorized (401) errors detected! "
+                    f"This usually means wrong URL or authentication issue. "
+                    f"Check frontend_url configuration."
+                )
+                return (True, FailureType.UNAUTHORIZED, message)
         
         # Reset counts for successful step
         if result.is_healthy:
@@ -479,7 +520,7 @@ class AlertLoadTester(SmartLoadTester):
         step_increment: int = 5,
         max_concurrent: int = 100,
         requests_per_step: int = 20,
-        max_consecutive_failures: int = 5,
+        max_consecutive_failures: int = 3,  # Reduced from 5 - fail faster
         alert_class_id: int = 104,
         alert_severity: int = 2
     ):
@@ -493,7 +534,7 @@ class AlertLoadTester(SmartLoadTester):
             step_increment: Increment per step
             max_concurrent: Maximum concurrent to test
             requests_per_step: Requests per step
-            max_consecutive_failures: Stop threshold
+            max_consecutive_failures: Stop threshold (default: 3 for faster detection)
             alert_class_id: Alert class ID (103=SC, 104=SD)
             alert_severity: Alert severity (1, 2, 3)
         """
@@ -504,16 +545,22 @@ class AlertLoadTester(SmartLoadTester):
         self._alert_counter = 0
         self._counter_lock = threading.Lock()
         
-        # Get API URL - build from frontend_api_url which includes full path with site_id
-        # Expected format: https://host:port/prisma/api/internal/sites/{site_id}
-        # Target URL: https://host:port/prisma/api/internal/sites/{site_id}/api/push-to-rabbit
+        # Build correct API URL for alerts
+        # Use frontend_url (via ingress) NOT frontend_api_url (NodePort - may not be accessible)
         api_config = config_manager.get("focus_server", {})
-        frontend_api_url = api_config.get(
-            "frontend_api_url", 
-            "https://10.10.10.150:30443/prisma/api/internal/sites/prisma-210-1000"
-        )
-        # Remove trailing slash if present, then append the push-to-rabbit endpoint
-        self.alert_url = frontend_api_url.rstrip("/") + "/api/push-to-rabbit"
+        site_id = api_config.get("site_id", "prisma-210-1000")
+        
+        # Try frontend_url first (accessible via ingress), then fallback
+        base_url = api_config.get("frontend_url", "https://10.10.10.100/liveView")
+        
+        # Convert frontend URL to API URL
+        # https://10.10.10.100/liveView -> https://10.10.10.100/prisma/api/{site_id}/api/push-to-rabbit
+        if "/liveView" in base_url:
+            base_url = base_url.replace("/liveView", "")
+        base_url = base_url.rstrip("/")
+        
+        self.alert_url = f"{base_url}/prisma/api/{site_id}/api/push-to-rabbit"
+        logger.debug(f"AlertLoadTester initialized with URL: {self.alert_url}")
         
         # Initialize parent with our request function
         super().__init__(
