@@ -72,22 +72,24 @@ class BreakpointReport:
     steps_completed: int
     detailed_message: str
     all_step_results: List[LoadTestResult]
+    request_type: str = "Unknown"  # Type of requests being tested (e.g., "Alert API", "Focus Server API")
     
     def to_log_message(self) -> str:
         """Generate detailed log message for breakpoint report."""
         lines = [
             "",
             "=" * 80,
-            "🔴 SMART LOAD TEST - BREAKPOINT REPORT",
+            f"🔴 SMART LOAD TEST - BREAKPOINT REPORT [{self.request_type}]",
             "=" * 80,
             "",
             f"📊 Test Summary:",
+            f"   • Request Type: {self.request_type}",
             f"   • Breakpoint Detected: {'YES ⚠️' if self.detected else 'NO ✅'}",
             f"   • Steps Completed: {self.steps_completed}",
             f"   • Total Duration: {self.duration_seconds:.2f} seconds",
             f"   • Timestamp: {self.timestamp.isoformat()}",
             "",
-            f"📈 Load Statistics:",
+            f"📈 Load Statistics [{self.request_type}]:",
             f"   • Maximum Healthy Load: {self.max_healthy_load} concurrent requests",
             f"   • Total Requests Sent: {self.total_requests_sent}",
             f"   • Successful Requests: {self.total_successful}",
@@ -170,7 +172,8 @@ class SmartLoadTester:
         requests_per_step: int = 20,
         max_consecutive_failures: int = 5,
         step_cooldown_seconds: float = 2.0,
-        request_timeout_seconds: float = 30.0
+        request_timeout_seconds: float = 30.0,
+        request_type: str = "Unknown API"
     ):
         """
         Initialize Smart Load Tester.
@@ -185,6 +188,7 @@ class SmartLoadTester:
             max_consecutive_failures: Stop after this many consecutive failures
             step_cooldown_seconds: Pause between steps
             request_timeout_seconds: Timeout for individual requests
+            request_type: Human-readable name for the API being tested (e.g., "Alert API", "Focus Server API")
         """
         self.request_func = request_func
         self.initial_concurrent = initial_concurrent
@@ -194,6 +198,7 @@ class SmartLoadTester:
         self.max_consecutive_failures = max_consecutive_failures
         self.step_cooldown_seconds = step_cooldown_seconds
         self.request_timeout_seconds = request_timeout_seconds
+        self.request_type = request_type
         
         # Tracking
         self._results: List[LoadTestResult] = []
@@ -240,7 +245,7 @@ class SmartLoadTester:
     
     def _run_step(self, step: int, concurrent: int) -> LoadTestResult:
         """Run a single load test step with circuit breaker protection."""
-        logger.info(f"📈 Step {step}: Testing with {concurrent} concurrent requests...")
+        logger.info(f"📈 [{self.request_type}] Step {step}: Testing with {concurrent} concurrent requests...")
         
         successes = 0
         failures = 0
@@ -260,7 +265,7 @@ class SmartLoadTester:
             
             # Circuit breaker: If too many consecutive failures in this step, abort early
             if consecutive_failures_in_batch >= circuit_breaker_threshold:
-                logger.warning(f"⚡ Circuit breaker triggered: {consecutive_failures_in_batch} consecutive failures in batch")
+                logger.warning(f"⚡ [{self.request_type}] Circuit breaker triggered: {consecutive_failures_in_batch} consecutive failures in batch")
                 # Mark remaining requests as failures of the most common type
                 remaining_requests = self.requests_per_step - (successes + failures)
                 if remaining_requests > 0:
@@ -338,12 +343,12 @@ class SmartLoadTester:
         # Log step result
         status = "✅" if result.is_healthy else "⚠️"
         logger.info(
-            f"   {status} Step {step} complete: {successes}/{total_requests} successful "
+            f"   {status} [{self.request_type}] Step {step} complete: {successes}/{total_requests} successful "
             f"({success_rate * 100:.1f}%), Avg: {avg_response:.0f}ms"
         )
         
         if result.failures_by_type:
-            logger.info(f"      Failures: {dict(result.failures_by_type)}")
+            logger.info(f"      [{self.request_type}] Failures: {dict(result.failures_by_type)}")
         
         return result
     
@@ -405,8 +410,9 @@ class SmartLoadTester:
         """
         logger.info("")
         logger.info("=" * 80)
-        logger.info("🚀 SMART LOAD TEST - Starting gradual load test...")
+        logger.info(f"🚀 SMART LOAD TEST [{self.request_type}] - Starting gradual load test...")
         logger.info("=" * 80)
+        logger.info(f"   Request Type: {self.request_type}")
         logger.info(f"   Initial concurrent: {self.initial_concurrent}")
         logger.info(f"   Step increment: {self.step_increment}")
         logger.info(f"   Max concurrent: {self.max_concurrent}")
@@ -484,7 +490,8 @@ class SmartLoadTester:
             duration_seconds=duration,
             steps_completed=step,
             detailed_message=breakpoint_message if breakpoint_detected else "Load test completed successfully",
-            all_step_results=self._results
+            all_step_results=self._results,
+            request_type=self.request_type
         )
         
         # Log the full report
@@ -569,7 +576,8 @@ class AlertLoadTester(SmartLoadTester):
             step_increment=step_increment,
             max_concurrent=max_concurrent,
             requests_per_step=requests_per_step,
-            max_consecutive_failures=max_consecutive_failures
+            max_consecutive_failures=max_consecutive_failures,
+            request_type="Alert API (push-to-rabbit)"  # Clear identification of request type
         )
     
     def _send_alert(self) -> bool:
