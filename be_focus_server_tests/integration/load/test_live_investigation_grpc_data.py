@@ -323,40 +323,46 @@ class TestLiveInvestigationGrpcData:
             logger.info(f"✅ Received {frames_received} frames (minimum: {MIN_FRAMES_FOR_SUCCESS})")
             
             # Validate frame contents
+            # Note: pandadatastream proto uses data_shape_x/y, not rows/sensors
+            total_data_points = 0
             total_rows = 0
-            total_sensors = 0
-            amplitude_values = []
+            min_amplitude = None
+            max_amplitude = None
             
             for i, frame in enumerate(frames):
-                rows_count = len(getattr(frame, 'rows', []))
-                total_rows += rows_count
+                # pandadatastream proto structure:
+                # - data_shape_x: number of data points (e.g., 4352 frequencies)
+                # - data_shape_y: number of rows/channels per frame
+                # - global_minimum/maximum: amplitude range
+                data_shape_x = getattr(frame, 'data_shape_x', 0)
+                data_shape_y = getattr(frame, 'data_shape_y', 0)
+                data_points = data_shape_x * data_shape_y
+                total_data_points += data_points
+                total_rows += data_shape_y
                 
-                for row in getattr(frame, 'rows', []):
-                    sensors_count = len(getattr(row, 'sensors', []))
-                    total_sensors += sensors_count
-                    
-                    for sensor in getattr(row, 'sensors', []):
-                        # Check sensor has intensity data
-                        intensity = getattr(sensor, 'intensity', [])
-                        if len(intensity) > 0:
-                            amplitude_values.extend(intensity)
+                # Track amplitude range
+                frame_min = getattr(frame, 'global_minimum', None)
+                frame_max = getattr(frame, 'global_maximum', None)
+                if frame_min is not None:
+                    min_amplitude = frame_min if min_amplitude is None else min(min_amplitude, frame_min)
+                if frame_max is not None:
+                    max_amplitude = frame_max if max_amplitude is None else max(max_amplitude, frame_max)
                 
-                # Log amplitude range (safe access)
-                min_amp = safe_get_frame_amplitude(frame, 'current_min_amp')
-                max_amp = safe_get_frame_amplitude(frame, 'current_max_amp')
-                if min_amp is not None and max_amp is not None:
-                    logger.debug(
-                        f"  Frame {i+1}: {rows_count} rows, "
-                        f"amp range: [{min_amp:.2f}, {max_amp:.2f}]"
-                    )
+                # Log frame details
+                logger.debug(
+                    f"  Frame {i+1}: shape={data_shape_x}x{data_shape_y}, "
+                    f"data_points={data_points}, "
+                    f"amp=[{frame_min:.2f}, {frame_max:.2f}]"
+                )
             
-            logger.info(f"Total rows received: {total_rows}")
-            logger.info(f"Total sensors: {total_sensors}")
-            logger.info(f"Total amplitude values: {len(amplitude_values)}")
+            logger.info(f"Total data points received: {total_data_points}")
+            logger.info(f"Total rows (data_shape_y sum): {total_rows}")
+            logger.info(f"Amplitude range: [{min_amplitude}, {max_amplitude}]")
             
             # Validate we have actual data
-            assert total_rows > 0, \
-                f"Frames received but contained 0 rows! Data pipeline issue."
+            # data_shape_x > 0 means we have data points in each frame
+            assert total_data_points > 0, \
+                f"Frames received but contained 0 data points! Data pipeline issue."
             
             # =========================================================
             # Summary
@@ -366,8 +372,8 @@ class TestLiveInvestigationGrpcData:
             logger.info(f"{'='*80}")
             logger.info(f"Job ID: {job_id}")
             logger.info(f"Frames received: {frames_received}")
-            logger.info(f"Total rows: {total_rows}")
-            logger.info(f"Total sensors: {total_sensors}")
+            logger.info(f"Total data points: {total_data_points}")
+            logger.info(f"Amplitude range: [{min_amplitude}, {max_amplitude}]")
             logger.info(f"gRPC Metrics: {grpc_client.metrics.to_dict()}")
             logger.info(f"{'='*80}")
             
@@ -452,37 +458,49 @@ class TestLiveInvestigationGrpcData:
                 pytest.skip("No frames received - live data source may not be active")
             
             # Validate data
+            # Note: pandadatastream uses global_minimum/global_maximum (not current_min_amp/current_max_amp)
             validation_issues = []
             negative_amplitudes = 0
             valid_amplitudes = 0
+            total_data_points = 0
             
-            for frame in frames:
-                # Check amplitude range (safe access)
-                min_amp = safe_get_frame_amplitude(frame, 'current_min_amp')
+            for i, frame in enumerate(frames):
+                # Check data shape (pandadatastream proto)
+                data_shape_x = getattr(frame, 'data_shape_x', 0)
+                data_shape_y = getattr(frame, 'data_shape_y', 0)
+                data_points = data_shape_x * data_shape_y
+                total_data_points += data_points
+                
+                # Check amplitude range (pandadatastream uses global_minimum/global_maximum)
+                min_amp = getattr(frame, 'global_minimum', None)
+                max_amp = getattr(frame, 'global_maximum', None)
+                
                 if min_amp is not None:
                     if min_amp < 0:
                         negative_amplitudes += 1
                         validation_issues.append(
-                            f"Negative min_amp: {min_amp}"
+                            f"Frame {i+1}: Negative global_minimum: {min_amp:.2f}"
                         )
                     else:
                         valid_amplitudes += 1
                 
-                # Check timestamps (safe access)
-                for row in getattr(frame, 'rows', []):
-                    start_ts = getattr(row, 'startTimestamp', 0)
-                    if start_ts > 0:
-                        # Check timestamp is reasonable (within last hour)
-                        now_ms = int(time.time() * 1000)
-                        hour_ago_ms = now_ms - (60 * 60 * 1000)
-                        
-                        if start_ts < hour_ago_ms:
-                            validation_issues.append(
-                                f"Timestamp too old: {start_ts}"
-                            )
+                # Check amplitude range is valid (max should be >= min)
+                if min_amp is not None and max_amp is not None:
+                    if max_amp < min_amp:
+                        validation_issues.append(
+                            f"Frame {i+1}: Invalid amplitude range: [{min_amp:.2f}, {max_amp:.2f}]"
+                        )
+                
+                # Check data shape is valid
+                if data_shape_x == 0 or data_shape_y == 0:
+                    validation_issues.append(
+                        f"Frame {i+1}: Zero data shape: {data_shape_x}x{data_shape_y}"
+                    )
             
             # Log validation results
             logger.info(f"Validation results:")
+            logger.info(f"  Total frames: {len(frames)}")
+            logger.info(f"  Total data points: {total_data_points}")
             logger.info(f"  Valid amplitudes: {valid_amplitudes}")
             logger.info(f"  Negative amplitudes: {negative_amplitudes}")
             logger.info(f"  Issues found: {len(validation_issues)}")
@@ -499,8 +517,8 @@ class TestLiveInvestigationGrpcData:
                 )
             
             # Test passes if we received valid data structure
-            assert valid_amplitudes > 0 or len(frames) > 0, \
-                "No valid amplitude data received"
+            assert total_data_points > 0 or len(frames) > 0, \
+                "No valid data received"
             
             logger.info("✅ TEST PASSED: Data validity check complete")
         
