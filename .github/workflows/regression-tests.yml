@@ -199,7 +199,7 @@ jobs:
 
       - name: Run regression tests
         shell: powershell
-        # Removed continue-on-error: true - workflow should fail if tests fail
+        continue-on-error: true  # Allow workflow to continue so test results get published
         run: |
           $FOCUS_URL = "$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$env:VERIFY_SSL"
@@ -292,7 +292,7 @@ jobs:
           list-suites: all
           list-tests: all
           max-annotations: 50
-          fail-on-error: true  # Changed to true - workflow should fail if tests fail
+          fail-on-error: false  # Let explicit "Fail workflow if tests failed" step handle failure
           only-summary: false
           working-directory: ${{ github.workspace }}
 
