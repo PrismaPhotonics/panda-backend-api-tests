@@ -405,6 +405,17 @@ class GradualLiveLoadTester:
         self._monitoring_interval_sec = 120  # 2 minutes
         self._last_monitoring_time: Optional[datetime] = None
         
+        # Trend tracking for early warning detection
+        self._health_history: List[Dict[str, Any]] = []  # Store last N health checks
+        self._max_history_size = 10  # Keep last 10 monitoring cycles (20 minutes)
+        self._early_warning_thresholds = {
+            "response_time_increase_pct": 50,  # 50% increase = warning
+            "error_rate_increase_pct": 30,     # 30% increase = warning
+            "dead_jobs_increase_pct": 20,      # 20% increase = warning
+            "frames_per_second_decrease_pct": 40,  # 40% decrease = warning
+            "job_creation_time_increase_pct": 100,  # 100% increase = warning
+        }
+        
         logger.info(
             f"GradualLiveLoadTester initialized:\n"
             f"   Initial Jobs: {initial_jobs}\n"
@@ -672,6 +683,178 @@ class GradualLiveLoadTester:
         
         return components
     
+    def _calculate_health_score(self, components: Dict[str, Any], current_job_count: int) -> float:
+        """
+        Calculate overall system health score (0-100).
+        
+        Higher score = healthier system.
+        Score < 50 = critical degradation.
+        
+        Returns:
+            Health score from 0 (critical) to 100 (perfect)
+        """
+        score = 100.0
+        
+        # Focus Server API health (30% weight)
+        if not components["focus_server_api"]["healthy"]:
+            score -= 30
+        else:
+            # Penalize slow response times
+            response_time = components["focus_server_api"]["response_time_ms"]
+            if response_time > 10000:  # > 10s
+                score -= 20
+            elif response_time > 5000:  # > 5s
+                score -= 10
+            elif response_time > 2000:  # > 2s
+                score -= 5
+        
+        # MongoDB health (20% weight)
+        if not components["mongodb"]["healthy"]:
+            score -= 20
+        
+        # RabbitMQ health (20% weight)
+        if not components["rabbitmq"]["healthy"]:
+            score -= 20
+        
+        # gRPC Jobs health (30% weight)
+        total_jobs = components["grpc_jobs"]["active_count"] + components["grpc_jobs"]["dead_count"]
+        if total_jobs > 0:
+            dead_percentage = (components["grpc_jobs"]["dead_count"] / total_jobs) * 100
+            if dead_percentage > 50:
+                score -= 30
+            elif dead_percentage > 30:
+                score -= 20
+            elif dead_percentage > 10:
+                score -= 10
+        
+        return max(0.0, min(100.0, score))
+    
+    def _detect_early_warning_signs(self, components: Dict[str, Any], current_job_count: int) -> List[Dict[str, Any]]:
+        """
+        Detect early warning signs before total system failure.
+        
+        Analyzes trends in:
+        - Response times (increasing = bad)
+        - Error rates (increasing = bad)
+        - Dead jobs percentage (increasing = bad)
+        - Frames per second (decreasing = bad)
+        - Job creation times (increasing = bad)
+        - Health score (declining = bad)
+        
+        Returns:
+            List of early warning signs detected
+        """
+        warnings = []
+        
+        if len(self._health_history) < 2:
+            return warnings  # Need at least 2 data points for trend analysis
+        
+        # Get previous health check
+        previous_health = self._health_history[-1]
+        
+        # Create current health dict for comparison
+        current_health = {
+            "focus_server_api": components["focus_server_api"],
+            "grpc_jobs": components["grpc_jobs"],
+            "response_time_ms": components["focus_server_api"]["response_time_ms"],
+            "total_frames_received": sum([j.frames_received for j in self.active_jobs])
+        }
+        
+        # 1. Check response time trend
+        current_response_time = current_health["response_time_ms"]
+        previous_response_time = previous_health.get("response_time_ms", current_response_time)
+        
+        if previous_response_time > 0:
+            response_time_increase = ((current_response_time - previous_response_time) / previous_response_time) * 100
+            if response_time_increase > self._early_warning_thresholds["response_time_increase_pct"]:
+                warnings.append({
+                    "type": "RESPONSE_TIME_DEGRADATION",
+                    "severity": "WARNING",
+                    "message": f"API response time increased by {response_time_increase:.1f}% "
+                              f"({previous_response_time:.0f}ms → {current_response_time:.0f}ms)",
+                    "current_value": current_response_time,
+                    "previous_value": previous_response_time,
+                    "increase_pct": response_time_increase
+                })
+        
+        # 2. Check dead jobs trend
+        current_dead = current_health["grpc_jobs"]["dead_count"]
+        current_total = current_health["grpc_jobs"]["active_count"] + current_dead
+        previous_dead = previous_health.get("dead_jobs", 0)
+        previous_total = previous_health.get("total_jobs", current_total)
+        
+        if previous_total > 0 and current_total > 0:
+            current_dead_pct = (current_dead / current_total) * 100
+            previous_dead_pct = (previous_dead / previous_total) * 100
+            
+            if previous_dead_pct > 0:
+                dead_increase = current_dead_pct - previous_dead_pct
+                if dead_increase > self._early_warning_thresholds["dead_jobs_increase_pct"]:
+                    warnings.append({
+                        "type": "JOB_FAILURE_RATE_INCREASING",
+                        "severity": "WARNING",
+                        "message": f"Dead jobs percentage increased by {dead_increase:.1f}% "
+                                  f"({previous_dead_pct:.1f}% → {current_dead_pct:.1f}%)",
+                        "current_value": current_dead_pct,
+                        "previous_value": previous_dead_pct,
+                        "increase_pct": dead_increase
+                    })
+        
+        # 3. Check frames per second trend (if available)
+        current_frames = current_health["total_frames_received"]
+        previous_frames = previous_health.get("total_frames_received", current_frames)
+        
+        # Calculate approximate FPS (frames per monitoring cycle)
+        if previous_frames > 0 and current_frames > previous_frames:
+            frames_increase = ((current_frames - previous_frames) / previous_frames) * 100
+            # Negative means decrease
+            if frames_increase < -self._early_warning_thresholds["frames_per_second_decrease_pct"]:
+                warnings.append({
+                    "type": "FRAME_RATE_DECREASING",
+                    "severity": "WARNING",
+                    "message": f"Frame rate decreased by {abs(frames_increase):.1f}% "
+                              f"({previous_frames} → {current_frames} frames)",
+                    "current_value": current_frames,
+                    "previous_value": previous_frames,
+                    "decrease_pct": abs(frames_increase)
+                })
+        
+        # 4. Check if health score is declining rapidly
+        current_score = self._calculate_health_score(components, current_job_count)
+        previous_score = previous_health.get("health_score", current_score)
+        
+        if previous_score > 0:
+            score_decrease = previous_score - current_score
+            if score_decrease > 15:  # Drop of more than 15 points
+                warnings.append({
+                    "type": "HEALTH_SCORE_DECLINING",
+                    "severity": "WARNING",
+                    "message": f"System health score dropped by {score_decrease:.1f} points "
+                              f"({previous_score:.1f} → {current_score:.1f})",
+                    "current_value": current_score,
+                    "previous_value": previous_score,
+                    "decrease": score_decrease
+                })
+        
+        # 5. Check for gradual component degradation
+        component_degradations = []
+        if not components["focus_server_api"]["healthy"] and previous_health.get("api_healthy", True):
+            component_degradations.append("Focus Server API")
+        if not components["mongodb"]["healthy"] and previous_health.get("mongodb_healthy", True):
+            component_degradations.append("MongoDB")
+        if not components["rabbitmq"]["healthy"] and previous_health.get("rabbitmq_healthy", True):
+            component_degradations.append("RabbitMQ")
+        
+        if component_degradations:
+            warnings.append({
+                "type": "COMPONENT_DEGRADATION",
+                "severity": "CRITICAL",
+                "message": f"Components degraded: {', '.join(component_degradations)}",
+                "degraded_components": component_degradations
+            })
+        
+        return warnings
+    
     def _detect_breaking_point(self, components: Dict[str, Any], current_job_count: int) -> Optional[Dict[str, Any]]:
         """
         Detect if system has reached breaking point.
@@ -754,8 +937,36 @@ class GradualLiveLoadTester:
                 active_jobs_count = len([j for j in self.active_jobs if j.is_active])
                 total_jobs_count = len(self.active_jobs)
                 
+                # Calculate total frames received
+                total_frames_received = sum([j.frames_received for j in self.active_jobs])
+                
                 # Check component health
                 components = self._check_component_health()
+                
+                # Calculate health score
+                health_score = self._calculate_health_score(components, active_jobs_count)
+                
+                # Store health history for trend analysis
+                health_snapshot = {
+                    "timestamp": datetime.now(),
+                    "job_count": active_jobs_count,
+                    "response_time_ms": components["focus_server_api"]["response_time_ms"],
+                    "api_healthy": components["focus_server_api"]["healthy"],
+                    "mongodb_healthy": components["mongodb"]["healthy"],
+                    "rabbitmq_healthy": components["rabbitmq"]["healthy"],
+                    "dead_jobs": components["grpc_jobs"]["dead_count"],
+                    "total_jobs": components["grpc_jobs"]["active_count"] + components["grpc_jobs"]["dead_count"],
+                    "total_frames_received": total_frames_received,
+                    "health_score": health_score
+                }
+                
+                # Keep only last N health checks
+                self._health_history.append(health_snapshot)
+                if len(self._health_history) > self._max_history_size:
+                    self._health_history.pop(0)
+                
+                # Detect early warning signs (before breaking point)
+                early_warnings = self._detect_early_warning_signs(components, active_jobs_count)
                 
                 # Detect breaking point
                 breaking_point_info = self._detect_breaking_point(components, active_jobs_count)
@@ -767,6 +978,21 @@ class GradualLiveLoadTester:
                 logger.info("=" * 80)
                 logger.info(f"   🔢 Active Jobs: {active_jobs_count} / {total_jobs_count} total")
                 logger.info(f"   📈 Streaming Jobs: {components['grpc_jobs']['active_count']} active, {components['grpc_jobs']['dead_count']} dead")
+                logger.info(f"   📊 Health Score: {health_score:.1f}/100")
+                
+                # Early warning signs
+                if early_warnings:
+                    logger.warning("")
+                    logger.warning("   " + "=" * 76)
+                    logger.warning("   ⚠️  EARLY WARNING SIGNS DETECTED!")
+                    logger.warning("   " + "=" * 76)
+                    logger.warning("   System is showing signs of degradation before total failure:")
+                    logger.warning("")
+                    for warning in early_warnings:
+                        severity_icon = "🔴" if warning["severity"] == "CRITICAL" else "🟡"
+                        logger.warning(f"   {severity_icon} {warning['type']}: {warning['message']}")
+                    logger.warning("   " + "=" * 76)
+                    logger.warning("")
                 
                 # Component health status
                 logger.info("")
