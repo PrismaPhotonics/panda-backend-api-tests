@@ -334,8 +334,9 @@ class GradualLiveLoadTester:
         nfft: int = 1024,
         display_height: int = 600,
         # gRPC configuration - optimized timeouts for faster execution
-        max_grpc_connect_retries: int = 3,         # Reduced retries for faster failure detection
+        max_grpc_connect_retries: int = 5,         # Increased retries for pod startup time
         grpc_connect_retry_delay_ms: int = 2000,   # 2s between retries (reduced from 5s)
+        pod_startup_delay_sec: float = 5.0,        # Initial delay after job creation to allow pod startup
         frames_to_receive: int = 3,
         job_creation_delay_sec: float = 2.0,       # Delay between creating each job
         # Early termination configuration
@@ -356,7 +357,8 @@ class GradualLiveLoadTester:
             nfft: NFFT selection
             display_height: Display height
             max_grpc_connect_retries: Max retries for gRPC connection
-            grpc_connect_retry_delay_ms: Delay between retries
+            grpc_connect_retry_delay_ms: Base delay between retries (exponential backoff applied)
+            pod_startup_delay_sec: Initial delay after job creation to allow pod startup
             frames_to_receive: Frames to receive for validation
             max_consecutive_failures: Stop test after N consecutive failed steps (default: 3)
         """
@@ -384,6 +386,7 @@ class GradualLiveLoadTester:
         # gRPC configuration
         self.max_grpc_connect_retries = max_grpc_connect_retries
         self.grpc_connect_retry_delay_ms = grpc_connect_retry_delay_ms
+        self.pod_startup_delay_sec = pod_startup_delay_sec
         self.frames_to_receive = frames_to_receive
         self.job_creation_delay_sec = job_creation_delay_sec
         self.max_consecutive_failures = max_consecutive_failures
@@ -458,7 +461,13 @@ class GradualLiveLoadTester:
             
             logger.debug(f"Job {job_id} configured: {stream_url}:{stream_port}")
             
-            # Step 2: Connect to gRPC with retries
+            # Step 2: Wait for pod to be ready before connecting to gRPC
+            # This prevents "tcp handshaker shutdown" errors when pod is not ready yet
+            if self.pod_startup_delay_sec > 0:
+                logger.debug(f"Job {job_id}: Waiting {self.pod_startup_delay_sec}s for pod startup...")
+                time.sleep(self.pod_startup_delay_sec)
+            
+            # Step 3: Connect to gRPC with retries and exponential backoff
             grpc_client = self.grpc_client_factory(connection_timeout=30)  # 30s timeout (reduced from 60s)
             
             connected = False
@@ -471,14 +480,18 @@ class GradualLiveLoadTester:
                     break
                 except Exception as e:
                     last_error = str(e)
-                    logger.debug(f"Job {job_id}: gRPC connect attempt {attempt + 1} failed")
+                    logger.debug(f"Job {job_id}: gRPC connect attempt {attempt + 1}/{self.max_grpc_connect_retries} failed: {e}")
                     if attempt < self.max_grpc_connect_retries - 1:
-                        time.sleep(self.grpc_connect_retry_delay_ms / 1000)
+                        # Exponential backoff: delay increases with each retry
+                        # Attempt 1: 2s, Attempt 2: 4s, Attempt 3: 8s, etc.
+                        delay_sec = (self.grpc_connect_retry_delay_ms / 1000) * (2 ** attempt)
+                        logger.debug(f"Job {job_id}: Retrying in {delay_sec:.1f}s...")
+                        time.sleep(delay_sec)
             
             if not connected:
-                raise ConnectionError(f"gRPC connect failed: {last_error}")
+                raise ConnectionError(f"gRPC connect failed after {self.max_grpc_connect_retries} attempts: {last_error}")
             
-            # Step 3: Create handle and START CONTINUOUS STREAMING
+            # Step 4: Create handle and START CONTINUOUS STREAMING
             handle = LiveJobHandle(
                 job_id=job_id,
                 stream_url=stream_url,
