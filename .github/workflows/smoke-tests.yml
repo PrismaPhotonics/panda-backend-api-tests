@@ -389,7 +389,13 @@ jobs:
       - name: Fail workflow if tests failed
         if: always()
         shell: powershell
+        env:
+          RUN_TESTS_OUTCOME: ${{ steps.run-smoke-tests.outcome }}
         run: |
+          # Get step outcome from environment variable (more reliable than inline expression)
+          $runTestsOutcome = $env:RUN_TESTS_OUTCOME
+          Write-Host "Run smoke tests step outcome: $runTestsOutcome"
+          
           # Check if test results exist and have failures
           if (Test-Path test-results\junit-smoke.xml) {
             [xml]$xml = Get-Content test-results\junit-smoke.xml -Raw
@@ -398,11 +404,11 @@ jobs:
             if ($testsuite) {
               $failures = [int]$testsuite.failures
               $errors = [int]$testsuite.errors
-              $runTestsOutcome = '${{ steps.run-smoke-tests.outcome }}'
+              Write-Host "Test results: $failures failures, $errors errors"
               
               # If pytest step failed or there are test failures/errors, fail the workflow
               if ($runTestsOutcome -eq 'failure' -or $failures -gt 0 -or $errors -gt 0) {
-                Write-Host "::error::Tests failed: $failures failures, $errors errors"
+                Write-Host "::error::Tests failed: $failures failures, $errors errors (step outcome: $runTestsOutcome)"
                 exit 1
               } else {
                 Write-Host "All tests passed!"
@@ -410,17 +416,15 @@ jobs:
               }
             } else {
               # If no valid test results, check if pytest step failed
-              $runTestsOutcome = '${{ steps.run-smoke-tests.outcome }}'
               if ($runTestsOutcome -eq 'failure') {
-                Write-Host "::error::Test execution failed (no valid results file)"
+                Write-Host "::error::Test execution failed (no valid results file, step outcome: $runTestsOutcome)"
                 exit 1
               }
             }
           } else {
             # No results file - check if pytest step failed
-            $runTestsOutcome = '${{ steps.run-smoke-tests.outcome }}'
             if ($runTestsOutcome -eq 'failure') {
-              Write-Host "::error::Test execution failed (no results file found)"
+              Write-Host "::error::Test execution failed (no results file found, step outcome: $runTestsOutcome)"
               exit 1
             } else {
               Write-Host "::warning::No test results file found (tests may have been skipped)"
