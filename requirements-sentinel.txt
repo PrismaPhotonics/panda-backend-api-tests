@@ -1,0 +1,29 @@
+# Automation Run Sentinel Dependencies
+# ======================================
+
+# Core dependencies (already in requirements.txt)
+# pytest>=7.4
+# requests>=2.31
+
+# Kubernetes client
+kubernetes>=28.1.0
+
+# Database
+psycopg2-binary>=2.9.9  # PostgreSQL (optional)
+# SQLite is built-in
+
+# Web framework (for API)
+flask>=3.0.0
+
+# Configuration
+pyyaml>=6.0
+
+# Email (optional, for email alerts)
+# No additional packages needed - uses built-in smtplib
+
+# Logging and utilities
+# Already in requirements.txt
+
+
+
+

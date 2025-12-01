@@ -1,0 +1,336 @@
+name: Job Load Tests (Live & Historic)
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: "Test type to run"
+        type: choice
+        options:
+          - all
+          - live
+          - historic
+        default: "all"
+      load_level:
+        description: "Load level"
+        type: choice
+        options:
+          - basic
+          - heavy
+          - stress
+        default: "basic"
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'be_focus_server_tests/load/**'
+      - 'src/apis/grpc_client.py'
+      - 'src/apis/focus_server_api.py'
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  # =========================================================================
+  # Live Job Tests
+  # =========================================================================
+  live-job-tests:
+    if: ${{ inputs.test_type == 'all' || inputs.test_type == 'live' || inputs.test_type == '' }}
+    runs-on: [self-hosted, windows, "panda_automation"]
+    timeout-minutes: 20
+
+    env:
+      FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
+      VERIFY_SSL: 'false'
+      ENVIRONMENT: 'staging'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        shell: powershell
+        run: |
+          $pythonCmd = if ((py --version 2>&1) -match "Python") { "py" } else { "python" }
+          echo "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          & $env:PYTHON_CMD -m pip install -e . --quiet
+
+      - name: Health Check
+        shell: powershell
+        run: |
+          $url = "https://$env:FOCUS_SERVER_HOST/focus-server/ack"
+          $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
+          if ($result -ne "200") { exit 1 }
+          Write-Host "Server OK"
+
+      - name: Run Live Job Tests (Basic)
+        if: ${{ inputs.load_level == 'basic' || inputs.load_level == '' }}
+        id: live-basic
+        continue-on-error: true
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
+          Write-Host "========================================"
+          Write-Host "🔴 LIVE JOB TESTS - BASIC"
+          Write-Host "========================================"
+          
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_live_load.py `
+            -m "live and not heavy and not stress" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-live-basic.xml
+          
+          exit $LASTEXITCODE
+
+      - name: Run Live Job Tests (Heavy)
+        if: ${{ inputs.load_level == 'heavy' || inputs.load_level == 'stress' }}
+        id: live-heavy
+        continue-on-error: true
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "🔴 LIVE JOB TESTS - HEAVY"
+          Write-Host "========================================"
+          
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_live_load.py `
+            -m "live and heavy" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-live-heavy.xml
+          
+          exit $LASTEXITCODE
+
+      - name: Run Live Job Tests (Stress)
+        if: ${{ inputs.load_level == 'stress' }}
+        id: live-stress
+        continue-on-error: true
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "🔴 LIVE JOB TESTS - STRESS"
+          Write-Host "========================================"
+          
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_live_load.py `
+            -m "live and stress" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-live-stress.xml
+          
+          exit $LASTEXITCODE
+
+      - name: Upload Live Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-job-reports
+          path: reports/junit-live-*.xml
+          retention-days: 14
+          if-no-files-found: warn
+
+  # =========================================================================
+  # Historic Job Tests
+  # =========================================================================
+  historic-job-tests:
+    if: ${{ inputs.test_type == 'all' || inputs.test_type == 'historic' || inputs.test_type == '' }}
+    runs-on: [self-hosted, windows, "panda_automation"]
+    timeout-minutes: 25
+
+    env:
+      FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
+      VERIFY_SSL: 'false'
+      ENVIRONMENT: 'staging'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        shell: powershell
+        run: |
+          $pythonCmd = if ((py --version 2>&1) -match "Python") { "py" } else { "python" }
+          echo "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          & $env:PYTHON_CMD -m pip install -e . --quiet
+
+      - name: Health Check
+        shell: powershell
+        run: |
+          $url = "https://$env:FOCUS_SERVER_HOST/focus-server/ack"
+          $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
+          if ($result -ne "200") { exit 1 }
+          Write-Host "Server OK"
+
+      - name: Run Historic Job Tests (Basic)
+        if: ${{ inputs.load_level == 'basic' || inputs.load_level == '' }}
+        id: historic-basic
+        continue-on-error: true
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
+          Write-Host "========================================"
+          Write-Host "📼 HISTORIC JOB TESTS - BASIC"
+          Write-Host "========================================"
+          
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_historic_load.py `
+            -m "historic and not heavy and not stress" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-historic-basic.xml
+          
+          exit $LASTEXITCODE
+
+      - name: Run Historic Job Tests (Heavy)
+        if: ${{ inputs.load_level == 'heavy' || inputs.load_level == 'stress' }}
+        id: historic-heavy
+        continue-on-error: true
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "📼 HISTORIC JOB TESTS - HEAVY"
+          Write-Host "========================================"
+          
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_historic_load.py `
+            -m "historic and heavy" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-historic-heavy.xml
+          
+          exit $LASTEXITCODE
+
+      - name: Run Historic Job Tests (Stress)
+        if: ${{ inputs.load_level == 'stress' }}
+        id: historic-stress
+        continue-on-error: true
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "📼 HISTORIC JOB TESTS - STRESS"
+          Write-Host "========================================"
+          
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_historic_load.py `
+            -m "historic and stress" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=short `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-historic-stress.xml
+          
+          exit $LASTEXITCODE
+
+      - name: Upload Historic Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historic-job-reports
+          path: reports/junit-historic-*.xml
+          retention-days: 14
+          if-no-files-found: warn
+
+  # =========================================================================
+  # Summary Job
+  # =========================================================================
+  test-summary:
+    needs: [live-job-tests, historic-job-tests]
+    if: always()
+    runs-on: [self-hosted, windows, "panda_automation"]
+
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports/
+          merge-multiple: true
+
+      - name: Generate Summary
+        shell: powershell
+        run: |
+          $summary = @"
+          # 🚀 Job Load Test Results
+          
+          **Test Type:** ${{ inputs.test_type || 'all' }}
+          **Load Level:** ${{ inputs.load_level || 'basic' }}
+          **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+          
+          ## Test Types
+          
+          | Type | Description | Markers |
+          |------|-------------|---------|
+          | 🔴 **Live** | Real-time streaming from fiber | ``@pytest.mark.live`` |
+          | 📼 **Historic** | Recorded data playback | ``@pytest.mark.historic`` |
+          
+          ## Load Levels
+          
+          | Level | Tests Run | Duration |
+          |-------|-----------|----------|
+          | Basic | Core functionality | ~5 min |
+          | Heavy | 500 channels, sustained | ~15 min |
+          | Stress | Max concurrent | ~20 min |
+          
+          ---
+          
+          "@
+          
+          # Parse JUnit files
+          $junitFiles = Get-ChildItem -Path "all-reports" -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue
+          
+          foreach ($file in $junitFiles) {
+            $xml = [xml](Get-Content $file.FullName)
+            $ts = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+            
+            if ($ts) {
+              $name = $file.BaseName -replace "junit-", ""
+              $passed = [int]$ts.tests - [int]$ts.failures - [int]$ts.errors
+              $emoji = if ([int]$ts.failures -eq 0 -and [int]$ts.errors -eq 0) { "✅" } else { "❌" }
+              
+              $summary += @"
+          
+          ## $emoji $name
+          
+          | Metric | Value |
+          |--------|-------|
+          | Tests | $($ts.tests) |
+          | Passed | $passed |
+          | Failed | $($ts.failures) |
+          | Duration | $([math]::Round([double]$ts.time, 1))s |
+          
+          "@
+            }
+          }
+          
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+

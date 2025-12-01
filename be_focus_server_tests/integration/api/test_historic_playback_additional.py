@@ -22,13 +22,45 @@ import pytest
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple
 
-from src.models.focus_server_models import ConfigureRequest, ViewType
+from src.models.focus_server_models import ConfigureRequest, ViewType, RecordingsInTimeRangeRequest
 from src.apis.focus_server_api import FocusServerAPI
 from src.core.exceptions import APIError
 
 logger = logging.getLogger(__name__)
+
+
+# ===================================================================
+# Helper: Query MongoDB for Valid Time Range (per Yonatan's feedback)
+# ===================================================================
+
+def get_valid_historic_time_range(
+    config_manager,
+    duration_minutes: int = 5
+) -> Optional[Tuple[int, int]]:
+    """
+    Query MongoDB DIRECTLY for existing recordings and return a valid time range.
+    
+    IMPORTANT (per Yonatan's feedback):
+    - DO NOT manually insert data into MongoDB
+    - ONLY query existing recordings and use their timestamps
+    
+    MongoDB Query Flow:
+    1. Connect to MongoDB (staging: 10.10.10.108:27017)
+    2. Query base_paths collection to get the guid
+    3. Query collection named {guid} for recordings where deleted=false
+    
+    Args:
+        config_manager: ConfigManager instance
+        duration_minutes: Desired duration in minutes
+        
+    Returns:
+        Tuple of (start_time_sec, end_time_sec) or None if no recordings
+    """
+    from be_focus_server_tests.fixtures.recording_fixtures import get_historic_time_range_from_mongodb
+    
+    return get_historic_time_range_from_mongodb(config_manager, duration_seconds=duration_minutes * 60)
 
 
 # ===================================================================
@@ -55,7 +87,7 @@ class TestHistoricPlaybackEdgeCases:
     @pytest.mark.xray("PZ-14101")
 
     @pytest.mark.regression
-    def test_historic_playback_short_duration_1_minute(self, focus_server_api: FocusServerAPI):
+    def test_historic_playback_short_duration_1_minute(self, focus_server_api: FocusServerAPI, config_manager):
         """
         Test PZ-13864, PZ-13865: Historic playback with short duration (1 minute).
         
@@ -77,9 +109,13 @@ class TestHistoricPlaybackEdgeCases:
         logger.info("TEST: Historic Playback - Short Duration 1 Minute (PZ-13864, 13865)")
         logger.info("=" * 80)
         
-        # 1-minute range (older data to ensure it exists)
-        end_time_dt = datetime.now() - timedelta(hours=2)
-        start_time_dt = end_time_dt - timedelta(minutes=1)
+        # Query MongoDB for existing recordings (per Yonatan's feedback: DO NOT insert data)
+        time_range = get_valid_historic_time_range(config_manager, duration_minutes=1)
+        
+        if time_range is None:
+            pytest.skip("No recordings available in MongoDB for historic playback")
+        
+        start_time, end_time = time_range
         
         config = {
             "displayTimeAxisDuration": 10,
@@ -87,12 +123,12 @@ class TestHistoricPlaybackEdgeCases:
             "displayInfo": {"height": 1000},
             "channels": {"min": 0, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
-            "start_time": int(start_time_dt.timestamp()),
-            "end_time": int(end_time_dt.timestamp()),
+            "start_time": start_time,
+            "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info(f"Time range: 1 minute ({start_time_dt} to {end_time_dt})")
+        logger.info(f"Time range: {(end_time - start_time) / 60:.1f} minutes (from MongoDB)")
         
         configure_request = ConfigureRequest(**config)
         response = focus_server_api.configure_streaming_job(configure_request)
@@ -182,7 +218,7 @@ class TestHistoricPlaybackEdgeCases:
     @pytest.mark.xray("PZ-13868")
     @pytest.mark.slow
     @pytest.mark.nightly
-    def test_historic_playback_status_208_completion(self, focus_server_api: FocusServerAPI):
+    def test_historic_playback_status_208_completion(self, focus_server_api: FocusServerAPI, config_manager):
         """
         Test PZ-13868: Historic playback reaches status 208 (completion).
         
@@ -203,9 +239,13 @@ class TestHistoricPlaybackEdgeCases:
         logger.info("TEST: Historic Playback - Status 208 Completion (PZ-13868)")
         logger.info("=" * 80)
         
-        # 5-minute range
-        end_time_dt = datetime.now() - timedelta(hours=1)
-        start_time_dt = end_time_dt - timedelta(minutes=5)
+        # Query MongoDB for existing recordings (per Yonatan's feedback: DO NOT insert data)
+        time_range = get_valid_historic_time_range(config_manager, duration_minutes=5)
+        
+        if time_range is None:
+            pytest.skip("No recordings available in MongoDB for historic playback")
+        
+        start_time, end_time = time_range
         
         config = {
             "displayTimeAxisDuration": 10,
@@ -213,8 +253,8 @@ class TestHistoricPlaybackEdgeCases:
             "displayInfo": {"height": 1000},
             "channels": {"min": 0, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
-            "start_time": int(start_time_dt.timestamp()),
-            "end_time": int(end_time_dt.timestamp()),
+            "start_time": start_time,
+            "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
         }
         
@@ -288,7 +328,7 @@ class TestHistoricPlaybackDataQuality:
     @pytest.mark.xray("PZ-13867")
     @pytest.mark.slow
     @pytest.mark.nightly
-    def test_historic_playback_data_integrity(self, focus_server_api: FocusServerAPI):
+    def test_historic_playback_data_integrity(self, focus_server_api: FocusServerAPI, config_manager):
         """
         Test PZ-13867: Data integrity validation for historic playback.
         
@@ -312,11 +352,13 @@ class TestHistoricPlaybackDataQuality:
         logger.info("TEST: Historic Playback - Data Integrity (PZ-13867)")
         logger.info("=" * 80)
         
-        # 5-minute range
-        end_time_dt = datetime.now() - timedelta(hours=1)
-        start_time_dt = end_time_dt - timedelta(minutes=5)
-        start_ts = int(start_time_dt.timestamp())
-        end_ts = int(end_time_dt.timestamp())
+        # Query MongoDB for existing recordings (per Yonatan's feedback: DO NOT insert data)
+        time_range = get_valid_historic_time_range(config_manager, duration_minutes=5)
+        
+        if time_range is None:
+            pytest.skip("No recordings available in MongoDB for historic playback")
+        
+        start_ts, end_ts = time_range
         
         config = {
             "displayTimeAxisDuration": 10,
@@ -329,7 +371,7 @@ class TestHistoricPlaybackDataQuality:
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info(f"Configuring historic job: {start_time_dt} to {end_time_dt}")
+        logger.info(f"Configuring historic job using MongoDB recording")
         
         configure_request = ConfigureRequest(**config)
         response = focus_server_api.configure_streaming_job(configure_request)
@@ -347,7 +389,7 @@ class TestHistoricPlaybackDataQuality:
     @pytest.mark.xray("PZ-13871")
     @pytest.mark.slow
     @pytest.mark.nightly
-    def test_historic_playback_timestamp_ordering(self, focus_server_api: FocusServerAPI):
+    def test_historic_playback_timestamp_ordering(self, focus_server_api: FocusServerAPI, config_manager):
         """
         Test PZ-13871: Timestamp ordering validation in historic playback.
         
@@ -369,9 +411,13 @@ class TestHistoricPlaybackDataQuality:
         logger.info("TEST: Historic Playback - Timestamp Ordering (PZ-13871)")
         logger.info("=" * 80)
         
-        # 5-minute range
-        end_time_dt = datetime.now() - timedelta(hours=1)
-        start_time_dt = end_time_dt - timedelta(minutes=5)
+        # Query MongoDB for existing recordings (per Yonatan's feedback: DO NOT insert data)
+        time_range = get_valid_historic_time_range(config_manager, duration_minutes=5)
+        
+        if time_range is None:
+            pytest.skip("No recordings available in MongoDB for historic playback")
+        
+        start_time, end_time = time_range
         
         config = {
             "displayTimeAxisDuration": 10,
@@ -379,12 +425,12 @@ class TestHistoricPlaybackDataQuality:
             "displayInfo": {"height": 1000},
             "channels": {"min": 0, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
-            "start_time": int(start_time_dt.timestamp()),
-            "end_time": int(end_time_dt.timestamp()),
+            "start_time": start_time,
+            "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info(f"Configuring historic job: {start_time_dt} to {end_time_dt}")
+        logger.info(f"Configuring historic job using MongoDB recording")
         
         configure_request = ConfigureRequest(**config)
         response = focus_server_api.configure_streaming_job(configure_request)

@@ -19,12 +19,44 @@ import pytest
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple
 
 from src.models.focus_server_models import ConfigureRequest, ViewType
 from src.apis.focus_server_api import FocusServerAPI
 
 logger = logging.getLogger(__name__)
+
+
+# ===================================================================
+# Helper: Query MongoDB for Valid Time Range (per Yonatan's feedback)
+# ===================================================================
+
+def get_valid_historic_time_range(
+    config_manager,
+    duration_minutes: int = 5
+) -> Optional[Tuple[int, int]]:
+    """
+    Query MongoDB DIRECTLY for existing recordings and return a valid time range.
+    
+    IMPORTANT (per Yonatan's feedback):
+    - DO NOT manually insert data into MongoDB
+    - ONLY query existing recordings and use their timestamps
+    
+    MongoDB Query Flow:
+    1. Connect to MongoDB (staging: 10.10.10.108:27017)
+    2. Query base_paths collection to get the guid
+    3. Query collection named {guid} for recordings where deleted=false
+    
+    Args:
+        config_manager: ConfigManager instance
+        duration_minutes: Desired duration in minutes
+        
+    Returns:
+        Tuple of (start_time_sec, end_time_sec) or None if no recordings
+    """
+    from be_focus_server_tests.fixtures.recording_fixtures import get_historic_time_range_from_mongodb
+    
+    return get_historic_time_range_from_mongodb(config_manager, duration_seconds=duration_minutes * 60)
 
 
 # ===================================================================
@@ -50,7 +82,7 @@ class TestHistoricPlaybackCompleteE2E:
     @pytest.mark.xray("PZ-14101")
 
     @pytest.mark.regression
-    def test_historic_playback_complete_e2e_flow(self, focus_server_api: FocusServerAPI):
+    def test_historic_playback_complete_e2e_flow(self, focus_server_api: FocusServerAPI, config_manager):
         """
         Test PZ-13872: Historic Playback Complete End-to-End Flow.
         
@@ -98,30 +130,46 @@ class TestHistoricPlaybackCompleteE2E:
         logger.info("=" * 80)
         
         # ===================================================================
-        # Phase 1: Configuration
+        # Pre-check: Verify system is ready for historic playback
+        # ===================================================================
+        try:
+            live_metadata = focus_server_api.get_live_metadata_flat()
+            # Check if system is waiting for fiber (historic playback won't work)
+            if live_metadata.is_waiting_for_fiber:
+                pytest.skip(
+                    f"System is in 'waiting for fiber' state - historic playback not available. "
+                    f"PRR: {live_metadata.prr}, SW: {live_metadata.sw_version}, "
+                    f"num_samples_per_trace: {live_metadata.num_samples_per_trace}"
+                )
+        except Exception as e:
+            logger.warning(f"Could not check system state: {e}")
+        
+        # ===================================================================
+        # Phase 1: Configuration (using existing MongoDB data)
         # ===================================================================
         logger.info("\n" + "=" * 80)
         logger.info("PHASE 1: Configuration")
         logger.info("=" * 80)
         
-        # Calculate 5-minute time range
-        # Note: Use older data to ensure it exists
-        end_time_dt = datetime.now() - timedelta(hours=1)
-        start_time_dt = end_time_dt - timedelta(minutes=5)
+        # Query MongoDB DIRECTLY for existing recordings (per Yonatan's feedback: DO NOT insert data)
+        time_range = get_valid_historic_time_range(config_manager, duration_minutes=5)
         
-        logger.info(f"Time range: {start_time_dt} to {end_time_dt}")
-        logger.info(f"Duration: 5 minutes")
+        if time_range is None:
+            pytest.skip("No recordings available in MongoDB for historic playback")
         
-        # Convert to Unix timestamps
-        start_time = int(start_time_dt.timestamp())
-        end_time = int(end_time_dt.timestamp())
+        start_time, end_time = time_range
+        start_time_dt = datetime.fromtimestamp(start_time)
+        end_time_dt = datetime.fromtimestamp(end_time)
+        
+        logger.info(f"Using recording from MongoDB: {start_time_dt} to {end_time_dt}")
+        logger.info(f"Duration: {(end_time - start_time) / 60:.1f} minutes")
         
         # Create historic configuration
         config = {
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": start_time,
             "end_time": end_time,

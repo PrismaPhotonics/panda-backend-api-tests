@@ -52,11 +52,17 @@ logger = logging.getLogger(__name__)
 # Configuration Constants
 # =============================================================================
 
-# Load test parameters
+# Load test parameters (Default: Gradual 5+5+5...)
 INITIAL_JOBS = 5           # Start with 5 jobs
 STEP_INCREMENT = 5         # Add 5 jobs each step
 MAX_JOBS = 100             # Maximum 100 jobs running concurrently (Yonatan's requirement)
 STEP_INTERVAL_SEC = 10     # Wait 10 seconds between steps
+
+# Burst strategy parameters (per Yonatan's feedback: "30 at once + 1+1+1")
+BURST_INITIAL_JOBS = 30    # Start with 30 jobs at once (skip the gradual ramp-up)
+BURST_STEP_INCREMENT = 1   # Then add 1 job at a time for precise measurement
+BURST_MAX_JOBS = 100       # Target: 100 concurrent jobs
+BURST_STEP_INTERVAL_SEC = 5  # 5 seconds between each +1 step
 
 # SLA thresholds - adjusted for Focus Server MaxWindows limit
 DEFAULT_SLA = {
@@ -1459,6 +1465,48 @@ def quick_gradual_tester(config_manager) -> GradualLiveLoadTester:
     )
 
 
+@pytest.fixture
+def burst_tester(config_manager) -> GradualLiveLoadTester:
+    """
+    Create GradualLiveLoadTester with BURST strategy (per Yonatan's feedback).
+    
+    Strategy: "30 at once + 1+1+1"
+    - Start with 30 jobs immediately (skip the gradual ramp-up)
+    - Then add 1 job at a time for precise capacity measurement
+    - Target: 100 concurrent jobs
+    
+    This avoids the slow ramp-up and goes directly to stress testing.
+    """
+    return GradualLiveLoadTester(
+        config_manager=config_manager,
+        initial_jobs=BURST_INITIAL_JOBS,   # 30 jobs at once
+        step_increment=BURST_STEP_INCREMENT,  # +1 at a time
+        max_jobs=BURST_MAX_JOBS,              # Target: 100
+        step_interval_sec=BURST_STEP_INTERVAL_SEC,  # 5 seconds between steps
+        sla=get_gradual_load_sla()
+    )
+
+
+@pytest.fixture
+def burst_tester_conservative(config_manager) -> GradualLiveLoadTester:
+    """
+    Create GradualLiveLoadTester with CONSERVATIVE BURST strategy.
+    
+    Strategy: "20 at once + 2+2+2"
+    - Start with 20 jobs immediately
+    - Then add 2 jobs at a time
+    - Slightly slower but more stable
+    """
+    return GradualLiveLoadTester(
+        config_manager=config_manager,
+        initial_jobs=20,        # 20 jobs at once
+        step_increment=2,       # +2 at a time
+        max_jobs=BURST_MAX_JOBS,
+        step_interval_sec=BURST_STEP_INTERVAL_SEC,
+        sla=get_gradual_load_sla()
+    )
+
+
 # =============================================================================
 # Test Class: Gradual Load Tests
 # =============================================================================
@@ -1559,6 +1607,95 @@ class TestGradualLiveLoad:
         
         assert result.max_concurrent_jobs >= 6, \
             f"Expected at least 6 concurrent jobs, got {result.max_concurrent_jobs}"
+    
+    @pytest.mark.xray("PZ-LOAD-302")
+    @pytest.mark.slow
+    def test_burst_then_gradual_30_to_100(self, burst_tester, gradual_load_sla):
+        """
+        Test: BURST strategy - 30 at once + 1+1+1 (per Yonatan's feedback).
+        
+        Strategy (per Yonatan's recommendation):
+        1. Start with 30 jobs immediately (skip gradual ramp-up)
+        2. Add 1 job at a time every 5 seconds
+        3. Continue until 100 jobs or breakpoint detected
+        4. This allows precise capacity measurement
+        
+        Why this strategy?
+        - Skip the slow initial ramp-up (we know system handles 30+ jobs)
+        - Add 1 at a time for precise breakpoint detection
+        - Faster overall test while maintaining accuracy
+        
+        Expected:
+        - Initial 30 jobs should all succeed
+        - System should reach 50+ concurrent jobs
+        - Breakpoint (if any) is precisely identified
+        """
+        env = get_environment()
+        
+        logger.info(f"\n[BURST LOAD] Strategy: 30 at once + 1+1+1 (Yonatan's recommendation)")
+        logger.info(f"    Environment: {env.upper()}")
+        logger.info(f"    Initial burst: 30 jobs")
+        logger.info(f"    Then: +1 job every 5 seconds")
+        logger.info(f"    Target: 100 concurrent jobs")
+        logger.info(f"    SLA: Min Success Rate {gradual_load_sla['min_success_rate']}%")
+        
+        result = burst_tester.run_test(
+            test_name="Burst Load (30→100, +1)"
+        )
+        
+        # Assertions
+        assert result.cleanup_successful, \
+            "Cleanup should complete successfully"
+        
+        # Initial burst should succeed (at least 20 of 30)
+        if len(result.step_results) > 0:
+            first_step = result.step_results[0]
+            assert first_step.jobs_running >= 20, \
+                f"Initial burst should create at least 20 jobs, got {first_step.jobs_running}"
+        
+        # Should reach at least 50 concurrent jobs
+        assert result.max_concurrent_jobs >= 50, \
+            f"Expected at least 50 concurrent jobs, got {result.max_concurrent_jobs}"
+        
+        logger.info(f"\n✅ Burst load test completed")
+        logger.info(f"   Successful Steps: {result.successful_steps}/{result.total_steps}")
+        logger.info(f"   Max Concurrent: {result.max_concurrent_jobs}")
+        
+        if result.breaking_point:
+            logger.info(f"   ⚠️  Breaking Point: {result.breaking_point} jobs")
+            logger.info(f"   This is the system's maximum sustainable load")
+    
+    @pytest.mark.xray("PZ-LOAD-303")
+    def test_burst_conservative_20_to_100(self, burst_tester_conservative, gradual_load_sla):
+        """
+        Test: CONSERVATIVE BURST strategy - 20 at once + 2+2+2.
+        
+        Slightly slower but more stable version of burst strategy:
+        1. Start with 20 jobs immediately
+        2. Add 2 jobs at a time every 5 seconds
+        3. Continue until 100 jobs or breakpoint
+        
+        Use this if the 30+1+1+1 strategy is too aggressive.
+        """
+        env = get_environment()
+        
+        logger.info(f"\n[BURST LOAD] Conservative: 20 at once + 2+2+2")
+        logger.info(f"    Environment: {env.upper()}")
+        
+        result = burst_tester_conservative.run_test(
+            test_name="Conservative Burst (20→100, +2)"
+        )
+        
+        # Assertions
+        assert result.cleanup_successful, \
+            "Cleanup should complete successfully"
+        
+        # Should reach at least 40 concurrent jobs
+        assert result.max_concurrent_jobs >= 40, \
+            f"Expected at least 40 concurrent jobs, got {result.max_concurrent_jobs}"
+        
+        logger.info(f"\n✅ Conservative burst test completed")
+        logger.info(f"   Max Concurrent: {result.max_concurrent_jobs}")
         
         logger.info(f"\n✅ Quick gradual load test completed")
     

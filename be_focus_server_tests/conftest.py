@@ -389,6 +389,77 @@ def focus_server_api(config_manager: ConfigManager):
         raise InfrastructureError(f"Failed to initialize Focus Server API client: {e}")
 
 
+# ===================================================================
+# MongoDB Recording Fixtures (for Historic Playback Tests)
+# ===================================================================
+
+@pytest.fixture(scope="session")
+def mongodb_recordings_info(config_manager):
+    """
+    Session-scoped fixture that fetches available recordings DIRECTLY from MongoDB.
+    
+    IMPORTANT (per Yonatan's feedback):
+    - DO NOT manually insert data into MongoDB
+    - ONLY query existing recordings and use their timestamps
+    - If no recordings exist, skip the test
+    
+    MongoDB Query Flow:
+    1. Connect to MongoDB (staging: 10.10.10.108:27017)
+    2. Query base_paths collection to get the guid
+    3. Query collection named {guid} for recordings where deleted=false
+    4. Return recordings with start_time and end_time
+    
+    Usage:
+        def test_historic_something(self, mongodb_recordings_info):
+            if not mongodb_recordings_info.has_recordings:
+                pytest.skip("No recordings available in MongoDB")
+            
+            recording = mongodb_recordings_info.get_recording(min_duration_seconds=60)
+            start_time, end_time = recording.get_time_range(60)
+    """
+    from be_focus_server_tests.fixtures.recording_fixtures import fetch_recordings_from_mongodb
+    return fetch_recordings_from_mongodb(config_manager)
+
+
+@pytest.fixture
+def available_recording(mongodb_recordings_info):
+    """
+    Fixture that provides a single available recording from MongoDB.
+    
+    Returns None if no recordings are available (test should skip).
+    
+    Usage:
+        def test_historic_playback(self, available_recording):
+            if available_recording is None:
+                pytest.skip("No recordings available")
+            
+            start, end = available_recording.get_time_range(60)
+    """
+    return mongodb_recordings_info.get_recording(min_duration_seconds=10)
+
+
+@pytest.fixture
+def historic_time_range(config_manager):
+    """
+    Fixture that provides a valid time range for historic playback.
+    
+    Queries MongoDB DIRECTLY (not via Focus Server API).
+    
+    Returns:
+        Tuple of (start_time_sec, end_time_sec) or None if no recordings
+        
+    Usage:
+        def test_historic_playback(self, historic_time_range):
+            if historic_time_range is None:
+                pytest.skip("No recordings available in MongoDB")
+            
+            start_time, end_time = historic_time_range
+            config = {"start_time": start_time, "end_time": end_time, ...}
+    """
+    from be_focus_server_tests.fixtures.recording_fixtures import get_historic_time_range_from_mongodb
+    return get_historic_time_range_from_mongodb(config_manager, duration_seconds=60)
+
+
 @pytest.fixture(scope="session")
 def mongodb_manager(config_manager: ConfigManager, kubernetes_manager):
     """

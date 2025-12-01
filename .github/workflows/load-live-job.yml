@@ -1,0 +1,256 @@
+name: Live Job Load Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      num_jobs:
+        description: "Number of jobs to create"
+        default: "10"
+        type: string
+      concurrent_jobs:
+        description: "Number of concurrent jobs"
+        default: "3"
+        type: string
+      test_type:
+        description: "Test type"
+        type: choice
+        options:
+          - all
+          - basic
+          - stress
+        default: "basic"
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'be_focus_server_tests/load/live_job_load_tester.py'
+      - 'be_focus_server_tests/load/test_live_job_load.py'
+      - 'src/apis/grpc_client.py'
+      - 'src/apis/focus_server_api.py'
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  live-job-load:
+    # Use self-hosted Windows runner for production environment access
+    runs-on: [self-hosted, windows, "panda_automation"]
+    timeout-minutes: 30
+
+    env:
+      FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
+      FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
+      VERIFY_SSL: 'false'
+      ENVIRONMENT: 'staging'
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        shell: powershell
+        run: |
+          # Quick Python setup
+          $pythonCmd = $null
+          if ((py --version 2>&1) -match "Python") {
+            $pythonCmd = "py"
+          } elseif ((python --version 2>&1) -match "Python") {
+            $pythonCmd = "python"
+          } else {
+            Write-Host "::error::Python not found"
+            exit 1
+          }
+          Write-Host "Using Python: $pythonCmd"
+          echo "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          & $env:PYTHON_CMD -m pip install -e . --quiet
+
+      - name: Health Check
+        shell: powershell
+        run: |
+          Write-Host "========================================" 
+          Write-Host "PRE-TEST HEALTH CHECK"
+          Write-Host "========================================"
+          
+          $url = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/ack"
+          Write-Host "Checking server: $url"
+          
+          $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
+          if ($result -ne "200") {
+            Write-Host "::error::Server not reachable (HTTP $result)"
+            exit 1
+          }
+          Write-Host "Server OK (HTTP 200)"
+          
+          # Also check /channels to verify API is fully functional
+          $channelsUrl = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/channels"
+          Write-Host "Checking channels endpoint: $channelsUrl"
+          $channelsResult = curl.exe -k -s -w "%{http_code}" -o nul $channelsUrl 2>&1
+          if ($channelsResult -ne "200") {
+            Write-Host "::warning::Channels endpoint returned HTTP $channelsResult"
+          } else {
+            Write-Host "Channels endpoint OK (HTTP 200)"
+          }
+          
+          Write-Host "========================================"
+
+      - name: Run Live Job Load Tests (Basic)
+        if: ${{ inputs.test_type == 'basic' || inputs.test_type == 'all' || inputs.test_type == '' }}
+        id: basic-tests
+        continue-on-error: true
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
+          Write-Host "========================================"
+          Write-Host "LIVE JOB LOAD TEST SUITE - BASIC"
+          Write-Host "========================================"
+          Write-Host "Target: https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
+          Write-Host "Environment: $env:ENVIRONMENT"
+          Write-Host "========================================"
+          
+          # Run basic Live Job load tests
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_live_job_load.py `
+            -m "live_job_load and not stress and not slow" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=long `
+            --capture=no `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-live-job-basic.xml `
+            --json-report `
+            --json-report-file=reports/live-job-basic-metrics.json
+          
+          exit $LASTEXITCODE
+
+      - name: Run Live Job Load Tests (Stress)
+        if: ${{ inputs.test_type == 'stress' || inputs.test_type == 'all' }}
+        id: stress-tests
+        continue-on-error: true
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "LIVE JOB LOAD TEST SUITE - STRESS"
+          Write-Host "========================================"
+          
+          # Run stress tests
+          & $env:PYTHON_CMD -m pytest `
+            be_focus_server_tests/load/test_live_job_load.py `
+            -m "live_job_load and stress" `
+            --env staging `
+            --skip-health-check `
+            -v `
+            --tb=long `
+            --capture=no `
+            --log-cli-level=INFO `
+            --junitxml=reports/junit-live-job-stress.xml `
+            --json-report `
+            --json-report-file=reports/live-job-stress-metrics.json
+          
+          exit $LASTEXITCODE
+
+      - name: Generate Test Summary
+        if: always()
+        shell: powershell
+        run: |
+          $summary = @"
+          # 🚀 Live Job Load Test Results
+          
+          **Environment:** $env:ENVIRONMENT
+          **Target:** https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX
+          **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+          
+          ## Test Flow
+          
+          The Live Job load tests validate the complete job lifecycle:
+          
+          1. **POST /configure** → Create job, get job_id, stream_url, stream_port
+          2. **Wait + Retry** → Wait for gRPC to be ready (with retries!)
+          3. **gRPC Connect** → Connect to streaming endpoint
+          4. **Stream Data** → Receive spectrogram frames
+          5. **Cleanup** → Disconnect and release resources
+          
+          ## Key Insight
+          
+          Based on Yonatan's feedback, the tests include **retry logic** between
+          job configuration (step 4) and gRPC connection (step 5). This is critical
+          because the gRPC service may not be immediately available.
+          
+          ---
+          
+          "@
+          
+          # Add JUnit results if available
+          $junitFiles = @(
+            "reports/junit-live-job-basic.xml",
+            "reports/junit-live-job-stress.xml"
+          )
+          
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              $xml = [xml](Get-Content $file)
+              $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+              
+              if ($testsuite) {
+                $testName = [System.IO.Path]::GetFileNameWithoutExtension($file) -replace "junit-", ""
+                $passed = [int]$testsuite.tests - [int]$testsuite.failures - [int]$testsuite.errors
+                $status = if ([int]$testsuite.failures -eq 0 -and [int]$testsuite.errors -eq 0) { "✅" } else { "❌" }
+                
+                $summary += @"
+          
+          ## $status $testName
+          
+          | Metric | Value |
+          |--------|-------|
+          | Total Tests | $($testsuite.tests) |
+          | Passed | $passed |
+          | Failures | $($testsuite.failures) |
+          | Errors | $($testsuite.errors) |
+          | Duration | $([math]::Round([double]$testsuite.time, 1))s |
+          
+          "@
+              }
+            }
+          }
+          
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          Write-Host "Summary added to GitHub Summary"
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-job-load-reports
+          path: reports/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Fail if tests failed
+        if: always()
+        shell: powershell
+        run: |
+          $basicFailed = '${{ steps.basic-tests.outcome }}' -eq 'failure'
+          $stressFailed = '${{ steps.stress-tests.outcome }}' -eq 'failure'
+          
+          if ($basicFailed) {
+            Write-Host "::error::Basic Live Job tests failed"
+          }
+          if ($stressFailed) {
+            Write-Host "::warning::Stress tests failed (non-blocking)"
+          }
+          
+          # Only fail on basic test failures (stress tests are informational)
+          if ($basicFailed) {
+            exit 1
+          }
+

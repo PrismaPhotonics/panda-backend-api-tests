@@ -1,3 +1,24 @@
+# =============================================================================
+# Load and Performance Tests Workflow
+# =============================================================================
+#
+# Runs comprehensive load and performance tests including:
+#   - Standard load tests (job_load, live_job_load, historic_job_load)
+#   - Gradual load tests (5 → 100 jobs step-up with health checks, accumulative)
+#   - Performance benchmarks
+#
+# Test Types:
+#   - all: Run all tests (default)
+#   - load: Only load tests (excluding gradual)
+#   - performance: Only performance tests
+#   - gradual_load: Only gradual 5→100 jobs step-up tests (accumulative)
+#   - quick_load: Quick load tests only
+#
+# Schedule: Every night at 02:00 UTC
+# Manual: Can be triggered with custom test type
+#
+# =============================================================================
+
 name: Load and Performance Tests
 
 on:
@@ -11,6 +32,16 @@ on:
         default: "true"
         type: choice
         options: [ "true", "false" ]
+      test_type:
+        description: "Test type to run"
+        default: "all"
+        type: choice
+        options:
+          - all           # All load + performance + gradual_load tests
+          - load          # Only load tests
+          - performance   # Only performance tests
+          - gradual_load  # Only gradual load tests (5→100 jobs accumulative)
+          - quick_load    # Quick load tests only
 
 env:
   PYTHON_VERSION: '3.13'
@@ -20,7 +51,7 @@ jobs:
     # IMPORTANT: Use self-hosted Windows runner for production environment access
     # Cloud runners cannot access internal network (10.10.10.100)
     runs-on: [self-hosted, windows, "panda_automation"]
-    timeout-minutes: 180  # Temporary: 3 hours to measure actual runtime
+    timeout-minutes: 240  # 4 hours for full gradual load test (100 jobs = 20 steps x 10s + overhead)
 
     env:
       FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
@@ -333,8 +364,39 @@ jobs:
             }
           }
           Write-Host "Running tests with Python: $pythonCmd"
+          
+          # Determine test markers based on test_type input
+          $testType = "${{ inputs.test_type }}"
+          if ([string]::IsNullOrEmpty($testType) -or $testType -eq "all") {
+            $markers = "load or performance or gradual_load"
+            Write-Host "Running ALL load, performance, and gradual_load tests"
+          } elseif ($testType -eq "load") {
+            $markers = "load and not gradual_load"
+            Write-Host "Running LOAD tests only"
+          } elseif ($testType -eq "performance") {
+            $markers = "performance"
+            Write-Host "Running PERFORMANCE tests only"
+          } elseif ($testType -eq "gradual_load") {
+            $markers = "gradual_load"
+            Write-Host "Running GRADUAL LOAD tests only (5→100 jobs accumulative)"
+          } elseif ($testType -eq "quick_load") {
+            $markers = "quick_load or (gradual_load and not slow)"
+            Write-Host "Running QUICK LOAD tests only"
+          } else {
+            $markers = "load or performance or gradual_load"
+            Write-Host "Unknown test type '$testType', running ALL tests"
+          }
+          
+          Write-Host "Markers: $markers"
+          Write-Host ""
+          
+          # Run tests with selected markers
+          # Includes:
+          #   - Standard load tests (job_load, live_job_load, historic_job_load)
+          #   - Gradual load tests (5 → 100 jobs accumulative)
+          #   - Performance benchmarks
           & $pythonCmd -m pytest be_focus_server_tests/ `
-            -m "load or performance" `
+            -m "$markers" `
             --env staging `
             --ignore=be_focus_server_tests/ui `
             --skip-health-check `
