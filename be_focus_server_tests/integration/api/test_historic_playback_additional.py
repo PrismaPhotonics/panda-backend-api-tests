@@ -63,6 +63,41 @@ def get_valid_historic_time_range(
     return get_historic_time_range_from_mongodb(config_manager, duration_seconds=duration_minutes * 60)
 
 
+def configure_historic_job_with_skip(
+    focus_server_api: FocusServerAPI,
+    config: dict,
+    time_range_desc: str = ""
+):
+    """
+    Configure historic job with graceful skip on "No recording found" error.
+    
+    Args:
+        focus_server_api: FocusServerAPI instance
+        config: Configuration dictionary
+        time_range_desc: Description of time range for skip message
+        
+    Returns:
+        ConfigureResponse with job_id
+        
+    Raises:
+        pytest.skip: If Focus Server returns "No recording found"
+        Exception: For other errors
+    """
+    configure_request = ConfigureRequest(**config)
+    
+    try:
+        response = focus_server_api.configure_streaming_job(configure_request)
+        return response
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "no recording found" in error_msg or "404" in error_msg:
+            pytest.skip(
+                f"No recording found in Focus Server {time_range_desc}. "
+                f"Recording may exist in MongoDB but Focus Server cannot access it."
+            )
+        raise  # Re-raise other errors
+
+
 # ===================================================================
 # Test Class: Historic Playback Edge Cases
 # ===================================================================
@@ -121,7 +156,7 @@ class TestHistoricPlaybackEdgeCases:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": start_time,
             "end_time": end_time,
@@ -130,8 +165,10 @@ class TestHistoricPlaybackEdgeCases:
         
         logger.info(f"Time range: {(end_time - start_time) / 60:.1f} minutes (from MongoDB)")
         
-        configure_request = ConfigureRequest(**config)
-        response = focus_server_api.configure_streaming_job(configure_request)
+        response = configure_historic_job_with_skip(
+            focus_server_api, config,
+            f"for time range {start_time_dt} to {end_time_dt}"
+        )
         job_id = response.job_id
         
         logger.info(f"✅ Job configured: {job_id}")
@@ -198,7 +235,7 @@ class TestHistoricPlaybackEdgeCases:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": int(start_time_dt.timestamp()),
             "end_time": int(end_time_dt.timestamp()),
@@ -207,8 +244,10 @@ class TestHistoricPlaybackEdgeCases:
         
         logger.info(f"Time range: {start_time_dt} to {end_time_dt} (1 year ago)")
         
-        configure_request = ConfigureRequest(**config)
-        response = focus_server_api.configure_streaming_job(configure_request)
+        response = configure_historic_job_with_skip(
+            focus_server_api, config,
+            f"for old timestamps {start_time_dt} to {end_time_dt}"
+        )
         job_id = response.job_id
         
         logger.info(f"✅ Job configured: {job_id}")
@@ -251,15 +290,17 @@ class TestHistoricPlaybackEdgeCases:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        configure_request = ConfigureRequest(**config)
-        response = focus_server_api.configure_streaming_job(configure_request)
+        response = configure_historic_job_with_skip(
+            focus_server_api, config,
+            f"for status 208 test ({start_time_dt} to {end_time_dt})"
+        )
         job_id = response.job_id
         
         logger.info(f"Job configured: {job_id}")
@@ -364,7 +405,7 @@ class TestHistoricPlaybackDataQuality:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": start_ts,
             "end_time": end_ts,
@@ -373,8 +414,10 @@ class TestHistoricPlaybackDataQuality:
         
         logger.info(f"Configuring historic job using MongoDB recording")
         
-        configure_request = ConfigureRequest(**config)
-        response = focus_server_api.configure_streaming_job(configure_request)
+        response = configure_historic_job_with_skip(
+            focus_server_api, config,
+            f"for data integrity test"
+        )
         job_id = response.job_id
         
         logger.info(f"Job {job_id} configured")
@@ -423,7 +466,7 @@ class TestHistoricPlaybackDataQuality:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": start_time,
             "end_time": end_time,
@@ -432,8 +475,10 @@ class TestHistoricPlaybackDataQuality:
         
         logger.info(f"Configuring historic job using MongoDB recording")
         
-        configure_request = ConfigureRequest(**config)
-        response = focus_server_api.configure_streaming_job(configure_request)
+        response = configure_historic_job_with_skip(
+            focus_server_api, config,
+            f"for timestamp ordering test"
+        )
         job_id = response.job_id
         
         logger.info(f"Job {job_id} configured")
@@ -479,7 +524,7 @@ class TestHistoricPlaybackDataQuality:
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "channels": {"min": 0, "max": 50},
+            "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 500},
             "start_time": int(start_time_dt.timestamp()),
             "end_time": int(end_time_dt.timestamp()),

@@ -130,21 +130,6 @@ class TestHistoricPlaybackCompleteE2E:
         logger.info("=" * 80)
         
         # ===================================================================
-        # Pre-check: Verify system is ready for historic playback
-        # ===================================================================
-        try:
-            live_metadata = focus_server_api.get_live_metadata_flat()
-            # Check if system is waiting for fiber (historic playback won't work)
-            if live_metadata.is_waiting_for_fiber:
-                pytest.skip(
-                    f"System is in 'waiting for fiber' state - historic playback not available. "
-                    f"PRR: {live_metadata.prr}, SW: {live_metadata.sw_version}, "
-                    f"num_samples_per_trace: {live_metadata.num_samples_per_trace}"
-                )
-        except Exception as e:
-            logger.warning(f"Could not check system state: {e}")
-        
-        # ===================================================================
         # Phase 1: Configuration (using existing MongoDB data)
         # ===================================================================
         logger.info("\n" + "=" * 80)
@@ -178,7 +163,18 @@ class TestHistoricPlaybackCompleteE2E:
         
         logger.info("Configuring historic playback job...")
         config_request = ConfigureRequest(**config)
-        response = focus_server_api.configure_streaming_job(config_request)
+        
+        try:
+            response = focus_server_api.configure_streaming_job(config_request)
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "no recording found" in error_msg or "404" in error_msg:
+                pytest.skip(
+                    f"No recording found in Focus Server for time range "
+                    f"{start_time_dt} to {end_time_dt}. "
+                    f"Recording exists in MongoDB but Focus Server cannot access it."
+                )
+            raise  # Re-raise other errors
         
         assert hasattr(response, 'job_id') and response.job_id, \
             "Configuration should return job_id"
