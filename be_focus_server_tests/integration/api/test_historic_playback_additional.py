@@ -151,6 +151,9 @@ class TestHistoricPlaybackEdgeCases:
             pytest.skip("No recordings available in MongoDB for historic playback")
         
         start_time, end_time = time_range
+        # Convert Unix timestamps to datetime for logging
+        start_time_dt = datetime.fromtimestamp(start_time)
+        end_time_dt = datetime.fromtimestamp(end_time)
         
         config = {
             "displayTimeAxisDuration": 10,
@@ -285,6 +288,9 @@ class TestHistoricPlaybackEdgeCases:
             pytest.skip("No recordings available in MongoDB for historic playback")
         
         start_time, end_time = time_range
+        # Convert Unix timestamps to datetime for logging
+        start_time_dt = datetime.fromtimestamp(start_time)
+        end_time_dt = datetime.fromtimestamp(end_time)
         
         config = {
             "displayTimeAxisDuration": 10,

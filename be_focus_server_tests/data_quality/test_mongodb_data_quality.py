@@ -160,18 +160,25 @@ class TestMongoDBDataQuality(InfrastructureTest):
             self.logger.debug("Discovering recording collection name from base_paths")
             base_paths = self._get_collection(self.BASE_COLLECTION)
             
-            # Get first document (should only be one)
-            base_path_doc = base_paths.find_one()
+            # IMPORTANT: Use the GUID for /prisma/root/recordings (not /prisma/root/recordings/segy)
+            # This is the correct base_path that contains the actual recordings
+            base_path_doc = base_paths.find_one({
+                "base_path": "/prisma/root/recordings",
+                "is_archive": False
+            })
             
             if not base_path_doc:
-                raise DatabaseError(f"Collection '{self.BASE_COLLECTION}' is empty - cannot discover recording collection")
+                raise DatabaseError(
+                    f"Collection '{self.BASE_COLLECTION}' has no document for "
+                    f"base_path='/prisma/root/recordings' - cannot discover recording collection"
+                )
             
             # Extract GUID
             guid = base_path_doc.get("guid")
             if not guid:
                 raise DatabaseError(f"Document in '{self.BASE_COLLECTION}' has no 'guid' field")
             
-            self.logger.debug(f"Discovered recording collection name: {guid}")
+            self.logger.debug(f"Discovered recording collection name: {guid} (for /prisma/root/recordings)")
             
             # Cache for future use
             self._recording_collection_name = guid

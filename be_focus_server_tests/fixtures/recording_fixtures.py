@@ -133,10 +133,17 @@ class RecordingsInfo:
 
 def fetch_recordings_from_mongodb(
     config_manager,
-    max_recordings: int = 50
+    max_recordings: int = 50,
+    min_duration_seconds: float = 5.0,
+    max_duration_seconds: float = 10.0,
+    weeks_back: int = 2
 ) -> RecordingsInfo:
     """
     Fetch available recordings DIRECTLY from MongoDB (not via Focus Server API).
+    
+    Filters recordings by:
+    - Duration: 5-10 seconds only
+    - Time range: From today to two weeks ago
     
     MongoDB Structure:
     1. base_paths collection → get the guid
@@ -145,11 +152,14 @@ def fetch_recordings_from_mongodb(
     Args:
         config_manager: ConfigManager instance
         max_recordings: Maximum recordings to return
+        min_duration_seconds: Minimum recording duration (default: 5.0)
+        max_duration_seconds: Maximum recording duration (default: 10.0)
+        weeks_back: Number of weeks back to search (default: 2)
         
     Returns:
         RecordingsInfo object with available recordings
     """
-    logger.info("Querying MongoDB directly for recordings...")
+    logger.info(f"Querying MongoDB directly for recordings (duration: {min_duration_seconds}-{max_duration_seconds}s, time range: last {weeks_back} weeks)...")
     
     try:
         # Get MongoDB config
@@ -174,11 +184,16 @@ def fetch_recordings_from_mongodb(
         logger.info(f"Connected to MongoDB: {mongo_config['host']}:{mongo_config['port']}/{db_name}")
         
         # Step 1: Get guid from base_paths collection
+        # IMPORTANT: Use the GUID for /prisma/root/recordings (not /prisma/root/recordings/segy)
+        # This is the correct base_path that contains the actual recordings
         base_paths = db["base_paths"]
-        base_path_doc = base_paths.find_one()
+        base_path_doc = base_paths.find_one({
+            "base_path": "/prisma/root/recordings",
+            "is_archive": False
+        })
         
         if not base_path_doc:
-            logger.warning("No base_paths document found in MongoDB")
+            logger.warning("No base_paths document found for /prisma/root/recordings in MongoDB")
             client.close()
             return RecordingsInfo(recordings=[], query_time=datetime.now())
         
@@ -190,16 +205,26 @@ def fetch_recordings_from_mongodb(
             if isinstance(guid, dict):
                 guid = str(guid)
         
-        logger.info(f"Found guid from base_paths: {guid}")
+        logger.info(f"Found guid from base_paths for /prisma/root/recordings: {guid}")
         
         # Step 2: Query the collection named by guid
         recordings_collection = db[str(guid)]
         
-        # Query for non-deleted recordings, sorted by start_time descending
-        query = {"deleted": False}
+        # Calculate time range: from today to two weeks ago
+        now = datetime.now()
+        two_weeks_ago = now - timedelta(weeks=weeks_back)
+        
+        # Query by time range only (no deleted filter)
+        query = {
+            "start_time": {
+                "$gte": two_weeks_ago,
+                "$lte": now
+            }
+        }
         sort = [("start_time", pymongo.DESCENDING)]
         
-        cursor = recordings_collection.find(query).sort(sort).limit(max_recordings)
+        # Fetch more recordings than needed to filter by duration
+        cursor = recordings_collection.find(query).sort(sort).limit(max_recordings * 10)
         
         recordings = []
         for doc in cursor:
@@ -218,12 +243,21 @@ def fetch_recordings_from_mongodb(
                 else:
                     end_ms = int(end_time)
                 
-                recordings.append(Recording(start_time_ms=start_ms, end_time_ms=end_ms))
+                # Calculate duration
+                duration_seconds = (end_ms - start_ms) / 1000.0
                 
-                logger.debug(
-                    f"  Recording: {start_time} to {end_time} "
-                    f"({(end_ms - start_ms) / 1000:.1f}s)"
-                )
+                # Filter by duration: 5-10 seconds only
+                if min_duration_seconds <= duration_seconds <= max_duration_seconds:
+                    recordings.append(Recording(start_time_ms=start_ms, end_time_ms=end_ms))
+                    
+                    logger.debug(
+                        f"  Recording: {start_time} to {end_time} "
+                        f"({duration_seconds:.1f}s)"
+                    )
+                    
+                    # Stop if we have enough recordings
+                    if len(recordings) >= max_recordings:
+                        break
         
         # Close connection
         client.close()
@@ -231,7 +265,7 @@ def fetch_recordings_from_mongodb(
         # Sort by duration (longest first)
         recordings.sort(key=lambda r: r.duration_seconds, reverse=True)
         
-        logger.info(f"Found {len(recordings)} recordings in MongoDB (guid: {guid})")
+        logger.info(f"Found {len(recordings)} recordings in MongoDB (guid: {guid}) with duration {min_duration_seconds}-{max_duration_seconds}s")
         
         # Log first 5 recordings
         for i, rec in enumerate(recordings[:5]):
@@ -257,22 +291,28 @@ def fetch_recordings_from_mongodb(
 def fetch_available_recordings(
     focus_server_api,
     hours_back: int = 24,
-    max_recordings: int = 50
+    max_recordings: int = 50,
+    min_duration_seconds: float = 5.0,
+    max_duration_seconds: float = 10.0
 ) -> RecordingsInfo:
     """
     Fetch available recordings from MongoDB via Focus Server API.
+    
+    Filters recordings by duration: 5-10 seconds only.
     
     Args:
         focus_server_api: FocusServerAPI instance
         hours_back: How many hours back to search (default: 24)
         max_recordings: Maximum recordings to return (default: 50)
+        min_duration_seconds: Minimum recording duration (default: 5.0)
+        max_duration_seconds: Maximum recording duration (default: 10.0)
         
     Returns:
         RecordingsInfo object with available recordings
     """
     from src.models.focus_server_models import RecordingsInTimeRangeRequest
     
-    logger.info(f"Querying MongoDB for recordings in last {hours_back} hours...")
+    logger.info(f"Querying MongoDB for recordings in last {hours_back} hours (duration: {min_duration_seconds}-{max_duration_seconds}s)...")
     
     try:
         # Query time range
@@ -286,15 +326,23 @@ def fetch_available_recordings(
         
         response = focus_server_api.get_recordings_in_time_range(request)
         
-        # Convert to Recording objects
+        # Convert to Recording objects and filter by duration
         recordings = []
-        for start, end in response.root[:max_recordings]:
-            recordings.append(Recording(start_time_ms=start, end_time_ms=end))
+        for start, end in response.root:
+            duration_seconds = (end - start) / 1000.0
+            
+            # Filter by duration: 5-10 seconds only
+            if min_duration_seconds <= duration_seconds <= max_duration_seconds:
+                recordings.append(Recording(start_time_ms=start, end_time_ms=end))
+                
+                # Stop if we have enough recordings
+                if len(recordings) >= max_recordings:
+                    break
         
         # Sort by duration (longest first)
         recordings.sort(key=lambda r: r.duration_seconds, reverse=True)
         
-        logger.info(f"Found {len(recordings)} recordings in MongoDB")
+        logger.info(f"Found {len(recordings)} recordings in MongoDB with duration {min_duration_seconds}-{max_duration_seconds}s")
         
         # Log first 5 recordings
         for i, rec in enumerate(recordings[:5]):
@@ -315,7 +363,10 @@ def fetch_available_recordings(
 
 def get_historic_time_range_from_mongodb(
     config_manager,
-    duration_seconds: int = 60
+    duration_seconds: int = 60,
+    min_duration_seconds: float = 5.0,
+    max_duration_seconds: float = 10.0,
+    weeks_back: int = 2
 ) -> Optional[Tuple[int, int]]:
     """
     Get a valid time range for historic playback by querying MongoDB directly.
@@ -323,32 +374,35 @@ def get_historic_time_range_from_mongodb(
     This is the PREFERRED method (per Yonatan's feedback) - query MongoDB directly
     to get existing recordings.
     
+    Searches for recordings with duration 5-10 seconds from the last two weeks.
+    
     Args:
         config_manager: ConfigManager instance
-        duration_seconds: Desired duration for playback
+        duration_seconds: Desired duration for playback (will use full recording duration if shorter)
+        min_duration_seconds: Minimum recording duration to search for (default: 5.0)
+        max_duration_seconds: Maximum recording duration to search for (default: 10.0)
+        weeks_back: Number of weeks back to search (default: 2)
         
     Returns:
         Tuple of (start_time_sec, end_time_sec) or None if no recordings
     """
-    info = fetch_recordings_from_mongodb(config_manager)
+    info = fetch_recordings_from_mongodb(
+        config_manager,
+        min_duration_seconds=min_duration_seconds,
+        max_duration_seconds=max_duration_seconds,
+        weeks_back=weeks_back
+    )
     
     if not info.has_recordings:
-        logger.warning("No recordings available in MongoDB")
+        logger.warning(f"No recordings available in MongoDB (duration: {min_duration_seconds}-{max_duration_seconds}s, time range: last {weeks_back} weeks)")
         return None
     
-    recording = info.get_recording(min_duration_seconds=duration_seconds)
-    
-    if not recording:
-        # Use longest available even if shorter than requested
-        recording = info.get_longest_recording()
-        if recording:
-            logger.warning(
-                f"No recording with {duration_seconds}s duration found. "
-                f"Using longest: {recording.duration_seconds:.1f}s"
-            )
+    # Get first available recording (already filtered by duration 5-10 seconds)
+    recording = info.recordings[0] if info.recordings else None
     
     if recording:
-        return recording.get_time_range(duration_seconds)
+        # Use the full recording duration (it's already 5-10 seconds)
+        return (recording.start_time, recording.end_time)
     
     return None
 

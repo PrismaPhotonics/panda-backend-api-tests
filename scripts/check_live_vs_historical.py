@@ -48,11 +48,15 @@ def connect_to_mongodb(config):
 
 def get_recording_collection(db):
     """Get the recording collection"""
+    # IMPORTANT: Use the GUID for /prisma/root/recordings (not /prisma/root/recordings/segy)
     base_paths = db['base_paths']
-    doc = base_paths.find_one()
+    doc = base_paths.find_one({
+        "base_path": "/prisma/root/recordings",
+        "is_archive": False
+    })
     
     if not doc or 'guid' not in doc:
-        raise ValueError("Could not find GUID in base_paths collection")
+        raise ValueError("Could not find GUID in base_paths collection for /prisma/root/recordings")
     
     return db[doc['guid']], doc['guid']
 

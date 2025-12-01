@@ -41,22 +41,31 @@ def get_valid_historic_time_range(
     IMPORTANT (per Yonatan's feedback):
     - DO NOT manually insert data into MongoDB
     - ONLY query existing recordings and use their timestamps
+    - Search for recordings with duration 5-10 seconds from the last two weeks
+    - Search by time range only (not by deleted: false)
     
     MongoDB Query Flow:
     1. Connect to MongoDB (staging: 10.10.10.108:27017)
     2. Query base_paths collection to get the guid
-    3. Query collection named {guid} for recordings where deleted=false
+    3. Query collection named {guid} for recordings in time range (today to two weeks ago)
+    4. Filter recordings by duration: 5-10 seconds only
     
     Args:
         config_manager: ConfigManager instance
-        duration_minutes: Desired duration in minutes
+        duration_minutes: Desired duration in minutes (not used, recordings are 5-10 seconds)
         
     Returns:
         Tuple of (start_time_sec, end_time_sec) or None if no recordings
     """
     from be_focus_server_tests.fixtures.recording_fixtures import get_historic_time_range_from_mongodb
     
-    return get_historic_time_range_from_mongodb(config_manager, duration_seconds=duration_minutes * 60)
+    return get_historic_time_range_from_mongodb(
+        config_manager,
+        duration_seconds=duration_minutes * 60,
+        min_duration_seconds=5.0,
+        max_duration_seconds=10.0,
+        weeks_back=2
+    )
 
 
 # ===================================================================
@@ -94,7 +103,7 @@ class TestHistoricPlaybackCompleteE2E:
         
         Steps (from Xray):
             Phase 1: Configuration
-                1. Calculate 5-minute time range
+                1. Query MongoDB for recordings (5-10 seconds duration, last 2 weeks)
                 2. Send POST /configure
                 3. Verify configuration accepted
             
@@ -147,7 +156,7 @@ class TestHistoricPlaybackCompleteE2E:
         end_time_dt = datetime.fromtimestamp(end_time)
         
         logger.info(f"Using recording from MongoDB: {start_time_dt} to {end_time_dt}")
-        logger.info(f"Duration: {(end_time - start_time) / 60:.1f} minutes")
+        logger.info(f"Duration: {(end_time - start_time):.1f} seconds")
         
         # Create historic configuration
         config = {
@@ -285,7 +294,7 @@ class TestHistoricPlaybackCompleteE2E:
         logger.info("=" * 80)
         
         logger.info(f"Job ID: {job_id}")
-        logger.info(f"Time Range: {start_time_dt} to {end_time_dt} (5 minutes)")
+        logger.info(f"Time Range: {start_time_dt} to {end_time_dt} ({(end_time - start_time):.1f} seconds)")
         logger.info(f"Status Transitions: {' → '.join(map(str, status_transitions))}")
         logger.info(f"Data Blocks Collected: {len(all_data_blocks)}")
         logger.info(f"Total Duration: {total_poll_duration:.1f}s")
