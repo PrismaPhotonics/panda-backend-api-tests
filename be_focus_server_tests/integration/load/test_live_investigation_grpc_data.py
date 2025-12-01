@@ -49,8 +49,10 @@ GRPC_TIMEOUT_SECONDS = 30
 POD_STARTUP_DELAY_SECONDS = 5  # Increased from 3 for pod readiness
 
 # gRPC connection retry configuration
-MAX_GRPC_CONNECT_RETRIES = 5
-INITIAL_RETRY_DELAY_SECONDS = 2  # Will use exponential backoff: 2s, 4s, 8s, 16s, 32s
+# Using linear backoff (1.5s per retry) instead of exponential to stay within timeout budget
+# Total max retry time: 3 retries * 1.5s = 4.5s (well under 30s data collection timeout)
+MAX_GRPC_CONNECT_RETRIES = 3
+INITIAL_RETRY_DELAY_SECONDS = 1.5  # Linear backoff: 1.5s between each retry attempt
 
 
 # =============================================================================
@@ -62,20 +64,24 @@ def connect_grpc_with_retry(
     stream_url: str,
     stream_port: int,
     max_retries: int = MAX_GRPC_CONNECT_RETRIES,
-    initial_delay: float = INITIAL_RETRY_DELAY_SECONDS
+    retry_delay: float = INITIAL_RETRY_DELAY_SECONDS
 ) -> bool:
     """
-    Connect to gRPC with exponential backoff retry logic.
+    Connect to gRPC with linear retry logic.
     
     This handles the common case where the Kubernetes pod is not yet ready
     when we first try to connect after job creation.
+    
+    Uses linear backoff (fixed delay) instead of exponential to ensure
+    total retry time stays well within the data collection timeout budget.
+    Total max wait: max_retries * retry_delay (default: 3 * 1.5s = 4.5s)
     
     Args:
         grpc_client: GrpcStreamClient instance
         stream_url: URL to connect to (e.g., "http://10.10.10.150")
         stream_port: Port number
-        max_retries: Maximum number of connection attempts
-        initial_delay: Initial delay between retries (doubles each time)
+        max_retries: Maximum number of connection attempts (default: 3)
+        retry_delay: Fixed delay between retries in seconds (default: 1.5s)
     
     Returns:
         True if connected, False otherwise
@@ -96,10 +102,9 @@ def connect_grpc_with_retry(
             logger.debug(f"gRPC connect attempt {attempt + 1} failed: {e}")
             
             if attempt < max_retries - 1:
-                # Exponential backoff: 2s, 4s, 8s, 16s, 32s
-                delay = initial_delay * (2 ** attempt)
-                logger.debug(f"Retrying in {delay:.1f}s...")
-                time.sleep(delay)
+                # Linear backoff: fixed delay between retries
+                logger.debug(f"Retrying in {retry_delay:.1f}s...")
+                time.sleep(retry_delay)
     
     raise ConnectionError(
         f"gRPC connection failed after {max_retries} attempts: {last_error}"

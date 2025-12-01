@@ -364,12 +364,20 @@ class SmartLoadTester:
         Returns:
             Tuple of (is_breakpoint, failure_type, message)
         """
-        # Update consecutive failure counts
+        # Update consecutive failure counts for ALL tracked failure types
+        # Reset counts for types NOT present in current step's failures
+        current_failure_types = set(result.failures_by_type.keys())
+        
+        # First, increment counts for failure types in current step
         for failure_type, count in result.failures_by_type.items():
             if count > 0:
                 self._consecutive_failures[failure_type] = \
                     self._consecutive_failures.get(failure_type, 0) + 1
-            else:
+        
+        # Then, reset counts for failure types NOT in current step
+        # This fixes the bug where stale counters from previous failures weren't reset
+        for failure_type in list(self._consecutive_failures.keys()):
+            if failure_type not in current_failure_types:
                 self._consecutive_failures[failure_type] = 0
         
         # IMMEDIATE BREAKPOINT: 401 Unauthorized errors indicate config problem
@@ -562,8 +570,23 @@ class AlertLoadTester(SmartLoadTester):
         
         # Convert frontend URL to API URL
         # https://10.10.10.100/liveView -> https://10.10.10.100/prisma/api/{site_id}/api/push-to-rabbit
+        # Handle multiple URL formats:
+        # 1. Frontend URL: https://10.10.10.100/liveView
+        # 2. Already API URL: https://10.10.10.100/prisma/api/
+        # 3. Base URL only: https://10.10.10.100
+        
+        # Remove /liveView if present
         if "/liveView" in base_url:
             base_url = base_url.replace("/liveView", "")
+        
+        # Remove existing /prisma/api path to avoid duplication
+        # This handles cases like https://10.10.10.100/prisma/api/ or https://10.10.10.100/prisma/api/something
+        if "/prisma/api" in base_url:
+            # Extract just the host portion (scheme + netloc)
+            from urllib.parse import urlparse, urlunparse
+            parsed = urlparse(base_url)
+            base_url = urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
+        
         base_url = base_url.rstrip("/")
         
         self.alert_url = f"{base_url}/prisma/api/{site_id}/api/push-to-rabbit"
