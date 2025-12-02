@@ -82,19 +82,36 @@ jobs:
           Write-Host "🔴 LIVE JOB TESTS - BASIC"
           Write-Host "========================================"
           
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_live_load.py `
-            -m "live and not heavy and not stress" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=short `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-live-basic.xml
+          # Ensure XML file exists even if pytest fails early (e.g., health check failure)
+          $xmlFile = "reports/junit-live-basic.xml"
           
-          $exitCode = $LASTEXITCODE
-          # Store exit code for later checking
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-basic-exit-code.txt" -Encoding utf8
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_live_load.py `
+              -m "live and not heavy and not stress" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=short `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile
+            
+            $exitCode = $LASTEXITCODE
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # If XML file doesn't exist (pytest failed before creating it), create empty one
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-basic" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8
+            }
+            
+            # Store exit code for later checking
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-basic-exit-code.txt" -Encoding utf8
+          }
+          
           exit $exitCode
 
       - name: Run Live Job Tests (Heavy)
@@ -344,18 +361,36 @@ jobs:
           Write-Host "📼 HISTORIC JOB TESTS - BASIC"
           Write-Host "========================================"
           
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_historic_load.py `
-            -m "historic and not heavy and not stress" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=short `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-historic-basic.xml
+          # Ensure XML file exists even if pytest fails early (e.g., health check failure)
+          $xmlFile = "reports/junit-historic-basic.xml"
           
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-basic-exit-code.txt" -Encoding utf8
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_historic_load.py `
+              -m "historic and not heavy and not stress" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=short `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile
+            
+            $exitCode = $LASTEXITCODE
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # If XML file doesn't exist (pytest failed before creating it), create empty one
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="historic-basic" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8
+            }
+            
+            # Store exit code for later checking
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-basic-exit-code.txt" -Encoding utf8
+          }
+          
           exit $exitCode
 
       - name: Run Historic Job Tests (Heavy)
