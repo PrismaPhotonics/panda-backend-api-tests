@@ -36,6 +36,7 @@ jobs:
       ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
+      PYTHONPATH: ${{ github.workspace }}
 
     steps:
       - name: Checkout
@@ -387,12 +388,38 @@ jobs:
         run: |
           py parse_junit_results.py
 
+      - name: Debug - Show test results XML
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "Debug: Test Results XML File"
+          Write-Host "========================================"
+          $xmlFile = "test-results/junit-smoke.xml"
+          if (Test-Path $xmlFile) {
+            Write-Host "XML file exists: $xmlFile"
+            Write-Host "File contents:"
+            Get-Content $xmlFile
+            Write-Host ""
+            Write-Host "Step outcome: ${{ steps.run-smoke-tests.outcome }}"
+          } else {
+            Write-Host "XML file NOT found: $xmlFile"
+          }
+          Write-Host "========================================"
+
       - name: Fail workflow if tests failed
         if: always()
         shell: powershell
         env:
           RUN_TESTS_OUTCOME: ${{ steps.run-smoke-tests.outcome }}
-        run: py check_test_failures.py
+        run: |
+          Write-Host "Checking for test failures..."
+          Write-Host "Step outcome: $env:RUN_TESTS_OUTCOME"
+          py check_test_failures.py
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Test failures detected - failing workflow"
+            exit $LASTEXITCODE
+          }
 
       - uses: actions/upload-artifact@v4
         if: always()

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Integration Tests - Performance (High Priority)
 =================================================
 
