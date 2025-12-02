@@ -138,6 +138,91 @@ jobs:
           
           exit $LASTEXITCODE
 
+      - name: Generate Comprehensive Test Reports (Live)
+        if: always()
+        shell: powershell
+        env:
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          FOCUS_SERVER_HOST: ${{ env.FOCUS_SERVER_HOST }}
+        run: |
+          Write-Host "Generating comprehensive test reports for Live Job Tests..."
+          $target = "https://$env:FOCUS_SERVER_HOST/focus-server"
+          
+          $junitFiles = @(
+            "reports/junit-live-basic.xml",
+            "reports/junit-live-heavy.xml",
+            "reports/junit-live-stress.xml"
+          )
+          
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              Write-Host "Processing: $file"
+              py scripts/generate_comprehensive_test_report.py $file `
+                --environment $env:ENVIRONMENT `
+                --target $target
+            }
+          }
+
+      - name: Check for Test Failures (Live)
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "Checking for test failures..."
+          $hasFailures = $false
+          $junitFiles = @(
+            "reports/junit-live-basic.xml",
+            "reports/junit-live-heavy.xml",
+            "reports/junit-live-stress.xml"
+          )
+          
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              $xml = [xml](Get-Content $file)
+              $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+              
+              if ($testsuite) {
+                $failures = [int]$testsuite.failures
+                $errors = [int]$testsuite.errors
+                
+                if ($failures -gt 0 -or $errors -gt 0) {
+                  Write-Host "::error::Found failures in $file: $failures failures, $errors errors"
+                  $hasFailures = $true
+                }
+              }
+            }
+          }
+          
+          # Also check step outcomes
+          $basicFailed = '${{ steps.live-basic.outcome }}' -eq 'failure'
+          $heavyFailed = '${{ steps.live-heavy.outcome }}' -eq 'failure'
+          $stressFailed = '${{ steps.live-stress.outcome }}' -eq 'failure'
+          
+          if ($basicFailed -or $heavyFailed -or $stressFailed) {
+            Write-Host "::error::One or more test steps failed"
+            $hasFailures = $true
+          }
+          
+          # Check if no XML files were generated (tests didn't run)
+          $xmlFound = $false
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              $xmlFound = $true
+              break
+            }
+          }
+          
+          if (-not $xmlFound) {
+            Write-Host "::error::No JUnit XML files found - tests may not have executed"
+            $hasFailures = $true
+          }
+          
+          if ($hasFailures) {
+            Write-Host "::error::Live Job Tests failed - failing workflow"
+            exit 1
+          } else {
+            Write-Host "✅ All Live Job Tests passed"
+          }
+
       - name: Upload Live Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -252,6 +337,91 @@ jobs:
           
           exit $LASTEXITCODE
 
+      - name: Generate Comprehensive Test Reports (Historic)
+        if: always()
+        shell: powershell
+        env:
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          FOCUS_SERVER_HOST: ${{ env.FOCUS_SERVER_HOST }}
+        run: |
+          Write-Host "Generating comprehensive test reports for Historic Job Tests..."
+          $target = "https://$env:FOCUS_SERVER_HOST/focus-server"
+          
+          $junitFiles = @(
+            "reports/junit-historic-basic.xml",
+            "reports/junit-historic-heavy.xml",
+            "reports/junit-historic-stress.xml"
+          )
+          
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              Write-Host "Processing: $file"
+              py scripts/generate_comprehensive_test_report.py $file `
+                --environment $env:ENVIRONMENT `
+                --target $target
+            }
+          }
+
+      - name: Check for Test Failures (Historic)
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "Checking for test failures..."
+          $hasFailures = $false
+          $junitFiles = @(
+            "reports/junit-historic-basic.xml",
+            "reports/junit-historic-heavy.xml",
+            "reports/junit-historic-stress.xml"
+          )
+          
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              $xml = [xml](Get-Content $file)
+              $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+              
+              if ($testsuite) {
+                $failures = [int]$testsuite.failures
+                $errors = [int]$testsuite.errors
+                
+                if ($failures -gt 0 -or $errors -gt 0) {
+                  Write-Host "::error::Found failures in $file: $failures failures, $errors errors"
+                  $hasFailures = $true
+                }
+              }
+            }
+          }
+          
+          # Also check step outcomes
+          $basicFailed = '${{ steps.historic-basic.outcome }}' -eq 'failure'
+          $heavyFailed = '${{ steps.historic-heavy.outcome }}' -eq 'failure'
+          $stressFailed = '${{ steps.historic-stress.outcome }}' -eq 'failure'
+          
+          if ($basicFailed -or $heavyFailed -or $stressFailed) {
+            Write-Host "::error::One or more test steps failed"
+            $hasFailures = $true
+          }
+          
+          # Check if no XML files were generated (tests didn't run)
+          $xmlFound = $false
+          foreach ($file in $junitFiles) {
+            if (Test-Path $file) {
+              $xmlFound = $true
+              break
+            }
+          }
+          
+          if (-not $xmlFound) {
+            Write-Host "::error::No JUnit XML files found - tests may not have executed"
+            $hasFailures = $true
+          }
+          
+          if ($hasFailures) {
+            Write-Host "::error::Historic Job Tests failed - failing workflow"
+            exit 1
+          } else {
+            Write-Host "✅ All Historic Job Tests passed"
+          }
+
       - name: Upload Historic Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -276,15 +446,45 @@ jobs:
           path: all-reports/
           merge-multiple: true
 
-      - name: Generate Summary
+      - name: Generate Comprehensive Summary Reports
+        if: always()
         shell: powershell
+        env:
+          ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
+          FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
         run: |
-          $summary = @"
+          Write-Host "Generating comprehensive summary reports..."
+          $target = "https://$env:FOCUS_SERVER_HOST/focus-server"
+          
+          # Generate comprehensive reports for each JUnit XML file
+          $junitFiles = Get-ChildItem -Path "all-reports" -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue
+          
+          if ($junitFiles) {
+            foreach ($file in $junitFiles) {
+              Write-Host "Processing: $($file.FullName)"
+              py scripts/generate_comprehensive_test_report.py $file.FullName `
+                --environment $env:ENVIRONMENT `
+                --target $target
+            }
+          } else {
+            Write-Host "::warning::No JUnit XML files found in all-reports/"
+            
+            # Generate basic summary if no files found
+            $basicSummary = @"
           # 🚀 Job Load Test Results
           
           **Test Type:** ${{ inputs.test_type || 'all' }}
           **Load Level:** ${{ inputs.load_level || 'basic' }}
           **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+          
+          ## ⚠️ Warning
+          
+          No test result files were found. This may indicate:
+          - Tests did not execute
+          - Tests failed before generating reports
+          - Artifact download failed
+          
+          Check the previous job logs for details.
           
           ## Test Types
           
@@ -300,12 +500,35 @@ jobs:
           | Basic | Core functionality | ~5 min |
           | Heavy | 500 channels, sustained | ~15 min |
           | Stress | Max concurrent | ~20 min |
-          
-          ---
-          
           "@
+            $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          }
+
+      - name: Check Overall Test Results
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "Checking overall test results..."
+          $hasFailures = $false
+          $totalTests = 0
+          $totalFailures = 0
+          $totalErrors = 0
           
-          # Parse JUnit files
+          # Check job outcomes
+          $liveJobFailed = '${{ needs.live-job-tests.result }}' -eq 'failure'
+          $historicJobFailed = '${{ needs.historic-job-tests.result }}' -eq 'failure'
+          
+          if ($liveJobFailed) {
+            Write-Host "::error::Live Job Tests job failed"
+            $hasFailures = $true
+          }
+          
+          if ($historicJobFailed) {
+            Write-Host "::error::Historic Job Tests job failed"
+            $hasFailures = $true
+          }
+          
+          # Parse all JUnit files
           $junitFiles = Get-ChildItem -Path "all-reports" -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue
           
           foreach ($file in $junitFiles) {
@@ -313,24 +536,23 @@ jobs:
             $ts = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
             
             if ($ts) {
-              $name = $file.BaseName -replace "junit-", ""
-              $passed = [int]$ts.tests - [int]$ts.failures - [int]$ts.errors
-              $emoji = if ([int]$ts.failures -eq 0 -and [int]$ts.errors -eq 0) { "✅" } else { "❌" }
-              
-              $summary += @"
-          
-          ## $emoji $name
-          
-          | Metric | Value |
-          |--------|-------|
-          | Tests | $($ts.tests) |
-          | Passed | $passed |
-          | Failed | $($ts.failures) |
-          | Duration | $([math]::Round([double]$ts.time, 1))s |
-          
-          "@
+              $totalTests += [int]$ts.tests
+              $totalFailures += [int]$ts.failures
+              $totalErrors += [int]$ts.errors
             }
           }
           
-          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          Write-Host "Summary: $totalTests tests, $totalFailures failures, $totalErrors errors"
+          
+          if ($totalFailures -gt 0 -or $totalErrors -gt 0) {
+            Write-Host "::error::Test failures detected: $totalFailures failures, $totalErrors errors"
+            $hasFailures = $true
+          }
+          
+          if ($hasFailures) {
+            Write-Host "::error::Overall test results indicate failures - failing workflow"
+            exit 1
+          } else {
+            Write-Host "✅ All tests passed successfully"
+          }
 
