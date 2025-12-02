@@ -159,72 +159,52 @@ jobs:
           
           exit $LASTEXITCODE
 
-      - name: Generate Test Summary
+      - name: Generate Comprehensive Test Reports
         if: always()
         shell: powershell
         run: |
-          $summary = @"
-          # 🚀 Live Job Load Test Results
+          Write-Host "Generating comprehensive test reports..."
+          $target = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           
-          **Environment:** $env:ENVIRONMENT
-          **Target:** https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX
-          **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-          
-          ## Test Flow
-          
-          The Live Job load tests validate the complete job lifecycle:
-          
-          1. **POST /configure** → Create job, get job_id, stream_url, stream_port
-          2. **Wait + Retry** → Wait for gRPC to be ready (with retries!)
-          3. **gRPC Connect** → Connect to streaming endpoint
-          4. **Stream Data** → Receive spectrogram frames
-          5. **Cleanup** → Disconnect and release resources
-          
-          ## Key Insight
-          
-          Based on Yonatan's feedback, the tests include **retry logic** between
-          job configuration (step 4) and gRPC connection (step 5). This is critical
-          because the gRPC service may not be immediately available.
-          
-          ---
-          
-          "@
-          
-          # Add JUnit results if available
+          # Generate report for each JUnit XML file
           $junitFiles = @(
             "reports/junit-live-job-basic.xml",
             "reports/junit-live-job-stress.xml"
           )
           
+          $allReports = @()
           foreach ($file in $junitFiles) {
             if (Test-Path $file) {
-              $xml = [xml](Get-Content $file)
-              $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+              Write-Host "Processing: $file"
+              $reportFile = $file -replace "\.xml$", "-report.md"
+              py scripts/generate_comprehensive_test_report.py $file `
+                --environment $env:ENVIRONMENT `
+                --target $target `
+                --output $reportFile
               
-              if ($testsuite) {
-                $testName = [System.IO.Path]::GetFileNameWithoutExtension($file) -replace "junit-", ""
-                $passed = [int]$testsuite.tests - [int]$testsuite.failures - [int]$testsuite.errors
-                $status = if ([int]$testsuite.failures -eq 0 -and [int]$testsuite.errors -eq 0) { "✅" } else { "❌" }
-                
-                $summary += @"
-          
-          ## $status $testName
-          
-          | Metric | Value |
-          |--------|-------|
-          | Total Tests | $($testsuite.tests) |
-          | Passed | $passed |
-          | Failures | $($testsuite.failures) |
-          | Errors | $($testsuite.errors) |
-          | Duration | $([math]::Round([double]$testsuite.time, 1))s |
-          
-          "@
+              # Append to summary
+              if (Test-Path $reportFile) {
+                Get-Content $reportFile | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+                Write-Host "✅ Report generated: $reportFile"
               }
             }
           }
           
-          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
-          Write-Host "Summary added to GitHub Summary"
+          # If no reports were generated, create a basic summary
+          if (-not (Test-Path $env:GITHUB_STEP_SUMMARY)) {
+            $basicSummary = @"
+          # 🚀 Live Job Load Test Results
+          
+          **Environment:** $env:ENVIRONMENT
+          **Target:** $target
+          **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+          
+          > **Note:** No JUnit XML files found. Check test execution logs for details.
+          "@
+            $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          }
+          
+          Write-Host "✅ Comprehensive reports generated"
 
       - name: Upload Reports
         if: always()

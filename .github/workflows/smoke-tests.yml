@@ -379,7 +379,30 @@ jobs:
             echo "id=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           }
 
-      - name: Parse and Display Test Results
+      - name: Generate Comprehensive Test Report
+        if: always()
+        shell: powershell
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
+          ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'staging' }}
+          FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
+        run: |
+          $xmlFile = "test-results/junit-smoke.xml"
+          if (Test-Path $xmlFile) {
+            Write-Host "Generating comprehensive test report..."
+            $target = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
+            py scripts/generate_comprehensive_test_report.py $xmlFile `
+              --environment $env:ENVIRONMENT `
+              --target $target
+          } else {
+            Write-Host "::warning::JUnit XML file not found: $xmlFile"
+            Write-Host "Skipping report generation"
+          }
+
+      - name: Parse and Display Test Results (Legacy)
         if: always()
         shell: powershell
         env:
