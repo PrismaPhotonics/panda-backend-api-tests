@@ -388,49 +388,59 @@ jobs:
 
       - name: Fail workflow if tests failed
         if: always()
-        shell: powershell
         env:
           RUN_TESTS_OUTCOME: ${{ steps.run-smoke-tests.outcome }}
         run: |
-          # Get step outcome from environment variable (more reliable than inline expression)
-          $runTestsOutcome = $env:RUN_TESTS_OUTCOME
-          Write-Host "Run smoke tests step outcome: $runTestsOutcome"
+          py -c "
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+          
+          run_tests_outcome = os.environ.get('RUN_TESTS_OUTCOME', '')
+          print(f'Run smoke tests step outcome: {run_tests_outcome}')
           
           # Check if test results exist and have failures
-          if (Test-Path test-results\junit-smoke.xml) {
-            [xml]$xml = Get-Content test-results\junit-smoke.xml -Raw
-            $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
-            
-            if ($testsuite) {
-              $failures = [int]$testsuite.failures
-              $errors = [int]$testsuite.errors
-              Write-Host "Test results: $failures failures, $errors errors"
-              
-              # If pytest step failed or there are test failures/errors, fail the workflow
-              if ($runTestsOutcome -eq 'failure' -or $failures -gt 0 -or $errors -gt 0) {
-                Write-Host "::error::Tests failed: $failures failures, $errors errors (step outcome: $runTestsOutcome)"
-                exit 1
-              } else {
-                Write-Host "All tests passed!"
-                exit 0
-              }
-            } else {
-              # If no valid test results, check if pytest step failed
-              if ($runTestsOutcome -eq 'failure') {
-                Write-Host "::error::Test execution failed (no valid results file, step outcome: $runTestsOutcome)"
-                exit 1
-              }
-            }
-          } else {
-            # No results file - check if pytest step failed
-            if ($runTestsOutcome -eq 'failure') {
-              Write-Host "::error::Test execution failed (no results file found, step outcome: $runTestsOutcome)"
-              exit 1
-            } else {
-              Write-Host "::warning::No test results file found (tests may have been skipped)"
-              exit 0
-            }
-          }
+          results_file = 'test-results/junit-smoke.xml'
+          if os.path.exists(results_file):
+              try:
+                  tree = ET.parse(results_file)
+                  root = tree.getroot()
+                  
+                  # Handle both testsuites and testsuite root elements
+                  suite = root.find('.//testsuite')
+                  if suite is None:
+                      suite = root if root.tag == 'testsuite' else None
+                  
+                  if suite is not None:
+                      failures = int(suite.get('failures', '0') or '0')
+                      errors = int(suite.get('errors', '0') or '0')
+                      print(f'Test results: {failures} failures, {errors} errors')
+                      
+                      # If pytest step failed or there are test failures/errors, fail the workflow
+                      if run_tests_outcome == 'failure' or failures > 0 or errors > 0:
+                          print(f'::error::Tests failed: {failures} failures, {errors} errors (step outcome: {run_tests_outcome})')
+                          sys.exit(1)
+                      else:
+                          print('All tests passed!')
+                          sys.exit(0)
+                  else:
+                      # No valid test results, check if pytest step failed
+                      if run_tests_outcome == 'failure':
+                          print(f'::error::Test execution failed (no valid results file, step outcome: {run_tests_outcome})')
+                          sys.exit(1)
+              except Exception as e:
+                  print(f'::error::Error parsing test results: {e}')
+                  if run_tests_outcome == 'failure':
+                      sys.exit(1)
+          else:
+              # No results file - check if pytest step failed
+              if run_tests_outcome == 'failure':
+                  print(f'::error::Test execution failed (no results file found, step outcome: {run_tests_outcome})')
+                  sys.exit(1)
+              else:
+                  print('::warning::No test results file found (tests may have been skipped)')
+                  sys.exit(0)
+          "
 
       - uses: actions/upload-artifact@v4
         if: always()
