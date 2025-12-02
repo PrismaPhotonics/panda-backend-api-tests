@@ -167,15 +167,22 @@ class FocusServerAPI(BaseAPIClient):
             response = self.get(f"/metadata/{job_id}")
             response_data = response.json()
             
+            # Check if response contains an error (e.g., {"error": "Invalid job_id"})
+            if isinstance(response_data, dict) and 'error' in response_data:
+                error_msg = response_data.get('error', 'Unknown error')
+                self.logger.warning(f"Job {job_id} metadata returned error: {error_msg}")
+                raise APIError(f"Invalid job_id: {error_msg}")
+            
             job_metadata = ConfigureResponse(**response_data)
             self.logger.debug(f"Job metadata retrieved for job ID: {job_id}")
             
             return job_metadata
             
+        except APIError:
+            # Re-raise APIError as-is (already has proper error message)
+            raise
         except Exception as e:
             self.logger.error(f"Failed to get job metadata for job ID {job_id}: {e}")
-            if isinstance(e, APIError):
-                raise
             raise APIError(f"Failed to get job metadata: {e}") from e
     
     def get_recordings_in_time_range(self, payload: RecordingsInTimeRangeRequest) -> RecordingsInTimeRangeResponse:
@@ -247,14 +254,18 @@ class FocusServerAPI(BaseAPIClient):
         """
         Get job status by job ID.
         
+        Uses /metadata/{job_id} endpoint which returns ConfigureResponse with status field.
+        Note: The status field in ConfigureResponse may be empty string "".
+        For job lifecycle status, check HTTP status code or other indicators.
+        
         Args:
             job_id: Job identifier
             
         Returns:
-            Job status information
+            Job status information (dict with 'status' and other fields from ConfigureResponse)
             
         Raises:
-            APIError: If API call fails
+            APIError: If API call fails (including 404 if job not found)
             ValidationError: If job_id is invalid
         """
         if not job_id or not isinstance(job_id, str):
@@ -263,16 +274,43 @@ class FocusServerAPI(BaseAPIClient):
         self.logger.debug(f"Getting job status for job ID: {job_id}")
         
         try:
-            response = self.get(f"/job/{job_id}/status")
-            status_data = response.json()
+            # Use /metadata/{job_id} endpoint (the correct endpoint)
+            # This returns ConfigureResponse which includes status field
+            metadata = self.get_job_metadata(job_id)
+            
+            # Convert ConfigureResponse to dict format expected by callers
+            # Note: ConfigureResponse.status may be empty string ""
+            status_data = {
+                'status': metadata.status if hasattr(metadata, 'status') and metadata.status else '',
+                'job_id': metadata.job_id if hasattr(metadata, 'job_id') else job_id,
+            }
+            
+            # Add other fields if they exist
+            if hasattr(metadata, 'stream_port'):
+                status_data['stream_port'] = metadata.stream_port
+            if hasattr(metadata, 'stream_url'):
+                status_data['stream_url'] = metadata.stream_url
+            if hasattr(metadata, 'view_type'):
+                status_data['view_type'] = metadata.view_type
             
             self.logger.debug(f"Job status for {job_id}: {status_data.get('status', 'unknown')}")
             return status_data
             
+        except APIError as e:
+            # If 404 or "Invalid job_id", the job doesn't exist or was deleted
+            error_str = str(e).lower()
+            if '404' in error_str or 'not found' in error_str or 'invalid job_id' in error_str:
+                self.logger.warning(f"Job {job_id} not found (404/Invalid job_id) - may have been deleted or never existed")
+                # Return a status indicating job not found
+                return {
+                    'status': 'not_found',
+                    'job_id': job_id,
+                    'error': 'Job not found'
+                }
+            self.logger.error(f"Failed to get job status for job ID {job_id}: {e}")
+            raise
         except Exception as e:
             self.logger.error(f"Failed to get job status for job ID {job_id}: {e}")
-            if isinstance(e, APIError):
-                raise
             raise APIError(f"Failed to get job status: {e}") from e
     
     def cancel_job(self, job_id: str) -> bool:

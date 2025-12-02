@@ -284,7 +284,7 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
                 service_name="focus-server"
             )
             
-            if focus_mgr.setup():
+            if focus_mgr.setup(config_manager=config_manager):
                 managers.append(("Focus Server", focus_mgr))
                 logger.info("Focus Server setup SUCCESS")
             else:
@@ -312,6 +312,14 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
                 mgr.cleanup()
             except Exception as e:
                 logger.error(f"Cleanup error for {name}: {e}")
+        
+        # Cleanup MongoDB tunnel if it was created
+        try:
+            from be_focus_server_tests.fixtures.recording_fixtures import _cleanup_mongodb_ssh_tunnel
+            _cleanup_mongodb_ssh_tunnel()
+            logger.info("MongoDB tunnel cleanup complete")
+        except Exception as e:
+            logger.debug(f"MongoDB tunnel cleanup: {e}")
         
         logger.info("AUTO-CLEANUP: Complete")
 

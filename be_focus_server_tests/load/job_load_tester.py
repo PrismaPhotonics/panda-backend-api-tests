@@ -646,12 +646,15 @@ class HistoricJobLoadTester(BaseJobLoadTester):
     Historic jobs replay recorded data from storage.
     - start_time = epoch timestamp
     - end_time = epoch timestamp
+    
+    Uses MongoDB base_paths collection directly to find recordings for load testing.
     """
     
     def __init__(
         self,
         focus_server_api,
         grpc_client_factory: Callable,
+        config_manager=None,
         # Job configuration
         channels_min: int = 1,
         channels_max: int = 50,
@@ -662,17 +665,28 @@ class HistoricJobLoadTester(BaseJobLoadTester):
         view_type: int = 0,
         # Historic-specific
         recording_duration_seconds: int = 10,
+        # MongoDB query parameters
+        min_duration_seconds: float = 5.0,
+        max_duration_seconds: float = 10.0,
+        weeks_back: int = 2,
+        max_recordings_to_load: int = 100,
         **kwargs
     ):
         """
         Initialize Historic Job Load Tester.
         
         Args:
+            config_manager: ConfigManager instance (required for MongoDB access)
             recording_duration_seconds: Duration of recording to request
+            min_duration_seconds: Minimum recording duration to search for
+            max_duration_seconds: Maximum recording duration to search for
+            weeks_back: Number of weeks back to search in MongoDB
+            max_recordings_to_load: Maximum recordings to load from MongoDB
             **kwargs: Base class and common arguments
         """
         super().__init__(focus_server_api, grpc_client_factory, **kwargs)
         
+        self.config_manager = config_manager
         self.channels_min = channels_min
         self.channels_max = channels_max
         self.frequency_min = frequency_min
@@ -682,18 +696,98 @@ class HistoricJobLoadTester(BaseJobLoadTester):
         self.view_type = view_type
         self.recording_duration_seconds = recording_duration_seconds
         
-        # Cache available recordings
+        # MongoDB query parameters
+        self.min_duration_seconds = min_duration_seconds
+        self.max_duration_seconds = max_duration_seconds
+        self.weeks_back = weeks_back
+        self.max_recordings_to_load = max_recordings_to_load
+        
+        # Cache available recordings from MongoDB
         self._available_recordings: Optional[List[tuple]] = None
+        self._recording_index = 0  # For round-robin selection
     
     @property
     def job_type(self) -> JobType:
         return JobType.HISTORIC
     
-    def _get_available_recordings(self) -> List[tuple]:
-        """Get available recordings from server."""
+    def _get_available_recordings_from_mongodb(self) -> List[tuple]:
+        """
+        Get available recordings DIRECTLY from MongoDB using base_paths collection.
+        
+        Query flow:
+        1. Connect to MongoDB
+        2. Query base_paths collection for base_path="/prisma/root/recordings", is_archive=False
+        3. Get guid from the document
+        4. Query collection named {guid} for recordings
+        5. Filter by deleted=False, duration, and time range
+        
+        Returns:
+            List of (start_time_ms, end_time_ms) tuples
+        """
         if self._available_recordings is not None:
             return self._available_recordings
         
+        if not self.config_manager:
+            logger.warning("No config_manager provided, cannot query MongoDB")
+            return []
+        
+        try:
+            from be_focus_server_tests.fixtures.recording_fixtures import fetch_recordings_from_mongodb
+            
+            logger.info(f"Querying MongoDB for historic recordings...")
+            logger.info(f"  - Duration: {self.min_duration_seconds}-{self.max_duration_seconds}s")
+            logger.info(f"  - Time range: last {self.weeks_back} weeks")
+            logger.info(f"  - Max recordings: {self.max_recordings_to_load}")
+            
+            # Query MongoDB directly using base_paths collection
+            recordings_info = fetch_recordings_from_mongodb(
+                config_manager=self.config_manager,
+                max_recordings=self.max_recordings_to_load,
+                min_duration_seconds=self.min_duration_seconds,
+                max_duration_seconds=self.max_duration_seconds,
+                weeks_back=self.weeks_back
+            )
+            
+            if not recordings_info.has_recordings:
+                logger.warning("No recordings found in MongoDB")
+                self._available_recordings = []
+                return []
+            
+            # Convert Recording objects to (start_ms, end_ms) tuples
+            recordings_list = []
+            for rec in recordings_info.recordings:
+                # Use start_time_ms and end_time_ms (in milliseconds) for API calls
+                recordings_list.append((rec.start_time_ms, rec.end_time_ms))
+            
+            self._available_recordings = recordings_list
+            logger.info(f"✅ Loaded {len(self._available_recordings)} recordings from MongoDB base_paths collection")
+            
+            # Log first few recordings for debugging
+            for i, (start_ms, end_ms) in enumerate(recordings_list[:3]):
+                duration_sec = (end_ms - start_ms) / 1000
+                logger.debug(f"  Recording {i+1}: {duration_sec:.1f}s duration")
+            
+            return self._available_recordings
+            
+        except Exception as e:
+            logger.error(f"Failed to get recordings from MongoDB: {e}", exc_info=True)
+            self._available_recordings = []
+            return []
+    
+    def _get_available_recordings(self) -> List[tuple]:
+        """
+        Get available recordings - tries MongoDB first, falls back to API.
+        
+        For load testing, we prefer MongoDB direct access via base_paths collection.
+        """
+        # Try MongoDB first (preferred method)
+        recordings = self._get_available_recordings_from_mongodb()
+        
+        if recordings:
+            return recordings
+        
+        # Fallback to API (may not work, but try anyway)
+        logger.warning("MongoDB query failed, falling back to Focus Server API")
         try:
             from src.models.focus_server_models import RecordingsInTimeRangeRequest
             
@@ -707,35 +801,52 @@ class HistoricJobLoadTester(BaseJobLoadTester):
             )
             
             response = self.focus_server_api.get_recordings_in_time_range(request)
-            self._available_recordings = response.root if response.root else []
+            api_recordings = response.root if response.root else []
             
-            logger.info(f"Found {len(self._available_recordings)} available recordings")
-            return self._available_recordings
+            if api_recordings:
+                logger.info(f"Found {len(api_recordings)} recordings via API")
+                return api_recordings
             
         except Exception as e:
-            logger.warning(f"Failed to get recordings: {e}")
-            return []
+            logger.warning(f"API fallback also failed: {e}")
+        
+        return []
     
     def _create_config_payload(self) -> Dict[str, Any]:
-        """Create Historic job payload with time range."""
+        """
+        Create Historic job payload with time range from MongoDB base_paths collection.
+        
+        Uses round-robin selection to distribute load across different recordings.
+        """
         recordings = self._get_available_recordings()
         
         if recordings:
-            # Use first available recording
-            rec_start, rec_end = recordings[0]
+            # Round-robin selection for load distribution
+            with self._lock:
+                recording_index = self._recording_index % len(recordings)
+                self._recording_index += 1
+            
+            rec_start_ms, rec_end_ms = recordings[recording_index]
             
             # Calculate time range (use requested duration or available)
+            # recordings are in milliseconds, but API expects seconds
             duration_ms = self.recording_duration_seconds * 1000
-            actual_duration = min(duration_ms, rec_end - rec_start)
+            actual_duration_ms = min(duration_ms, rec_end_ms - rec_start_ms)
             
-            start_time = rec_start
-            end_time = rec_start + actual_duration
+            # Convert to seconds for API (epoch seconds)
+            start_time = rec_start_ms // 1000
+            end_time = (rec_start_ms + actual_duration_ms) // 1000
+            
+            duration_sec = actual_duration_ms / 1000
+            logger.debug(f"Using recording {recording_index + 1}/{len(recordings)}: "
+                        f"duration={duration_sec:.1f}s")
         else:
             # Fallback: use current time minus offset (may fail if no recording)
-            logger.warning("No recordings found, using fallback time range")
-            now = int(time.time() * 1000)
-            start_time = now - (60 * 1000)  # 1 minute ago
-            end_time = now - (50 * 1000)     # 50 seconds ago
+            logger.warning("No recordings found in MongoDB base_paths, using fallback time range")
+            # API expects epoch seconds, not milliseconds
+            now = int(time.time())
+            start_time = now - 60  # 1 minute ago (in seconds)
+            end_time = now - 50     # 50 seconds ago (in seconds)
         
         return {
             "displayTimeAxisDuration": 10,
@@ -794,9 +905,32 @@ def create_historic_job_tester(
     frequency_max: int = 500,
     nfft: int = 1024,
     recording_duration_seconds: int = 10,
+    # MongoDB query parameters
+    min_duration_seconds: float = 5.0,
+    max_duration_seconds: float = 10.0,
+    weeks_back: int = 2,
+    max_recordings_to_load: int = 100,
     **kwargs
 ) -> HistoricJobLoadTester:
-    """Factory to create HistoricJobLoadTester."""
+    """
+    Factory to create HistoricJobLoadTester.
+    
+    Uses MongoDB base_paths collection to find recordings for load testing.
+    
+    Args:
+        config_manager: ConfigManager instance (required for MongoDB access)
+        channels_min: Min channel
+        channels_max: Max channel
+        frequency_min: Min frequency Hz
+        frequency_max: Max frequency Hz
+        nfft: NFFT selection
+        recording_duration_seconds: Duration of recording to request
+        min_duration_seconds: Minimum recording duration to search for in MongoDB
+        max_duration_seconds: Maximum recording duration to search for in MongoDB
+        weeks_back: Number of weeks back to search in MongoDB
+        max_recordings_to_load: Maximum recordings to load from MongoDB for load testing
+        **kwargs: Other arguments passed to HistoricJobLoadTester
+    """
     from src.apis.focus_server_api import FocusServerAPI
     from src.apis.grpc_client import GrpcStreamClient
     
@@ -811,12 +945,17 @@ def create_historic_job_tester(
     return HistoricJobLoadTester(
         focus_server_api=api,
         grpc_client_factory=grpc_factory,
+        config_manager=config_manager,  # Pass config_manager for MongoDB access
         channels_min=channels_min,
         channels_max=channels_max,
         frequency_min=frequency_min,
         frequency_max=frequency_max,
         nfft=nfft,
         recording_duration_seconds=recording_duration_seconds,
+        min_duration_seconds=min_duration_seconds,
+        max_duration_seconds=max_duration_seconds,
+        weeks_back=weeks_back,
+        max_recordings_to_load=max_recordings_to_load,
         **kwargs
     )
 

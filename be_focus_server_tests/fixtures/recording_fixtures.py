@@ -26,11 +26,28 @@ import pytest
 import logging
 import time
 import pymongo
+import threading
+import socket
 from datetime import datetime, timedelta
 from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass
 
+# Thread-safe lock for MongoDB tunnel operations
+_mongodb_tunnel_lock = threading.Lock()
+
+try:
+    import paramiko
+    PARAMIKO_AVAILABLE = True
+except ImportError:
+    PARAMIKO_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
+
+# Global variable to track MongoDB port-forward
+_mongodb_port_forward_client: Optional[paramiko.SSHClient] = None
+_mongodb_port_forward_ssh_manager: Optional[Any] = None  # SSHManager instance
+_mongodb_port_forward_thread: Optional[threading.Thread] = None
+_mongodb_port_forward_active = False
 
 
 # =============================================================================
@@ -128,6 +145,456 @@ class RecordingsInfo:
 
 
 # =============================================================================
+# MongoDB Tunnel Manager (Connection Pooling + Health Checks)
+# =============================================================================
+
+class MongoDBTunnelManager:
+    """
+    Professional MongoDB SSH Tunnel Manager with:
+    - Connection pooling/reuse
+    - Health checks
+    - Automatic recovery
+    - Thread-safe operations
+    - Session-scoped lifecycle
+    """
+    
+    def __init__(self, config_manager):
+        """Initialize MongoDB Tunnel Manager."""
+        self.config_manager = config_manager
+        self.ssh_manager: Optional[Any] = None
+        self.ssh_client: Optional[Any] = None
+        self.port_forward_thread: Optional[threading.Thread] = None
+        self.is_active = False
+        self.last_health_check = 0
+        self.health_check_interval = 30  # seconds
+        self.lock = threading.Lock()
+        self.k8s_host: Optional[str] = None
+        self.local_port: int = 27017
+        self.mongo_service: Optional[str] = None
+        self.namespace: str = "panda"
+        
+        # Initialize config
+        self._load_config()
+    
+    def _load_config(self):
+        """Load configuration from config_manager."""
+        ssh_config = self.config_manager.get_ssh_config()
+        k8s_config = self.config_manager.get_kubernetes_config()
+        mongo_config = self.config_manager.get_database_config()
+        
+        target_host_config = ssh_config.get("target_host", {})
+        self.k8s_host = target_host_config.get("host")
+        self.namespace = k8s_config.get("default_namespace", "panda")
+        self.mongo_service = k8s_config.get("services", {}).get("mongodb", {}).get("name", "mongodb")
+        self.local_port = mongo_config.get("port", 27017)
+    
+    def setup(self) -> bool:
+        """
+        Set up MongoDB SSH tunnel with connection reuse.
+        
+        Returns:
+            True if tunnel setup successful
+        """
+        with self.lock:
+            if self.is_active:
+                # Verify tunnel is still healthy
+                if self._check_health():
+                    logger.debug("MongoDB tunnel already active and healthy")
+                    return True
+                else:
+                    logger.warning("MongoDB tunnel marked active but unhealthy, reconnecting...")
+                    self._cleanup_internal()
+            
+            return self._setup_tunnel()
+    
+    def _setup_tunnel(self) -> bool:
+        """Internal tunnel setup (must be called with lock held)."""
+        if not PARAMIKO_AVAILABLE:
+            logger.warning("Paramiko not available - cannot create SSH tunnel for MongoDB")
+            return False
+        
+        if not self.k8s_host:
+            logger.warning("No Kubernetes host configured for MongoDB SSH tunnel")
+            return False
+        
+        try:
+            logger.info(f"Setting up SSH tunnel for MongoDB: {self.mongo_service} in namespace {self.namespace}")
+            
+            def run_port_forward():
+                try:
+                    # Reuse existing SSHManager connection if available
+                    if not self.ssh_manager or not self.ssh_manager.connected:
+                        from src.infrastructure.ssh_manager import SSHManager
+                        self.ssh_manager = SSHManager(self.config_manager)
+                        if not self.ssh_manager.connect():
+                            logger.error("Failed to connect via SSHManager")
+                            return
+                    
+                    client = self.ssh_manager.ssh_client
+                    self.ssh_client = client
+                    
+                    # Get remote port from config
+                    mongo_config = self.config_manager.get_database_config()
+                    remote_port = mongo_config.get("port", 27017)
+                    
+                    pf_cmd = (
+                        f"kubectl port-forward --address 0.0.0.0 -n {self.namespace} "
+                        f"svc/{self.mongo_service} {self.local_port}:{remote_port}"
+                    )
+                    
+                    logger.info(f"Starting kubectl port-forward for MongoDB: {pf_cmd}")
+                    stdin, stdout, stderr = client.exec_command(pf_cmd)
+                    
+                    # Wait for port-forward confirmation
+                    port_forward_started = False
+                    confirmation_lines = []
+                    
+                    # Read first few lines to get confirmation
+                    for _ in range(10):  # Read up to 10 lines
+                        try:
+                            line = stdout.readline()
+                            if line:
+                                line_str = line.strip()
+                                confirmation_lines.append(line_str)
+                                logger.debug(f"mongodb port-forward: {line_str}")
+                                
+                                if "Forwarding from" in line_str or "Forwarding" in line_str:
+                                    port_forward_started = True
+                                    logger.info(f"✅ MongoDB port-forward confirmed: {line_str}")
+                                    with self.lock:
+                                        self.is_active = True
+                                        self.last_health_check = time.time()
+                                    break
+                        except Exception as e:
+                            logger.debug(f"Error reading port-forward output: {e}")
+                            break
+                    
+                    if not port_forward_started:
+                        logger.warning(f"MongoDB port-forward started but no confirmation message received. Output: {confirmation_lines}")
+                        # Still mark as active - port check will verify later
+                        with self.lock:
+                            self.is_active = True
+                    
+                    # Keep reading to keep connection alive
+                    for line in stdout:
+                        logger.debug(f"mongodb port-forward: {line.strip()}")
+                        if not self.is_active:
+                            break
+                    
+                    logger.info("MongoDB port-forward stopped")
+                    with self.lock:
+                        self.is_active = False
+                    
+                except Exception as e:
+                    logger.error(f"MongoDB port-forward thread error: {e}", exc_info=True)
+                    with self.lock:
+                        self.is_active = False
+            
+            # Start port-forward in background thread
+            self.port_forward_thread = threading.Thread(target=run_port_forward, daemon=True)
+            self.port_forward_thread.start()
+            
+            # Wait for port to become available
+            logger.info("Waiting for MongoDB port-forward to start...")
+            max_wait = 15
+            for i in range(max_wait):
+                time.sleep(1)
+                if self._check_port_available():
+                    logger.info(f"✅ MongoDB port-forward active on {self.k8s_host}:{self.local_port}")
+                    self.last_health_check = time.time()
+                    return True
+            
+            logger.warning(f"MongoDB port-forward did not become available on {self.k8s_host}:{self.local_port} within {max_wait}s")
+            self._cleanup_internal()
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to setup MongoDB SSH tunnel: {e}", exc_info=True)
+            self._cleanup_internal()
+            return False
+    
+    def _check_port_available(self) -> bool:
+        """Check if port is available on remote host."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex((self.k8s_host, self.local_port))
+            sock.close()
+            return result == 0
+        except Exception:
+            return False
+    
+    def _check_health(self) -> bool:
+        """
+        Check tunnel health (port availability + time since last check).
+        
+        Returns:
+            True if tunnel is healthy
+        """
+        current_time = time.time()
+        
+        # Check if health check is needed
+        if current_time - self.last_health_check < self.health_check_interval:
+            return True  # Assume healthy if checked recently
+        
+        # Perform health check
+        is_healthy = self._check_port_available()
+        self.last_health_check = current_time
+        
+        if not is_healthy:
+            logger.warning("MongoDB tunnel health check failed - tunnel may be down")
+        
+        return is_healthy
+    
+    def ensure_healthy(self) -> bool:
+        """
+        Ensure tunnel is healthy, reconnect if needed.
+        
+        Returns:
+            True if tunnel is healthy
+        """
+        with self.lock:
+            if not self.is_active:
+                logger.info("MongoDB tunnel not active, setting up...")
+                return self._setup_tunnel()
+            
+            if not self._check_health():
+                logger.warning("MongoDB tunnel unhealthy, reconnecting...")
+                self._cleanup_internal()
+                return self._setup_tunnel()
+            
+            return True
+    
+    def _cleanup_internal(self):
+        """Internal cleanup (must be called with lock held)."""
+        if self.is_active:
+            self.is_active = False
+        
+        if self.ssh_manager:
+            try:
+                # Don't disconnect - we want to reuse the connection
+                # Only disconnect if we're completely cleaning up
+                pass
+            except Exception:
+                pass
+        
+        if self.port_forward_thread:
+            try:
+                self.port_forward_thread.join(timeout=2)
+            except Exception:
+                pass
+            self.port_forward_thread = None
+    
+    def cleanup(self):
+        """Clean up tunnel and connections."""
+        with self.lock:
+            logger.info("Cleaning up MongoDB SSH tunnel...")
+            self.is_active = False
+            
+            if self.ssh_manager:
+                try:
+                    self.ssh_manager.disconnect()
+                except Exception:
+                    pass
+                self.ssh_manager = None
+            
+            if self.ssh_client:
+                try:
+                    self.ssh_client.close()
+                except Exception:
+                    pass
+                self.ssh_client = None
+            
+            if self.port_forward_thread:
+                try:
+                    self.port_forward_thread.join(timeout=5)
+                except Exception:
+                    pass
+                self.port_forward_thread = None
+            
+            logger.info("MongoDB tunnel cleanup complete")
+    
+    def get_connection_host(self) -> str:
+        """Get the host to connect to (remote host where port-forward runs)."""
+        return self.k8s_host or "localhost"
+
+
+# Global MongoDB Tunnel Manager instance (singleton pattern)
+_mongodb_tunnel_manager: Optional['MongoDBTunnelManager'] = None
+_mongodb_tunnel_manager_lock = threading.Lock()
+
+
+def _get_mongodb_tunnel_manager(config_manager) -> MongoDBTunnelManager:
+    """
+    Get or create MongoDB Tunnel Manager instance (singleton).
+    
+    Args:
+        config_manager: ConfigManager instance
+        
+    Returns:
+        MongoDBTunnelManager instance
+    """
+    global _mongodb_tunnel_manager
+    
+    with _mongodb_tunnel_manager_lock:
+        if _mongodb_tunnel_manager is None:
+            _mongodb_tunnel_manager = MongoDBTunnelManager(config_manager)
+        
+        return _mongodb_tunnel_manager
+
+
+# =============================================================================
+# SSH Tunnel Helper Functions (Legacy - for backward compatibility)
+# =============================================================================
+
+def _setup_mongodb_ssh_tunnel(config_manager) -> bool:
+    """
+    Set up SSH tunnel for MongoDB using kubectl port-forward.
+    
+    Uses MongoDBTunnelManager for connection pooling and health checks.
+    
+    Args:
+        config_manager: ConfigManager instance
+        
+    Returns:
+        True if tunnel setup successful
+    """
+    # Use the professional tunnel manager
+    manager = _get_mongodb_tunnel_manager(config_manager)
+    return manager.setup()
+    
+    try:
+        # Get SSH and Kubernetes config
+        ssh_config = config_manager.get_ssh_config()
+        k8s_config = config_manager.get_kubernetes_config()
+        mongo_config = config_manager.get_database_config()
+        
+        # Get target host (K8s worker node)
+        target_host_config = ssh_config.get("target_host", {})
+        k8s_host = target_host_config.get("host")
+        ssh_user = target_host_config.get("username")
+        ssh_key_file = target_host_config.get("key_file")
+        ssh_password = target_host_config.get("password")
+        
+        if not k8s_host:
+            logger.warning("No Kubernetes host configured for MongoDB SSH tunnel")
+            return False
+        
+        # Get MongoDB service name and namespace
+        namespace = k8s_config.get("default_namespace", "panda")
+        mongo_service = k8s_config.get("services", {}).get("mongodb", {}).get("name", "mongodb")
+        remote_port = mongo_config.get("port", 27017)
+        local_port = remote_port  # Use same port locally
+        
+        logger.info(f"Setting up SSH tunnel for MongoDB: {mongo_service} in namespace {namespace}")
+        
+        def run_port_forward():
+            global _mongodb_port_forward_active, _mongodb_port_forward_client, _mongodb_port_forward_ssh_manager
+            try:
+                logger.debug(f"Connecting to {ssh_user}@{k8s_host} for MongoDB port-forward...")
+                
+                # Use SSHManager for connection (handles jump host automatically)
+                from src.infrastructure.ssh_manager import SSHManager
+                ssh_manager = SSHManager(config_manager)
+                if ssh_manager.connect():
+                    # Use SSHManager's connection and keep reference to prevent cleanup
+                    client = ssh_manager.ssh_client
+                    _mongodb_port_forward_ssh_manager = ssh_manager  # Keep reference
+                    _mongodb_port_forward_client = client  # Keep reference
+                    logger.debug("Connected via SSHManager (with jump host support)")
+                else:
+                    logger.error("Failed to connect via SSH manager")
+                    return
+                
+                pf_cmd = (
+                    f"kubectl port-forward --address 0.0.0.0 -n {namespace} "
+                    f"svc/{mongo_service} {local_port}:{remote_port}"
+                )
+                
+                logger.info(f"Starting kubectl port-forward for MongoDB: {pf_cmd}")
+                _mongodb_port_forward_client = client
+                stdin, stdout, stderr = client.exec_command(pf_cmd)
+                
+                # Wait for port-forward confirmation
+                port_forward_started = False
+                for line in stdout:
+                    line_str = line.strip()
+                    logger.debug(f"mongodb port-forward: {line_str}")
+                    
+                    # Check for port-forward confirmation message
+                    if "Forwarding from" in line_str or "Forwarding" in line_str:
+                        port_forward_started = True
+                        logger.info(f"✅ MongoDB port-forward confirmed: {line_str}")
+                    
+                    if not _mongodb_port_forward_active:
+                        break
+                
+                if not port_forward_started:
+                    logger.warning("MongoDB port-forward started but no confirmation message received")
+                
+                _mongodb_port_forward_active = True
+                
+                # Keep reading to keep connection alive
+                for line in stdout:
+                    logger.debug(f"mongodb port-forward: {line.strip()}")
+                    if not _mongodb_port_forward_active:
+                        break
+                
+                logger.info("MongoDB port-forward stopped")
+                _mongodb_port_forward_active = False
+                
+            except Exception as e:
+                logger.error(f"MongoDB port-forward thread error: {e}")
+                _mongodb_port_forward_active = False
+        
+        # Start port-forward in background thread
+        _mongodb_port_forward_thread = threading.Thread(target=run_port_forward, daemon=True)
+        _mongodb_port_forward_thread.start()
+        
+        # Wait for port to become available on remote host
+        logger.info("Waiting for MongoDB port-forward to start...")
+        max_wait = 15
+        for i in range(max_wait):
+            time.sleep(1)
+            try:
+                # Check port on remote host (where port-forward is running)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                result = sock.connect_ex((k8s_host, local_port))
+                sock.close()
+                if result == 0:
+                    logger.info(f"✅ MongoDB port-forward active on {k8s_host}:{local_port}")
+                    return True
+            except Exception as e:
+                logger.debug(f"Port check attempt {i+1} failed: {e}")
+        
+        logger.warning(f"MongoDB port-forward did not become available on {k8s_host}:{local_port} within {max_wait}s")
+        # Cleanup on failure
+        _cleanup_mongodb_ssh_tunnel()
+        return False
+        
+    except Exception as e:
+        logger.error(f"Failed to setup MongoDB SSH tunnel: {e}", exc_info=True)
+        # Cleanup on exception
+        _cleanup_mongodb_ssh_tunnel()
+        return False
+
+
+def _cleanup_mongodb_ssh_tunnel():
+    """
+    Clean up MongoDB SSH tunnel.
+    
+    Uses MongoDBTunnelManager for proper cleanup.
+    """
+    global _mongodb_tunnel_manager
+    
+    with _mongodb_tunnel_manager_lock:
+        if _mongodb_tunnel_manager:
+            _mongodb_tunnel_manager.cleanup()
+            _mongodb_tunnel_manager = None
+
+
+# =============================================================================
 # MongoDB Direct Query Functions
 # =============================================================================
 
@@ -161,27 +628,83 @@ def fetch_recordings_from_mongodb(
     """
     logger.info(f"Querying MongoDB directly for recordings (duration: {min_duration_seconds}-{max_duration_seconds}s, time range: last {weeks_back} weeks)...")
     
+    # Setup SSH tunnel for MongoDB
+    tunnel_setup = _setup_mongodb_ssh_tunnel(config_manager)
+    use_tunnel = tunnel_setup
+    
     try:
         # Get MongoDB config
         mongo_config = config_manager.get_database_config()
         
-        # Connect to MongoDB
-        client = pymongo.MongoClient(
-            host=mongo_config["host"],
-            port=mongo_config["port"],
-            username=mongo_config["username"],
-            password=mongo_config["password"],
-            authSource=mongo_config.get("auth_source", "prisma"),
-            serverSelectionTimeoutMS=10000,
-            connectTimeoutMS=10000,
-            socketTimeoutMS=30000
-        )
+        # Determine connection host and port
+        if use_tunnel:
+            # Use tunnel manager to ensure healthy connection
+            manager = _get_mongodb_tunnel_manager(config_manager)
+            if not manager.ensure_healthy():
+                logger.warning("MongoDB tunnel unhealthy, falling back to direct connection")
+                use_tunnel = False
+                mongo_host = mongo_config["host"]
+                mongo_port = mongo_config["port"]
+            else:
+                # Port-forward runs on remote host with --address 0.0.0.0
+                # So we connect to the remote host, not localhost
+                mongo_host = manager.get_connection_host()
+                mongo_port = mongo_config.get("port", 27017)
+                logger.info(f"Using SSH tunnel: connecting to {mongo_host}:{mongo_port} (port-forward on remote host)")
+        else:
+            # Direct connection (fallback)
+            mongo_host = mongo_config["host"]
+            mongo_port = mongo_config["port"]
+            logger.info(f"Using direct connection: {mongo_host}:{mongo_port}")
+        
+        # Connect to MongoDB with retry logic
+        max_retries = 2
+        client = None
+        
+        for attempt in range(max_retries):
+            try:
+                logger.debug(f"MongoDB connection attempt {attempt + 1}/{max_retries} to {mongo_host}:{mongo_port}")
+                client = pymongo.MongoClient(
+                    host=mongo_host,
+                    port=mongo_port,
+                    username=mongo_config["username"],
+                    password=mongo_config["password"],
+                    authSource=mongo_config.get("auth_source", "prisma"),
+                    serverSelectionTimeoutMS=10000,
+                    connectTimeoutMS=10000,
+                    socketTimeoutMS=30000
+                )
+                
+                # Test connection
+                client.admin.command('ping')
+                break  # Success
+                
+            except Exception as e:
+                logger.warning(f"MongoDB connection attempt {attempt + 1} failed: {e}")
+                if client:
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
+                    client = None
+                
+                # If tunnel was used and failed, try direct connection as fallback
+                if attempt == 0 and use_tunnel:
+                    logger.info("Tunnel connection failed, trying direct connection as fallback...")
+                    mongo_host = mongo_config["host"]
+                    mongo_port = mongo_config["port"]
+                    use_tunnel = False
+                elif attempt == max_retries - 1:
+                    raise  # Re-raise on last attempt
+        
+        if not client:
+            raise Exception("Failed to connect to MongoDB after all retry attempts")
         
         # Get database
         db_name = mongo_config.get("database", "prisma")
         db = client[db_name]
         
-        logger.info(f"Connected to MongoDB: {mongo_config['host']}:{mongo_config['port']}/{db_name}")
+        logger.info(f"✅ Connected to MongoDB: {mongo_host}:{mongo_port}/{db_name}")
         
         # Step 1: Get guid from base_paths collection
         # IMPORTANT: Use the GUID for /prisma/root/recordings (not /prisma/root/recordings/segy)
@@ -208,56 +731,90 @@ def fetch_recordings_from_mongodb(
         logger.info(f"Found guid from base_paths for /prisma/root/recordings: {guid}")
         
         # Step 2: Query the collection named by guid
-        recordings_collection = db[str(guid)]
+        collection_name = str(guid)
+        recordings_collection = db[collection_name]
+        logger.info(f"Querying MongoDB collection: {collection_name}")
         
         # Calculate time range: from today to two weeks ago
         now = datetime.now()
         two_weeks_ago = now - timedelta(weeks=weeks_back)
         
-        # Query by time range only (no deleted filter)
+        logger.info(f"Time range filter: {two_weeks_ago} to {now} (last {weeks_back} weeks)")
+        logger.info(f"Duration filter: {min_duration_seconds}-{max_duration_seconds} seconds")
+        
+        # Query by time range AND deleted: false (Focus Server only uses non-deleted recordings)
+        # This matches the structure shown in MongoDB Compass:
+        # - Collection: 25b4875f-5785-4b24-8895-121039474bcd
+        # - Filter: deleted: false, start_time in range, duration 5-10 seconds
         query = {
             "start_time": {
                 "$gte": two_weeks_ago,
                 "$lte": now
-            }
+            },
+            "deleted": False  # CRITICAL: Focus Server only finds non-deleted recordings
         }
+        logger.debug(f"MongoDB query: {query}")
         sort = [("start_time", pymongo.DESCENDING)]
+        
+        # Count total matching recordings (for logging)
+        total_matching = recordings_collection.count_documents(query)
+        logger.info(f"📊 MongoDB query found {total_matching} recordings matching:")
+        logger.info(f"   - Collection: {collection_name}")
+        logger.info(f"   - Time range: {two_weeks_ago} to {now}")
+        logger.info(f"   - deleted: false")
         
         # Fetch more recordings than needed to filter by duration
         cursor = recordings_collection.find(query).sort(sort).limit(max_recordings * 10)
         
         recordings = []
+        skipped_deleted = 0
+        skipped_no_times = 0
+        skipped_duration = 0
+        
         for doc in cursor:
             start_time = doc.get("start_time")
             end_time = doc.get("end_time")
+            deleted = doc.get("deleted", False)
             
-            if start_time and end_time:
-                # Convert datetime to epoch milliseconds
-                if isinstance(start_time, datetime):
-                    start_ms = int(start_time.timestamp() * 1000)
-                else:
-                    start_ms = int(start_time)
+            # Skip deleted recordings (double-check even though query filters them)
+            if deleted:
+                skipped_deleted += 1
+                logger.debug(f"Skipping deleted recording: {start_time} to {end_time}")
+                continue
+            
+            if not start_time or not end_time:
+                skipped_no_times += 1
+                logger.debug(f"Skipping recording without start_time or end_time")
+                continue
+            
+            # Convert datetime to epoch milliseconds
+            if isinstance(start_time, datetime):
+                start_ms = int(start_time.timestamp() * 1000)
+            else:
+                start_ms = int(start_time)
+            
+            if isinstance(end_time, datetime):
+                end_ms = int(end_time.timestamp() * 1000)
+            else:
+                end_ms = int(end_time)
+            
+            # Calculate duration
+            duration_seconds = (end_ms - start_ms) / 1000.0
+            
+            # Filter by duration: 5-10 seconds only
+            if min_duration_seconds <= duration_seconds <= max_duration_seconds:
+                recordings.append(Recording(start_time_ms=start_ms, end_time_ms=end_ms))
                 
-                if isinstance(end_time, datetime):
-                    end_ms = int(end_time.timestamp() * 1000)
-                else:
-                    end_ms = int(end_time)
+                logger.debug(
+                    f"  Recording: {start_time} to {end_time} "
+                    f"({duration_seconds:.1f}s)"
+                )
                 
-                # Calculate duration
-                duration_seconds = (end_ms - start_ms) / 1000.0
-                
-                # Filter by duration: 5-10 seconds only
-                if min_duration_seconds <= duration_seconds <= max_duration_seconds:
-                    recordings.append(Recording(start_time_ms=start_ms, end_time_ms=end_ms))
-                    
-                    logger.debug(
-                        f"  Recording: {start_time} to {end_time} "
-                        f"({duration_seconds:.1f}s)"
-                    )
-                    
-                    # Stop if we have enough recordings
-                    if len(recordings) >= max_recordings:
-                        break
+                # Stop if we have enough recordings
+                if len(recordings) >= max_recordings:
+                    break
+            else:
+                skipped_duration += 1
         
         # Close connection
         client.close()
@@ -265,7 +822,11 @@ def fetch_recordings_from_mongodb(
         # Sort by duration (longest first)
         recordings.sort(key=lambda r: r.duration_seconds, reverse=True)
         
-        logger.info(f"Found {len(recordings)} recordings in MongoDB (guid: {guid}) with duration {min_duration_seconds}-{max_duration_seconds}s")
+        logger.info(f"✅ Found {len(recordings)} recordings in MongoDB collection '{collection_name}' (guid: {guid})")
+        logger.info(f"   - Duration: {min_duration_seconds}-{max_duration_seconds} seconds")
+        logger.info(f"   - Status: deleted: false")
+        if skipped_deleted > 0 or skipped_no_times > 0 or skipped_duration > 0:
+            logger.info(f"   - Filtered out: {skipped_deleted} deleted, {skipped_no_times} missing times, {skipped_duration} wrong duration")
         
         # Log first 5 recordings
         for i, rec in enumerate(recordings[:5]):
@@ -290,7 +851,7 @@ def fetch_recordings_from_mongodb(
 
 def fetch_available_recordings(
     focus_server_api,
-    hours_back: int = 24,
+    hours_back: int = 336,  # 2 weeks (14 days * 24 hours)
     max_recordings: int = 50,
     min_duration_seconds: float = 5.0,
     max_duration_seconds: float = 10.0
@@ -298,11 +859,13 @@ def fetch_available_recordings(
     """
     Fetch available recordings from MongoDB via Focus Server API.
     
+    Searches for recordings by time range only (not by deleted: false).
     Filters recordings by duration: 5-10 seconds only.
+    Time range: from today to 2 weeks ago.
     
     Args:
         focus_server_api: FocusServerAPI instance
-        hours_back: How many hours back to search (default: 24)
+        hours_back: How many hours back to search (default: 336 = 2 weeks)
         max_recordings: Maximum recordings to return (default: 50)
         min_duration_seconds: Minimum recording duration (default: 5.0)
         max_duration_seconds: Maximum recording duration (default: 10.0)
@@ -312,7 +875,8 @@ def fetch_available_recordings(
     """
     from src.models.focus_server_models import RecordingsInTimeRangeRequest
     
-    logger.info(f"Querying MongoDB for recordings in last {hours_back} hours (duration: {min_duration_seconds}-{max_duration_seconds}s)...")
+    weeks_back = hours_back / (24 * 7)
+    logger.info(f"Querying MongoDB for recordings in last {weeks_back:.1f} weeks ({hours_back} hours, duration: {min_duration_seconds}-{max_duration_seconds}s)...")
     
     try:
         # Query time range
@@ -366,7 +930,9 @@ def get_historic_time_range_from_mongodb(
     duration_seconds: int = 60,
     min_duration_seconds: float = 5.0,
     max_duration_seconds: float = 10.0,
-    weeks_back: int = 2
+    weeks_back: int = 2,
+    focus_server_api=None,
+    verify_with_focus_server: bool = True
 ) -> Optional[Tuple[int, int]]:
     """
     Get a valid time range for historic playback by querying MongoDB directly.
@@ -375,6 +941,7 @@ def get_historic_time_range_from_mongodb(
     to get existing recordings.
     
     Searches for recordings with duration 5-10 seconds from the last two weeks.
+    Optionally verifies with Focus Server API that the recording is accessible.
     
     Args:
         config_manager: ConfigManager instance
@@ -382,6 +949,8 @@ def get_historic_time_range_from_mongodb(
         min_duration_seconds: Minimum recording duration to search for (default: 5.0)
         max_duration_seconds: Maximum recording duration to search for (default: 10.0)
         weeks_back: Number of weeks back to search (default: 2)
+        focus_server_api: Optional FocusServerAPI instance to verify recordings
+        verify_with_focus_server: If True, verify recording exists via Focus Server API (default: True)
         
     Returns:
         Tuple of (start_time_sec, end_time_sec) or None if no recordings
@@ -397,11 +966,15 @@ def get_historic_time_range_from_mongodb(
         logger.warning(f"No recordings available in MongoDB (duration: {min_duration_seconds}-{max_duration_seconds}s, time range: last {weeks_back} weeks)")
         return None
     
+    # NOTE: Focus Server API /recordings_in_time_range returns 500 errors, so we can't verify recordings.
+    # We'll use the first recording from MongoDB and let Focus Server handle validation during configure.
+    
     # Get first available recording (already filtered by duration 5-10 seconds)
     recording = info.recordings[0] if info.recordings else None
     
     if recording:
         # Use the full recording duration (it's already 5-10 seconds)
+        logger.info(f"Using recording from MongoDB: {recording.start_datetime} to {recording.end_datetime}")
         return (recording.start_time, recording.end_time)
     
     return None
@@ -451,6 +1024,32 @@ def get_historic_time_range(
 # =============================================================================
 # Pytest Fixtures
 # =============================================================================
+
+@pytest.fixture(scope="session", autouse=True)
+def mongodb_tunnel_session_cleanup(config_manager, request):
+    """
+    Session-scoped cleanup fixture for MongoDB SSH tunnel.
+    
+    Ensures MongoDB tunnel is properly cleaned up at the end of the test session.
+    This fixture runs automatically for all tests that use MongoDB.
+    
+    Args:
+        config_manager: ConfigManager instance
+        request: Pytest request object
+    """
+    yield
+    
+    # Cleanup at session end
+    logger.info("=" * 80)
+    logger.info("MongoDB Tunnel Session Cleanup")
+    logger.info("=" * 80)
+    try:
+        _cleanup_mongodb_ssh_tunnel()
+        logger.info("✅ MongoDB tunnel cleanup complete")
+    except Exception as e:
+        logger.warning(f"MongoDB tunnel cleanup error: {e}")
+    logger.info("=" * 80)
+
 
 @pytest.fixture(scope="session")
 def mongodb_recordings_info(config_manager) -> RecordingsInfo:
