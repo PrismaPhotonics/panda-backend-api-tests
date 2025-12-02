@@ -286,6 +286,8 @@ jobs:
         id: run-smoke-tests
         shell: powershell
         continue-on-error: true  # Allow workflow to continue so test-reporter can publish results
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           $FOCUS_URL = "$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "FOCUS: https://$FOCUS_URL  VERIFY_SSL=$env:VERIFY_SSL"
@@ -320,16 +322,16 @@ jobs:
           
           # Run smoke tests (excluding UI and stress tests)
           # Note: Health checks will run and verify all infrastructure components
-          py -m pytest be_focus_server_tests/ `
+          # IMPORTANT: Use explicit paths to avoid collection errors from ignored directories
+          py -m pytest be_focus_server_tests/integration be_focus_server_tests/load be_focus_server_tests/data_quality be_focus_server_tests/conftest.py `
             -m "smoke" `
             --env staging `
-            --ignore=be_focus_server_tests/ui `
-            --ignore=be_focus_server_tests/stress `
             -v `
             --maxfail=10 `
             --junitxml=test-results/junit-smoke.xml `
             --cov=be_focus_server_tests `
-            --cov-report=term-missing
+            --cov-report=term-missing `
+            --tb=short
 
       - name: List test result files
         shell: powershell
@@ -355,7 +357,7 @@ jobs:
           list-suites: all
           list-tests: all
           max-annotations: 50
-          fail-on-error: false  # Changed to false - we'll fail the workflow explicitly in a later step
+          fail-on-error: true  # Fail on collection errors - we want to know about import failures
           only-summary: false
           fail-on-empty: false
           working-directory: ${{ github.workspace }}
