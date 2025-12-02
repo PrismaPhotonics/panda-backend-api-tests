@@ -84,6 +84,7 @@ jobs:
           
           # Ensure XML file exists even if pytest fails early (e.g., health check failure)
           $xmlFile = "reports/junit-live-basic.xml"
+          $exitCode = 1  # Default to failure
           
           try {
             & $env:PYTHON_CMD -m pytest `
@@ -94,22 +95,27 @@ jobs:
               -v `
               --tb=short `
               --log-cli-level=INFO `
-              --junitxml=$xmlFile
+              --junitxml=$xmlFile 2>&1 | Tee-Object -Variable pytestOutput
             
             $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+            Write-Host "Pytest output: $pytestOutput"
           } catch {
             Write-Host "::error::Pytest execution failed: $_"
             $exitCode = 1
           } finally {
-            # If XML file doesn't exist (pytest failed before creating it), create empty one
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
             if (-not (Test-Path $xmlFile)) {
               Write-Host "::warning::No XML file created - creating empty one to indicate failure"
               $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-basic" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
-              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
             }
             
             # Store exit code for later checking
-            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-basic-exit-code.txt" -Encoding utf8
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-basic-exit-code.txt" -Encoding utf8 -Force
           }
           
           exit $exitCode
@@ -120,22 +126,40 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
           Write-Host "========================================"
           Write-Host "🔴 LIVE JOB TESTS - HEAVY"
           Write-Host "========================================"
           
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_live_load.py `
-            -m "live and heavy" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=short `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-live-heavy.xml
+          $xmlFile = "reports/junit-live-heavy.xml"
+          $exitCode = 1  # Default to failure
           
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-heavy-exit-code.txt" -Encoding utf8
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_live_load.py `
+              -m "live and heavy" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=short `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-heavy" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+            }
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-heavy-exit-code.txt" -Encoding utf8 -Force
+          }
+          
           exit $exitCode
 
       - name: Run Live Job Tests (Stress)
@@ -144,22 +168,40 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
           Write-Host "========================================"
           Write-Host "🔴 LIVE JOB TESTS - STRESS"
           Write-Host "========================================"
           
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_live_load.py `
-            -m "live and stress" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=short `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-live-stress.xml
+          $xmlFile = "reports/junit-live-stress.xml"
+          $exitCode = 1  # Default to failure
           
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-stress-exit-code.txt" -Encoding utf8
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_live_load.py `
+              -m "live and stress" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=short `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-stress" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+            }
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-stress-exit-code.txt" -Encoding utf8 -Force
+          }
+          
           exit $exitCode
 
       - name: Generate Comprehensive Test Reports (Live)
@@ -363,6 +405,7 @@ jobs:
           
           # Ensure XML file exists even if pytest fails early (e.g., health check failure)
           $xmlFile = "reports/junit-historic-basic.xml"
+          $exitCode = 1  # Default to failure
           
           try {
             & $env:PYTHON_CMD -m pytest `
@@ -373,22 +416,27 @@ jobs:
               -v `
               --tb=short `
               --log-cli-level=INFO `
-              --junitxml=$xmlFile
+              --junitxml=$xmlFile 2>&1 | Tee-Object -Variable pytestOutput
             
             $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+            Write-Host "Pytest output: $pytestOutput"
           } catch {
             Write-Host "::error::Pytest execution failed: $_"
             $exitCode = 1
           } finally {
-            # If XML file doesn't exist (pytest failed before creating it), create empty one
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
             if (-not (Test-Path $xmlFile)) {
               Write-Host "::warning::No XML file created - creating empty one to indicate failure"
               $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="historic-basic" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
-              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
             }
             
             # Store exit code for later checking
-            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-basic-exit-code.txt" -Encoding utf8
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-basic-exit-code.txt" -Encoding utf8 -Force
           }
           
           exit $exitCode
@@ -399,22 +447,40 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
           Write-Host "========================================"
           Write-Host "📼 HISTORIC JOB TESTS - HEAVY"
           Write-Host "========================================"
           
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_historic_load.py `
-            -m "historic and heavy" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=short `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-historic-heavy.xml
+          $xmlFile = "reports/junit-historic-heavy.xml"
+          $exitCode = 1  # Default to failure
           
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-heavy-exit-code.txt" -Encoding utf8
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_historic_load.py `
+              -m "historic and heavy" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=short `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="historic-heavy" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+            }
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-heavy-exit-code.txt" -Encoding utf8 -Force
+          }
+          
           exit $exitCode
 
       - name: Run Historic Job Tests (Stress)
@@ -423,22 +489,40 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
           Write-Host "========================================"
           Write-Host "📼 HISTORIC JOB TESTS - STRESS"
           Write-Host "========================================"
           
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_historic_load.py `
-            -m "historic and stress" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=short `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-historic-stress.xml
+          $xmlFile = "reports/junit-historic-stress.xml"
+          $exitCode = 1  # Default to failure
           
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-stress-exit-code.txt" -Encoding utf8
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_historic_load.py `
+              -m "historic and stress" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=short `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="historic-stress" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+            }
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/historic-stress-exit-code.txt" -Encoding utf8 -Force
+          }
+          
           exit $exitCode
 
       - name: Generate Comprehensive Test Reports (Historic)
@@ -615,27 +699,184 @@ jobs:
         run: |
           Write-Host "Generating comprehensive summary reports..."
           $target = "https://$env:FOCUS_SERVER_HOST/focus-server"
+          $testType = '${{ inputs.test_type || 'all' }}'
+          $loadLevel = '${{ inputs.load_level || 'basic' }}'
           
-          # Generate comprehensive reports for each JUnit XML file
+          # Collect all JUnit XML files
           $junitFiles = Get-ChildItem -Path "all-reports" -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue
           
+          # Initialize summary data
+          $summaryData = @{
+            TotalTests = 0
+            TotalPassed = 0
+            TotalFailed = 0
+            TotalErrors = 0
+            TotalSkipped = 0
+            TotalDuration = 0.0
+            LiveTests = @{ Tests = 0; Passed = 0; Failed = 0; Errors = 0 }
+            HistoricTests = @{ Tests = 0; Passed = 0; Failed = 0; Errors = 0 }
+            Files = @()
+          }
+          
           if ($junitFiles) {
+            Write-Host "Found $($junitFiles.Count) JUnit XML file(s)"
+            
             foreach ($file in $junitFiles) {
               Write-Host "Processing: $($file.FullName)"
-              py scripts/generate_comprehensive_test_report.py $file.FullName `
-                --environment $env:ENVIRONMENT `
-                --target $target
+              
+              try {
+                # Generate comprehensive report for each file
+                py scripts/generate_comprehensive_test_report.py $file.FullName `
+                  --environment $env:ENVIRONMENT `
+                  --target $target 2>&1 | Out-Null
+                
+                # Parse XML to collect statistics
+                $xml = [xml](Get-Content $file.FullName -Raw)
+                $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+                
+                if ($testsuite) {
+                  $tests = [int]$testsuite.tests
+                  $failures = [int]$testsuite.failures
+                  $errors = [int]$testsuite.errors
+                  $skipped = [int]$testsuite.skipped
+                  $duration = [double]$testsuite.time
+                  $passed = $tests - $failures - $errors - $skipped
+                  
+                  $summaryData.TotalTests += $tests
+                  $summaryData.TotalPassed += $passed
+                  $summaryData.TotalFailed += $failures
+                  $summaryData.TotalErrors += $errors
+                  $summaryData.TotalSkipped += $skipped
+                  $summaryData.TotalDuration += $duration
+                  
+                  # Categorize by test type
+                  $fileName = $file.Name
+                  if ($fileName -match "live") {
+                    $summaryData.LiveTests.Tests += $tests
+                    $summaryData.LiveTests.Passed += $passed
+                    $summaryData.LiveTests.Failed += $failures
+                    $summaryData.LiveTests.Errors += $errors
+                  } elseif ($fileName -match "historic") {
+                    $summaryData.HistoricTests.Tests += $tests
+                    $summaryData.HistoricTests.Passed += $passed
+                    $summaryData.HistoricTests.Failed += $failures
+                    $summaryData.HistoricTests.Errors += $errors
+                  }
+                  
+                  $summaryData.Files += @{
+                    Name = $fileName
+                    Tests = $tests
+                    Passed = $passed
+                    Failed = $failures
+                    Errors = $errors
+                    Skipped = $skipped
+                    Duration = $duration
+                  }
+                }
+              } catch {
+                Write-Host "::warning::Failed to process $($file.FullName): $_"
+              }
             }
+            
+            # Generate comprehensive summary report
+            $successRate = if ($summaryData.TotalTests -gt 0) { 
+              [math]::Round(($summaryData.TotalPassed / $summaryData.TotalTests) * 100, 1) 
+            } else { 0 }
+            
+            $statusEmoji = if ($summaryData.TotalFailed -eq 0 -and $summaryData.TotalErrors -eq 0) { "✅" } else { "❌" }
+            
+            $summaryReport = @"
+          # $statusEmoji Job Load Test Results
+          
+          ## 📋 Test Execution Summary
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Test Type** | $testType |
+          | **Load Level** | $loadLevel |
+          | **Environment** | $env:ENVIRONMENT |
+          | **Target** | ``$target`` |
+          | **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
+          
+          ## 📊 Overall Statistics
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Total Tests** | $($summaryData.TotalTests) |
+          | **✅ Passed** | $($summaryData.TotalPassed) |
+          | **❌ Failed** | $($summaryData.TotalFailed) |
+          | **⚠️ Errors** | $($summaryData.TotalErrors) |
+          | **⏭️ Skipped** | $($summaryData.TotalSkipped) |
+          | **⏱️ Total Duration** | $([math]::Round($summaryData.TotalDuration, 2))s |
+          | **📈 Success Rate** | $successRate% |
+          
+          ## 🔴 Live Job Tests
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Tests** | $($summaryData.LiveTests.Tests) |
+          | **✅ Passed** | $($summaryData.LiveTests.Passed) |
+          | **❌ Failed** | $($summaryData.LiveTests.Failed) |
+          | **⚠️ Errors** | $($summaryData.LiveTests.Errors) |
+          
+          ## 📼 Historic Job Tests
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Tests** | $($summaryData.HistoricTests.Tests) |
+          | **✅ Passed** | $($summaryData.HistoricTests.Passed) |
+          | **❌ Failed** | $($summaryData.HistoricTests.Failed) |
+          | **⚠️ Errors** | $($summaryData.HistoricTests.Errors) |
+          
+          ## 📦 Test Files Breakdown
+          
+          | File | Tests | ✅ Passed | ❌ Failed | ⚠️ Errors | ⏱️ Duration |
+          |------|-------|-----------|-----------|-----------|--------------|
+          $(($summaryData.Files | ForEach-Object { "| ``$($_.Name)`` | $($_.Tests) | $($_.Passed) | $($_.Failed) | $($_.Errors) | $([math]::Round($_.Duration, 2))s |" }) -join "`n")
+          
+          ## 📝 Job Status
+          
+          | Job | Status |
+          |-----|--------|
+          | **Live Job Tests** | $('${{ needs.live-job-tests.result }}') |
+          | **Historic Job Tests** | $('${{ needs.historic-job-tests.result }}') |
+          
+          $(if ($summaryData.TotalFailed -gt 0 -or $summaryData.TotalErrors -gt 0) {
+            "## ⚠️ Test Failures Detected
+          
+          The workflow detected test failures. Please review the detailed reports above and check the job logs for more information.
+          
+          **Next Steps:**
+          1. Review the failed test cases in the detailed reports
+          2. Check the job logs for error messages and stack traces
+          3. Verify server connectivity and health status
+          4. Review recent code changes that might have caused regressions"
+          } else {
+            "## ✅ All Tests Passed
+          
+          All test cases completed successfully. The system is functioning correctly under the specified load conditions."
+          })
+          "@
+            
+            $summaryReport | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+            Write-Host "✅ Comprehensive summary report generated"
+            
           } else {
             Write-Host "::warning::No JUnit XML files found in all-reports/"
             
             # Generate basic summary if no files found
             $basicSummary = @"
-          # 🚀 Job Load Test Results
+          # ⚠️ Job Load Test Results
           
-          **Test Type:** ${{ inputs.test_type || 'all' }}
-          **Load Level:** ${{ inputs.load_level || 'basic' }}
-          **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+          ## 📋 Test Execution Summary
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Test Type** | $testType |
+          | **Load Level** | $loadLevel |
+          | **Environment** | $env:ENVIRONMENT |
+          | **Target** | ``$target`` |
+          | **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
           
           ## ⚠️ Warning
           
@@ -644,24 +885,32 @@ jobs:
           - Tests failed before generating reports
           - Artifact download failed
           
-          Check the previous job logs for details.
+          **Please check the previous job logs for details.**
           
-          ## Test Types
+          ## 📝 Job Status
+          
+          | Job | Status |
+          |-----|--------|
+          | **Live Job Tests** | $('${{ needs.live-job-tests.result }}') |
+          | **Historic Job Tests** | $('${{ needs.historic-job-tests.result }}') |
+          
+          ## 📚 Test Types Reference
           
           | Type | Description | Markers |
           |------|-------------|---------|
           | 🔴 **Live** | Real-time streaming from fiber | ``@pytest.mark.live`` |
           | 📼 **Historic** | Recorded data playback | ``@pytest.mark.historic`` |
           
-          ## Load Levels
+          ## 📊 Load Levels Reference
           
           | Level | Tests Run | Duration |
           |-------|-----------|----------|
-          | Basic | Core functionality | ~5 min |
-          | Heavy | 500 channels, sustained | ~15 min |
-          | Stress | Max concurrent | ~20 min |
+          | **Basic** | Core functionality | ~5 min |
+          | **Heavy** | 500 channels, sustained | ~15 min |
+          | **Stress** | Max concurrent | ~20 min |
           "@
             $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+            Write-Host "⚠️ Generated basic summary (no test files found)"
           }
 
       - name: Check Overall Test Results
