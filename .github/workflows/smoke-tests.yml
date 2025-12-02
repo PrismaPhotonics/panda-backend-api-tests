@@ -332,6 +332,11 @@ jobs:
             --cov=be_focus_server_tests `
             --cov-report=term-missing `
             --tb=short
+          
+          # Store exit code for failure detection (works even with continue-on-error)
+          $exitCode = $LASTEXITCODE
+          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "test-results/smoke-tests-exit-code.txt" -Encoding utf8
+          exit $exitCode
 
       - name: List test result files
         shell: powershell
@@ -438,12 +443,85 @@ jobs:
         env:
           RUN_TESTS_OUTCOME: ${{ steps.run-smoke-tests.outcome }}
         run: |
+          Write-Host "========================================"
           Write-Host "Checking for test failures..."
+          Write-Host "========================================"
           Write-Host "Step outcome: $env:RUN_TESTS_OUTCOME"
+          Write-Host "Note: Step outcome may be 'success' even if tests failed due to continue-on-error"
+          
+          $hasFailures = $false
+          
+          # Check exit code from test step (more reliable than step outcome with continue-on-error)
+          if (Test-Path "test-results/smoke-tests-exit-code.txt") {
+            $exitCodeLine = Get-Content "test-results/smoke-tests-exit-code.txt"
+            if ($exitCodeLine -match "EXIT_CODE=(\d+)") {
+              $exitCode = [int]$matches[1]
+              Write-Host "Pytest exit code: $exitCode"
+              if ($exitCode -ne 0) {
+                Write-Host "::error::Smoke tests exited with code $exitCode"
+                $hasFailures = $true
+              }
+            }
+          } else {
+            Write-Host "::warning::Exit code file not found - step may not have executed pytest"
+          }
+          
+          # Also check XML file for failures/errors
+          $xmlFile = "test-results/junit-smoke.xml"
+          if (Test-Path $xmlFile) {
+            Write-Host "Checking XML file: $xmlFile"
+            try {
+              $xml = [xml](Get-Content $xmlFile)
+              $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+              
+              if ($testsuite) {
+                $failures = [int]$testsuite.failures
+                $errors = [int]$testsuite.errors
+                $tests = [int]$testsuite.tests
+                
+                Write-Host "XML Results: $tests tests, $failures failures, $errors errors"
+                
+                if ($failures -gt 0 -or $errors -gt 0) {
+                  Write-Host "::error::Found failures in XML: $failures failures, $errors errors"
+                  $hasFailures = $true
+                }
+                
+                # Check for error/failure elements in XML
+                $errorCases = $testsuite.SelectNodes('.//error')
+                $failureCases = $testsuite.SelectNodes('.//failure')
+                
+                if ($errorCases.Count -gt 0 -or $failureCases.Count -gt 0) {
+                  Write-Host "Found $($errorCases.Count) error cases and $($failureCases.Count) failure cases in XML"
+                  $hasFailures = $true
+                }
+              }
+            } catch {
+              Write-Host "::warning::Could not parse XML file: $_"
+            }
+          } else {
+            Write-Host "::warning::XML file not found: $xmlFile"
+            # If exit code indicates failure and no XML, that's a failure
+            if ($hasFailures) {
+              Write-Host "::error::Tests failed but no XML file was generated"
+            }
+          }
+          
+          # Run the Python script for additional checks
+          Write-Host "Running check_test_failures.py..."
           py check_test_failures.py
-          if ($LASTEXITCODE -ne 0) {
+          $scriptExitCode = $LASTEXITCODE
+          
+          if ($scriptExitCode -ne 0) {
+            Write-Host "::error::check_test_failures.py detected failures"
+            $hasFailures = $true
+          }
+          
+          Write-Host "========================================"
+          if ($hasFailures) {
             Write-Host "::error::Test failures detected - failing workflow"
-            exit $LASTEXITCODE
+            exit 1
+          } else {
+            Write-Host "✅ All smoke tests passed"
           }
 
       - uses: actions/upload-artifact@v4
