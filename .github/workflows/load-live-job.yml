@@ -117,21 +117,45 @@ jobs:
           Write-Host "Environment: $env:ENVIRONMENT"
           Write-Host "========================================"
           
-          # Run basic Live Job load tests
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_live_job_load.py `
-            -m "live_job_load and not stress and not slow" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=long `
-            --capture=no `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-live-job-basic.xml `
-            --json-report `
-            --json-report-file=reports/live-job-basic-metrics.json
+          $xmlFile = "reports/junit-live-job-basic.xml"
+          $exitCode = 1  # Default to failure
           
-          exit $LASTEXITCODE
+          try {
+            # Run basic Live Job load tests
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_live_job_load.py `
+              -m "live_job_load and not stress and not slow" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=long `
+              --capture=no `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile `
+              --json-report `
+              --json-report-file=reports/live-job-basic-metrics.json 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-job-basic" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
+            }
+            
+            # Store exit code for later checking
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-job-basic-exit-code.txt" -Encoding utf8 -Force
+          }
+          
+          exit $exitCode
 
       - name: Run Live Job Load Tests (Stress)
         if: ${{ inputs.test_type == 'stress' || inputs.test_type == 'all' }}
@@ -139,25 +163,51 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          
           Write-Host "========================================"
           Write-Host "LIVE JOB LOAD TEST SUITE - STRESS"
           Write-Host "========================================"
           
-          # Run stress tests
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_live_job_load.py `
-            -m "live_job_load and stress" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=long `
-            --capture=no `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-live-job-stress.xml `
-            --json-report `
-            --json-report-file=reports/live-job-stress-metrics.json
+          $xmlFile = "reports/junit-live-job-stress.xml"
+          $exitCode = 1  # Default to failure
           
-          exit $LASTEXITCODE
+          try {
+            # Run stress tests
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_live_job_load.py `
+              -m "live_job_load and stress" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=long `
+              --capture=no `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile `
+              --json-report `
+              --json-report-file=reports/live-job-stress-metrics.json 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-job-stress" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
+            }
+            
+            # Store exit code for later checking
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-job-stress-exit-code.txt" -Encoding utf8 -Force
+          }
+          
+          exit $exitCode
 
       - name: Generate Comprehensive Test Reports
         if: always()
@@ -165,6 +215,7 @@ jobs:
         run: |
           Write-Host "Generating comprehensive test reports..."
           $target = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
+          $pythonCmd = if ($env:PYTHON_CMD) { $env:PYTHON_CMD } else { "py" }
           
           # Generate report for each JUnit XML file
           $junitFiles = @(
@@ -172,39 +223,78 @@ jobs:
             "reports/junit-live-job-stress.xml"
           )
           
-          $allReports = @()
+          $filesFound = $false
+          $filesProcessed = 0
+          
           foreach ($file in $junitFiles) {
             if (Test-Path $file) {
+              $filesFound = $true
               Write-Host "Processing: $file"
-              $reportFile = $file -replace "\.xml$", "-report.md"
-              py scripts/generate_comprehensive_test_report.py $file `
-                --environment $env:ENVIRONMENT `
-                --target $target `
-                --output $reportFile
               
-              # Append to summary
-              if (Test-Path $reportFile) {
-                Get-Content $reportFile | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-                Write-Host "✅ Report generated: $reportFile"
+              try {
+                $reportFile = $file -replace "\.xml$", "-report.md"
+                & $pythonCmd scripts/generate_comprehensive_test_report.py $file `
+                  --environment $env:ENVIRONMENT `
+                  --target $target `
+                  --output $reportFile 2>&1 | Tee-Object -Variable scriptOutput
+                
+                $scriptExitCode = $LASTEXITCODE
+                
+                if ($scriptExitCode -eq 0) {
+                  # Append to summary
+                  if (Test-Path $reportFile) {
+                    Get-Content $reportFile | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+                    Write-Host "✅ Report generated: $reportFile"
+                    $filesProcessed++
+                  } else {
+                    Write-Host "::warning::Report file was not created: $reportFile"
+                    Write-Host "Script output: $scriptOutput"
+                  }
+                } else {
+                  Write-Host "::warning::Failed to generate report for $file (exit code: $scriptExitCode)"
+                  Write-Host "Script output: $scriptOutput"
+                }
+              } catch {
+                Write-Host "::warning::Error processing $file : $_"
               }
+            } else {
+              Write-Host "File not found: $file (skipping)"
             }
           }
           
-          # If no reports were generated, create a basic summary
-          if (-not (Test-Path $env:GITHUB_STEP_SUMMARY)) {
+          # If no reports were generated or no files found, create a basic summary
+          if (-not $filesFound -or $filesProcessed -eq 0) {
+            Write-Host "Creating basic summary..."
             $basicSummary = @"
           # 🚀 Live Job Load Test Results
           
-          **Environment:** $env:ENVIRONMENT
-          **Target:** $target
-          **Time:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+          ## 📋 Test Execution Summary
           
-          > **Note:** No JUnit XML files found. Check test execution logs for details.
+          | Metric | Value |
+          |--------|-------|
+          | **Environment** | $env:ENVIRONMENT |
+          | **Target** | ``$target`` |
+          | **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
+          
+          $(if (-not $filesFound) {
+            "## ⚠️ Warning
+          
+          No JUnit XML files were found. This may indicate:
+          - Tests did not execute
+          - Tests failed before generating reports
+          - File path mismatch
+          
+          **Please check the test execution logs for details.**"
+          } else {
+            "## ⚠️ Warning
+          
+          JUnit XML files were found but report generation failed. Check the logs above for details."
+          })
           "@
-            $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+            $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Force
           }
           
-          Write-Host "✅ Comprehensive reports generated"
+          Write-Host "✅ Comprehensive reports generation completed (processed $filesProcessed file(s))"
 
       - name: Upload Reports
         if: always()
