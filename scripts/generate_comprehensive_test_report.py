@@ -428,10 +428,15 @@ Examples:
                 json.dump(json_report, f, indent=2)
             print(f"✅ JSON report written to: {args.json}")
         
-        # Exit with appropriate code
+        # Report generation should always succeed (even if tests failed)
+        # The workflow will fail in a separate step that checks for failures
+        # This allows the report to be generated even when tests fail
         if generator.test_data['failed'] > 0 or generator.test_data['errors'] > 0:
-            sys.exit(1)
+            print(f"⚠️ Report generated successfully, but tests had failures: {generator.test_data['failed']} failures, {generator.test_data['errors']} errors")
+            print("Note: Workflow will fail in the 'Fail workflow if tests failed' step")
+            sys.exit(0)  # Don't fail here - let the failure check step handle it
         else:
+            print("✅ All tests passed!")
             sys.exit(0)
             
     except FileNotFoundError as e:

@@ -354,6 +354,7 @@ jobs:
         id: test-reporter
         uses: dorny/test-reporter@v1
         if: always()
+        continue-on-error: true  # Don't fail workflow here - we'll check failures in a separate step
         with:
           name: Pytest Results - Smoke Tests
           path: test-results/junit-*.xml
@@ -362,7 +363,7 @@ jobs:
           list-suites: all
           list-tests: all
           max-annotations: 50
-          fail-on-error: true  # Fail on collection errors - we want to know about import failures
+          fail-on-error: false  # Changed to false - we'll fail the workflow explicitly in the failure check step
           only-summary: false
           fail-on-empty: false
           working-directory: ${{ github.workspace }}
@@ -386,6 +387,7 @@ jobs:
 
       - name: Generate Comprehensive Test Report
         if: always()
+        continue-on-error: true  # Don't fail workflow if report generation fails - we still want to check for test failures
         shell: powershell
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
@@ -402,6 +404,10 @@ jobs:
             py scripts/generate_comprehensive_test_report.py $xmlFile `
               --environment $env:ENVIRONMENT `
               --target $target
+            
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::warning::Report generation script exited with code $LASTEXITCODE, but continuing..."
+            }
           } else {
             Write-Host "::warning::JUnit XML file not found: $xmlFile"
             Write-Host "Skipping report generation"
