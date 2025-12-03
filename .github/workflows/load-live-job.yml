@@ -32,6 +32,8 @@ on:
 
 env:
   PYTHON_VERSION: '3.13'
+  # Fix: Default test_type for schedule/PR (inputs.test_type is null in those contexts)
+  TEST_TYPE: ${{ inputs.test_type || 'basic' }}
 
 jobs:
   live-job-load:
@@ -47,6 +49,11 @@ jobs:
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
       PYTHONIOENCODING: 'utf-8'
+      # Pass test_type to steps (works for all trigger types)
+      TEST_TYPE: ${{ inputs.test_type || 'basic' }}
+      # Pass num_jobs and concurrent_jobs for potential use in tests
+      NUM_JOBS: ${{ inputs.num_jobs || '10' }}
+      CONCURRENT_JOBS: ${{ inputs.concurrent_jobs || '3' }}
 
     steps:
       - name: Checkout
@@ -81,12 +88,16 @@ jobs:
           
           Write-Host "Installing dependencies..."
           powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::install_dependencies.ps1 failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
           
           Write-Host "Installing project in editable mode..."
           & $env:PYTHON_CMD -m pip install -e . --quiet
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Failed to install project in editable mode"
-            exit 1
+            Write-Host "::error::Failed to install project in editable mode (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
           }
           Write-Host "Project installed successfully"
 
@@ -114,9 +125,11 @@ jobs:
             $reachable = $true
             echo "reachable=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
-            Write-Host "::warning::Server not reachable (HTTP $result)"
+            Write-Host "::error::Server not reachable (HTTP $result)"
             $reachable = $false
             echo "reachable=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            # Fix: Actually fail the step so outcome reflects failure
+            exit 1
           }
           
           # Also check /channels to verify API is fully functional
@@ -132,7 +145,8 @@ jobs:
           Write-Host "========================================"
 
       - name: Run Live Job Load Tests (Basic)
-        if: ${{ inputs.test_type == 'basic' || inputs.test_type == 'all' || inputs.test_type == '' }}
+        # Fix: Use env.TEST_TYPE instead of inputs.test_type (works for all trigger types)
+        if: ${{ env.TEST_TYPE == 'basic' || env.TEST_TYPE == 'all' }}
         id: basic-tests
         continue-on-error: true
         shell: powershell
@@ -148,6 +162,7 @@ jobs:
           Write-Host "========================================"
           Write-Host "Target: https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           Write-Host "Environment: $env:ENVIRONMENT"
+          Write-Host "Test Type: $env:TEST_TYPE"
           Write-Host "========================================"
           
           $xmlFile = "reports/junit-live-job-basic.xml"
@@ -184,14 +199,19 @@ jobs:
               Write-Host "XML file exists: $xmlFile"
             }
             
-            # Store exit code for later checking
+            # Store exit code for later checking (Fix: Don't exit here, let continue-on-error handle it)
             echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-job-basic-exit-code.txt" -Encoding utf8 -Force
+            
+            # Fix: Exit only if tests failed (continue-on-error will allow job to continue)
+            if ($exitCode -ne 0) {
+              Write-Host "::error::Basic tests failed with exit code $exitCode"
+              exit $exitCode
+            }
           }
-          
-          exit $exitCode
 
       - name: Run Live Job Load Tests (Stress)
-        if: ${{ inputs.test_type == 'stress' || inputs.test_type == 'all' }}
+        # Fix: Use env.TEST_TYPE instead of inputs.test_type
+        if: ${{ env.TEST_TYPE == 'stress' || env.TEST_TYPE == 'all' }}
         id: stress-tests
         continue-on-error: true
         shell: powershell
@@ -204,6 +224,8 @@ jobs:
           
           Write-Host "========================================"
           Write-Host "LIVE JOB LOAD TEST SUITE - STRESS"
+          Write-Host "========================================"
+          Write-Host "Test Type: $env:TEST_TYPE"
           Write-Host "========================================"
           
           $xmlFile = "reports/junit-live-job-stress.xml"
@@ -242,9 +264,13 @@ jobs:
             
             # Store exit code for later checking
             echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-job-stress-exit-code.txt" -Encoding utf8 -Force
+            
+            # Fix: Exit only if tests failed (stress tests are non-blocking but should still exit properly)
+            if ($exitCode -ne 0) {
+              Write-Host "::warning::Stress tests failed with exit code $exitCode (non-blocking)"
+              exit $exitCode
+            }
           }
-          
-          exit $exitCode
 
       - name: Generate Comprehensive Test Reports
         if: always()
@@ -297,7 +323,7 @@ jobs:
                     Write-Host "Script output: $scriptOutput"
                   }
                 } else {
-                  Write-Host "::warning::Failed to generate report for $file (exit code: $scriptExitCode)"
+                  Write-Host "::warning::Failed to generate report for $file (exit code: $file (exit code: $scriptExitCode)"
                   Write-Host "Script output: $scriptOutput"
                 }
               } catch {
@@ -312,7 +338,7 @@ jobs:
           if (-not $filesFound -or $filesProcessed -eq 0) {
             Write-Host "Creating basic summary..."
             
-            # Check health check status
+            # Fix: Health check now properly reflects failure
             $healthCheckFailed = '${{ steps.health-check.outcome }}' -eq 'failure'
             
             # Use plain text instead of emoji to avoid encoding issues
@@ -330,6 +356,7 @@ jobs:
 | **Target** | ``$target`` |
 | **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
 | **Health Check** | $healthStatus |
+| **Test Type** | $env:TEST_TYPE |
 
 $(if (-not $filesFound) {
   "## Warning
@@ -372,6 +399,7 @@ JUnit XML files were found but report generation failed. Check the logs above fo
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           $OutputEncoding = [System.Text.Encoding]::UTF8
           
+          # Fix: Check step outcomes properly (they will be 'failure' if exit code != 0)
           $basicFailed = '${{ steps.basic-tests.outcome }}' -eq 'failure'
           $stressFailed = '${{ steps.stress-tests.outcome }}' -eq 'failure'
           
