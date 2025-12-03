@@ -34,6 +34,7 @@ jobs:
       ENVIRONMENT: 'staging'
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
+      PYTHONIOENCODING: 'utf-8'
       # Quick test settings - override defaults
       LOAD_TEST_CONCURRENT_REQUESTS: ${{ inputs.concurrent_requests || '50' }}
       LOAD_TEST_DURATION_SECONDS: ${{ inputs.duration_seconds || '60' }}
@@ -46,6 +47,10 @@ jobs:
       - name: Setup Python (Quick)
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           # Quick Python setup - try py launcher first
           $pythonCmd = $null
           if ((py --version 2>&1) -match "Python") {
@@ -62,12 +67,32 @@ jobs:
       - name: Install dependencies (cached)
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
+          Write-Host "Installing dependencies..."
           powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::install_dependencies.ps1 failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          
+          Write-Host "Installing project in editable mode..."
           & $env:PYTHON_CMD -m pip install -e . --quiet
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Failed to install project in editable mode (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
+          Write-Host "Project installed successfully"
 
       - name: Quick server check
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           $url = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/ack"
           Write-Host "Checking server: $url"
           $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
@@ -82,6 +107,10 @@ jobs:
         continue-on-error: true  # Don't fail pipeline - report results instead
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           New-Item -ItemType Directory -Force -Path reports | Out-Null
           
           Write-Host "========================================"
@@ -132,6 +161,12 @@ jobs:
             
             # Store exit code for later checking
             echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/quick-load-exit-code.txt" -Encoding utf8 -Force
+            
+            # Fix: Exit only if tests failed (continue-on-error will allow job to continue)
+            if ($exitCode -ne 0) {
+              Write-Host "::error::Quick load tests failed with exit code $exitCode"
+              exit $exitCode
+            }
           }
           
           # Show test summary even on failure
@@ -152,13 +187,15 @@ jobs:
             }
             Write-Host "========================================"
           }
-          
-          exit $exitCode
 
       - name: Generate Metrics Report
         if: always()
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           Write-Host "Generating load test report..."
           
           # Always generate report (script handles missing file gracefully)
@@ -169,7 +206,7 @@ jobs:
           # Output to GitHub Summary
           if (Test-Path "reports/load-metrics-summary.md") {
             Write-Host "Adding report to GitHub Summary..."
-            Get-Content reports/load-metrics-summary.md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            Get-Content reports/load-metrics-summary.md -Raw -Encoding UTF8 | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 -NoNewline
             Write-Host "Report added to summary!"
           } else {
             # Generate minimal summary if no report
@@ -186,3 +223,66 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      - name: Fail if tests failed
+        if: always()
+        shell: powershell
+        run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
+          Write-Host "========================================"
+          Write-Host "Checking for test failures..."
+          Write-Host "========================================"
+          
+          $hasFailures = $false
+          
+          # Check exit code from test step (more reliable than step outcome with continue-on-error)
+          if (Test-Path "reports/quick-load-exit-code.txt") {
+            $exitCodeLine = Get-Content "reports/quick-load-exit-code.txt"
+            if ($exitCodeLine -match "EXIT_CODE=(\d+)") {
+              $exitCode = [int]$matches[1]
+              Write-Host "Pytest exit code: $exitCode"
+              if ($exitCode -ne 0) {
+                Write-Host "::error::Quick load tests exited with code $exitCode"
+                $hasFailures = $true
+              }
+            }
+          } else {
+            Write-Host "::warning::Exit code file not found - step may not have executed pytest"
+          }
+          
+          # Also check XML file for failures/errors
+          $xmlFile = "reports/junit-quick-load.xml"
+          if (Test-Path $xmlFile) {
+            Write-Host "Checking XML file: $xmlFile"
+            try {
+              $xml = [xml](Get-Content $xmlFile -Raw)
+              $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
+              
+              if ($testsuite) {
+                $failures = [int]$testsuite.failures
+                $errors = [int]$testsuite.errors
+                $tests = [int]$testsuite.tests
+                
+                Write-Host "XML Results: $tests tests, $failures failures, $errors errors"
+                
+                if ($failures -gt 0 -or $errors -gt 0) {
+                  Write-Host "::error::Found failures in XML: $failures failures, $errors errors"
+                  $hasFailures = $true
+                }
+              }
+            } catch {
+              Write-Host "::warning::Could not parse XML file: $_"
+            }
+          } else {
+            Write-Host "::warning::XML file not found: $xmlFile"
+          }
+          
+          Write-Host "========================================"
+          if ($hasFailures) {
+            Write-Host "::error::Test failures detected - failing workflow"
+            exit 1
+          } else {
+            Write-Host "All quick load tests passed!"
+          }

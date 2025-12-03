@@ -113,8 +113,26 @@ jobs:
           py -m pip install --upgrade pip
           if (Test-Path requirements.txt) {
             py -m pip install -r requirements.txt
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error::Failed to install requirements.txt (exit code: $LASTEXITCODE)"
+              exit $LASTEXITCODE
+            }
           }
-          py -m pip install pytest pytest-cov requests
+          # Only install pytest/pytest-cov/requests if not already in requirements.txt
+          # Check if they're already installed
+          $pytestInstalled = py -c "import pytest; print('yes')" 2>&1
+          $requestsInstalled = py -c "import requests; print('yes')" 2>&1
+          
+          if ($LASTEXITCODE -ne 0 -or -not $pytestInstalled -or -not $requestsInstalled) {
+            Write-Host "Installing pytest, pytest-cov, and requests..."
+            py -m pip install pytest pytest-cov requests
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error::Failed to install pytest/pytest-cov/requests (exit code: $LASTEXITCODE)"
+              exit $LASTEXITCODE
+            }
+          } else {
+            Write-Host "pytest, pytest-cov, and requests already installed (from requirements.txt)"
+          }
 
       - name: Install project in editable mode
         shell: powershell
@@ -122,7 +140,8 @@ jobs:
           Write-Host "Installing project in editable mode..."
           py -m pip install -e .
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "::warning::Failed to install project in editable mode, continuing anyway..."
+            Write-Host "::error::Failed to install project in editable mode (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
           } else {
             Write-Host "Project installed successfully"
           }
@@ -198,6 +217,7 @@ jobs:
           Write-Host "Final HTTP status code: $code"
 
       - name: Run regression tests
+        id: run-regression-tests
         shell: powershell
         continue-on-error: true  # Allow workflow to continue so test results get published
         run: |
@@ -221,6 +241,8 @@ jobs:
             Write-Host "::error::Server unreachable and REQUIRE_SERVER=true - cannot run regression tests"
             $xmlContent = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="regression" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="server_unreachable" classname="preflight"><error message="Server unreachable and REQUIRE_SERVER=true" type="ConnectionError">Server unreachable and REQUIRE_SERVER=true</error></testcase></testsuite>'
             $xmlContent | Out-File -FilePath test-results/junit-regression.xml -Encoding utf8
+            # Store exit code but don't exit here - let continue-on-error handle it
+            echo "EXIT_CODE=1" | Out-File -FilePath "test-results/regression-tests-exit-code.txt" -Encoding utf8 -Force
             exit 1
           }
           
@@ -229,6 +251,8 @@ jobs:
             Write-Host "[SKIP] Server unreachable - skipping regression tests"
             $xmlContent = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="regression" tests="0" failures="0" errors="0" skipped="1" time="0"><testcase name="server_unreachable" classname="preflight"><skipped message="Server unreachable"/></testcase></testsuite>'
             $xmlContent | Out-File -FilePath test-results/junit-regression.xml -Encoding utf8
+            # Store exit code for skipped case
+            echo "EXIT_CODE=0" | Out-File -FilePath "test-results/regression-tests-exit-code.txt" -Encoding utf8 -Force
             exit 0
           }
           
@@ -264,9 +288,14 @@ jobs:
             
             # Store exit code for failure detection (works even with continue-on-error)
             echo "EXIT_CODE=$exitCode" | Out-File -FilePath "test-results/regression-tests-exit-code.txt" -Encoding utf8 -Force
+            
+            # Fix: Don't exit here - let continue-on-error handle it and check in final step
+            # The exit code is stored in the file, and the final step will check it
+            if ($exitCode -ne 0) {
+              Write-Host "::error::Regression tests failed with exit code $exitCode"
+              exit $exitCode
+            }
           }
-          
-          exit $exitCode
 
       - name: List test result files
         shell: powershell
@@ -360,7 +389,7 @@ jobs:
           Write-Host "Checking for test failures..."
           Write-Host "========================================"
           Write-Host "Step outcome: $env:RUN_TESTS_OUTCOME"
-          Write-Host "Note: Step outcome may be 'success' even if tests failed due to continue-on-error"
+          Write-Host "Note: Step outcome reflects actual test execution status"
           
           $hasFailures = $false
           
