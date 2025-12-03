@@ -74,6 +74,8 @@ jobs:
           & $env:PYTHON_CMD -m pip install -e . --quiet
 
       - name: Health Check
+        id: health-check
+        continue-on-error: true
         shell: powershell
         run: |
           Write-Host "========================================" 
@@ -84,11 +86,17 @@ jobs:
           Write-Host "Checking server: $url"
           
           $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
-          if ($result -ne "200") {
-            Write-Host "::error::Server not reachable (HTTP $result)"
-            exit 1
+          $reachable = $false
+          
+          if ($result -eq "200") {
+            Write-Host "Server OK (HTTP 200)"
+            $reachable = $true
+            echo "reachable=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            Write-Host "::warning::Server not reachable (HTTP $result)"
+            $reachable = $false
+            echo "reachable=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           }
-          Write-Host "Server OK (HTTP 200)"
           
           # Also check /channels to verify API is fully functional
           $channelsUrl = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/channels"
@@ -265,8 +273,12 @@ jobs:
           # If no reports were generated or no files found, create a basic summary
           if (-not $filesFound -or $filesProcessed -eq 0) {
             Write-Host "Creating basic summary..."
+            
+            # Check health check status
+            $healthCheckFailed = '${{ steps.health-check.outcome }}' -eq 'failure'
+            
             $basicSummary = @"
-          # 🚀 Live Job Load Test Results
+          # $(if ($healthCheckFailed) { "⚠️" } else { "🚀" }) Live Job Load Test Results
           
           ## 📋 Test Execution Summary
           
@@ -275,6 +287,7 @@ jobs:
           | **Environment** | $env:ENVIRONMENT |
           | **Target** | ``$target`` |
           | **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
+          | **Health Check** | $(if ($healthCheckFailed) { "❌ Failed" } else { "✅ Passed" }) |
           
           $(if (-not $filesFound) {
             "## ⚠️ Warning
@@ -283,6 +296,10 @@ jobs:
           - Tests did not execute
           - Tests failed before generating reports
           - File path mismatch
+          
+          $(if ($healthCheckFailed) {
+            "**Note:** Health check failed (server unreachable), which may have prevented tests from running."
+          })
           
           **Please check the test execution logs for details.**"
           } else {
