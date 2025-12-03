@@ -5,11 +5,17 @@ on:
     # Run every night at 02:00 UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: environment
+        required: false
 
 jobs:
   load-performance-tests:
     name: Load & Performance Tests
     runs-on: [self-hosted, windows, "panda_automation"]
+    environment: ${{ inputs.environment || 'staging' }}
     permissions:
       checks: write
       pull-requests: write
@@ -111,8 +117,12 @@ jobs:
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
           
-          Write-Host "Running load and performance tests"
+          $targetEnv = "${{ inputs.environment }}"
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          
+          Write-Host "Running load and performance tests on environment: $targetEnv"
           py -m pytest be_focus_server_tests/ `
+            --env $targetEnv `
             -m "load or performance" `
             --ignore=be_focus_server_tests/ui `
             -v `

@@ -3,6 +3,10 @@ name: Live Job Load Tests
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Target environment"
+        type: environment
+        required: false
       test_type:
         description: "Test type"
         type: choice
@@ -19,6 +23,7 @@ jobs:
   live-job-load-tests:
     name: Live Job Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
+    environment: ${{ inputs.environment || 'staging' }}
     permissions:
       checks: write
       pull-requests: write
@@ -122,12 +127,15 @@ jobs:
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
           
+          $targetEnv = "${{ inputs.environment }}"
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          
           $testType = $env:TEST_TYPE
           if ([string]::IsNullOrEmpty($testType) -or $testType -eq "null") {
             $testType = "basic"
           }
           
-          Write-Host "Running live job load tests (type: $testType)"
+          Write-Host "Running live job load tests (type: $testType) on environment: $targetEnv"
           
           # Determine markers based on test type
           if ($testType -eq "basic") {
@@ -142,6 +150,7 @@ jobs:
           }
           
           py -m pytest be_focus_server_tests/load/test_live_job_load.py `
+            --env $targetEnv `
             -m "$markers" `
             --ignore=be_focus_server_tests/ui `
             -v `

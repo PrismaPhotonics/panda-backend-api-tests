@@ -5,12 +5,17 @@ on:
     # Run every night at 23:00 UTC (01:00 Israel time)
     - cron: '0 23 * * *'
   workflow_dispatch:
-    # Manual trigger only - NOT part of regular CI
+    inputs:
+      environment:
+        description: "Target environment"
+        type: environment
+        required: false
 
 jobs:
   regression-tests:
     name: Nightly Regression Tests
     runs-on: [self-hosted, windows, "panda_automation"]
+    environment: ${{ inputs.environment || 'staging' }}
     permissions:
       checks: write
       pull-requests: write
@@ -26,10 +31,14 @@ jobs:
         run: |
           Write-Host "========================================"
           Write-Host "Checking VPN Connection"
+          Write-Host "Environment: ${{ inputs.environment || 'staging' }}"
           Write-Host "========================================"
           
           # Check if we can reach the Focus Server (internal network)
-          $focusServerIP = "10.10.10.100"
+          $focusServerIP = "${{ vars.FOCUS_SERVER_HOST }}"
+          if ([string]::IsNullOrEmpty($focusServerIP)) {
+            $focusServerIP = "10.10.10.100"  # Default to staging
+          }
           Write-Host "Testing connectivity to Focus Server ($focusServerIP)..."
           
           $pingResult = Test-Connection -ComputerName $focusServerIP -Count 2 -Quiet -ErrorAction SilentlyContinue
@@ -121,7 +130,7 @@ jobs:
           if (Test-Path requirements.txt) {
             py -m pip install -r requirements.txt
           }
-          py -m pip install pytest pytest-cov requests
+            py -m pip install pytest pytest-cov requests
 
       - name: Install project in editable mode
         shell: powershell
@@ -156,7 +165,11 @@ jobs:
           Write-Host "Includes: All tests except UI, slow, nightly, load, stress"
           Write-Host "========================================"
           
+          $targetEnv = "${{ inputs.environment }}"
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          
           py -m pytest be_focus_server_tests/ `
+            --env $targetEnv `
             -m "not slow and not nightly and not load and not stress and not gradual_load" `
             --ignore=be_focus_server_tests/ui `
             --ignore=be_focus_server_tests/load `

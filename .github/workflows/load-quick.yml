@@ -2,6 +2,11 @@ name: Quick Load Tests
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: environment
+        required: false
   pull_request:
     branches: [main]
     paths:
@@ -11,6 +16,7 @@ jobs:
   quick-load-tests:
     name: Quick Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
+    environment: ${{ inputs.environment || 'staging' }}
     permissions:
       checks: write
       pull-requests: write
@@ -112,8 +118,12 @@ jobs:
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
           
-          Write-Host "Running quick load tests"
+          $targetEnv = "${{ inputs.environment }}"
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          
+          Write-Host "Running quick load tests on environment: $targetEnv"
           py -m pytest be_focus_server_tests/load/test_quick_load_metrics.py `
+            --env $targetEnv `
             -m "quick_load" `
             --ignore=be_focus_server_tests/ui `
             -v `
@@ -165,7 +175,7 @@ jobs:
             Write-Host "CHECK_RUN_ID="
             Add-Content -Path $env:GITHUB_OUTPUT -Value "id="
           }
-
+          
       - name: Parse and Display Test Results
         if: always()
         shell: powershell
