@@ -7,10 +7,10 @@ on:
         description: "Target environment"
         type: environment
         required: true
+        default: "staging"
       marker:
         description: "pytest marker to run (e.g., smoke, regression). Leave empty to run all."
-        required: true
-        default: "staging"
+        required: false
         default: ""
 
 jobs:
