@@ -95,27 +95,51 @@ jobs:
           
           # Run ONLY the quick load tests (marked with @pytest.mark.quick_load)
           # --capture=no ensures print statements are visible in CI
-          & $env:PYTHON_CMD -m pytest `
-            be_focus_server_tests/load/test_quick_load_metrics.py `
-            -m "quick_load" `
-            --env staging `
-            --skip-health-check `
-            -v `
-            --tb=long `
-            --capture=no `
-            --log-cli-level=INFO `
-            --junitxml=reports/junit-quick-load.xml `
-            --json-report `
-            --json-report-file=reports/quick-load-metrics.json
+          $xmlFile = "reports/junit-quick-load.xml"
+          $exitCode = 1  # Default to failure
           
-          $exitCode = $LASTEXITCODE
+          try {
+            & $env:PYTHON_CMD -m pytest `
+              be_focus_server_tests/load/test_quick_load_metrics.py `
+              -m "quick_load" `
+              --env staging `
+              --skip-health-check `
+              -v `
+              --tb=long `
+              --capture=no `
+              --log-cli-level=INFO `
+              --junitxml=$xmlFile `
+              --json-report `
+              --json-report-file=reports/quick-load-metrics.json 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="quick-load" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
+            }
+            
+            # Store exit code for later checking
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/quick-load-exit-code.txt" -Encoding utf8 -Force
+          }
           
           # Show test summary even on failure
-          if (Test-Path "reports/junit-quick-load.xml") {
+          if (Test-Path $xmlFile) {
             Write-Host "========================================"
             Write-Host "TEST RESULTS SUMMARY"
             Write-Host "========================================"
-            $xml = [xml](Get-Content "reports/junit-quick-load.xml")
+            $xml = [xml](Get-Content $xmlFile)
             # Handle both testsuite (single) and testsuites (wrapper) formats
             $testsuite = if ($xml.testsuites) { $xml.testsuites.testsuite } else { $xml.testsuite }
             if ($testsuite) {

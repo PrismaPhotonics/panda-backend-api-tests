@@ -323,19 +323,40 @@ jobs:
           # Run smoke tests (excluding UI and stress tests)
           # Note: Health checks will run and verify all infrastructure components
           # IMPORTANT: Use explicit paths to avoid collection errors from ignored directories
-          py -m pytest be_focus_server_tests/integration be_focus_server_tests/load be_focus_server_tests/data_quality be_focus_server_tests/conftest.py `
-            -m "smoke" `
-            --env staging `
-            -v `
-            --maxfail=10 `
-            --junitxml=test-results/junit-smoke.xml `
-            --cov=be_focus_server_tests `
-            --cov-report=term-missing `
-            --tb=short
+          $xmlFile = "test-results/junit-smoke.xml"
+          $exitCode = 1  # Default to failure
           
-          # Store exit code for failure detection (works even with continue-on-error)
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "test-results/smoke-tests-exit-code.txt" -Encoding utf8
+          try {
+            py -m pytest be_focus_server_tests/integration be_focus_server_tests/load be_focus_server_tests/data_quality be_focus_server_tests/conftest.py `
+              -m "smoke" `
+              --env staging `
+              -v `
+              --maxfail=10 `
+              --junitxml=$xmlFile `
+              --cov=be_focus_server_tests `
+              --cov-report=term-missing `
+              --tb=short 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="smoke" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
+            }
+            
+            # Store exit code for failure detection (works even with continue-on-error)
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "test-results/smoke-tests-exit-code.txt" -Encoding utf8 -Force
+          }
+          
           exit $exitCode
 
       - name: List test result files

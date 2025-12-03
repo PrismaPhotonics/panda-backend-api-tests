@@ -395,18 +395,44 @@ jobs:
           #   - Standard load tests (job_load, live_job_load, historic_job_load)
           #   - Gradual load tests (5 → 100 jobs accumulative)
           #   - Performance benchmarks
-          & $pythonCmd -m pytest be_focus_server_tests/ `
-            -m "$markers" `
-            --env staging `
-            --ignore=be_focus_server_tests/ui `
-            --skip-health-check `
-            --monitor-pods `
-            -v `
-            --junitxml=reports/junit-load-performance.xml `
-            --html=reports/load-performance-report.html `
-            --self-contained-html `
-            --json-report `
-            --json-report-file=reports/load-performance-report.json
+          $xmlFile = "reports/junit-load-performance.xml"
+          $exitCode = 1  # Default to failure
+          
+          try {
+            & $pythonCmd -m pytest be_focus_server_tests/ `
+              -m "$markers" `
+              --env staging `
+              --ignore=be_focus_server_tests/ui `
+              --skip-health-check `
+              --monitor-pods `
+              -v `
+              --junitxml=$xmlFile `
+              --html=reports/load-performance-report.html `
+              --self-contained-html `
+              --json-report `
+              --json-report-file=reports/load-performance-report.json 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="load-performance" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
+            }
+            
+            # Store exit code for later checking
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/load-performance-exit-code.txt" -Encoding utf8 -Force
+          }
+          
+          exit $exitCode
 
       - name: Generate console summary
         if: always()

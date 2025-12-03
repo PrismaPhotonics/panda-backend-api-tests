@@ -233,18 +233,39 @@ jobs:
           }
           
           # Run regression tests (excluding slow and nightly tests, and UI tests that require playwright)
-          py -m pytest be_focus_server_tests/ `
-            -m "regression and not slow and not nightly" `
-            --env staging `
-            --ignore=be_focus_server_tests/ui `
-            -v `
-            --junitxml=test-results/junit-regression.xml `
-            --cov=be_focus_server_tests `
-            --cov-report=term-missing
+          $xmlFile = "test-results/junit-regression.xml"
+          $exitCode = 1  # Default to failure
           
-          # Store exit code for failure detection (works even with continue-on-error)
-          $exitCode = $LASTEXITCODE
-          echo "EXIT_CODE=$exitCode" | Out-File -FilePath "test-results/regression-tests-exit-code.txt" -Encoding utf8
+          try {
+            py -m pytest be_focus_server_tests/ `
+              -m "regression and not slow and not nightly" `
+              --env staging `
+              --ignore=be_focus_server_tests/ui `
+              -v `
+              --junitxml=$xmlFile `
+              --cov=be_focus_server_tests `
+              --cov-report=term-missing 2>&1 | Tee-Object -Variable pytestOutput
+            
+            $exitCode = $LASTEXITCODE
+            Write-Host "Pytest exit code: $exitCode"
+          } catch {
+            Write-Host "::error::Pytest execution failed: $_"
+            $exitCode = 1
+          } finally {
+            # Always ensure XML file exists (create empty one if pytest failed before creating it)
+            if (-not (Test-Path $xmlFile)) {
+              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
+              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="regression" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
+              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
+              Write-Host "Created empty XML file: $xmlFile"
+            } else {
+              Write-Host "XML file exists: $xmlFile"
+            }
+            
+            # Store exit code for failure detection (works even with continue-on-error)
+            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "test-results/regression-tests-exit-code.txt" -Encoding utf8 -Force
+          }
+          
           exit $exitCode
 
       - name: List test result files
