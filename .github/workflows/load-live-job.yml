@@ -46,6 +46,7 @@ jobs:
       ENVIRONMENT: 'staging'
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
+      PYTHONIOENCODING: 'utf-8'
 
     steps:
       - name: Checkout
@@ -66,18 +67,38 @@ jobs:
           }
           Write-Host "Using Python: $pythonCmd"
           echo "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          
+          # Set UTF-8 encoding for PowerShell output
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
 
       - name: Install dependencies
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
+          Write-Host "Installing dependencies..."
           powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
+          
+          Write-Host "Installing project in editable mode..."
           & $env:PYTHON_CMD -m pip install -e . --quiet
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Failed to install project in editable mode"
+            exit 1
+          }
+          Write-Host "Project installed successfully"
 
       - name: Health Check
         id: health-check
         continue-on-error: true
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           Write-Host "========================================" 
           Write-Host "PRE-TEST HEALTH CHECK"
           Write-Host "========================================"
@@ -116,6 +137,10 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           New-Item -ItemType Directory -Force -Path reports | Out-Null
           
           Write-Host "========================================"
@@ -171,6 +196,10 @@ jobs:
         continue-on-error: true
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           New-Item -ItemType Directory -Force -Path reports | Out-Null
           
           Write-Host "========================================"
@@ -221,6 +250,10 @@ jobs:
         if: always()
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           Write-Host "Generating comprehensive test reports..."
           $target = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
           $pythonCmd = if ($env:PYTHON_CMD) { $env:PYTHON_CMD } else { "py" }
@@ -241,6 +274,9 @@ jobs:
               
               try {
                 $reportFile = $file -replace "\.xml$", "-report.md"
+                
+                # Run report generation with UTF-8 encoding
+                $env:PYTHONIOENCODING = "utf-8"
                 & $pythonCmd scripts/generate_comprehensive_test_report.py $file `
                   --environment $env:ENVIRONMENT `
                   --target $target `
@@ -251,8 +287,10 @@ jobs:
                 if ($scriptExitCode -eq 0) {
                   # Append to summary
                   if (Test-Path $reportFile) {
-                    Get-Content $reportFile | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-                    Write-Host "✅ Report generated: $reportFile"
+                    # Read file with UTF-8 encoding and append to summary
+                    $content = Get-Content $reportFile -Raw -Encoding UTF8
+                    $content | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 -NoNewline
+                    Write-Host "[OK] Report generated: $reportFile"
                     $filesProcessed++
                   } else {
                     Write-Host "::warning::Report file was not created: $reportFile"
@@ -277,41 +315,45 @@ jobs:
             # Check health check status
             $healthCheckFailed = '${{ steps.health-check.outcome }}' -eq 'failure'
             
+            # Use plain text instead of emoji to avoid encoding issues
+            $statusIcon = if ($healthCheckFailed) { "[WARNING]" } else { "[OK]" }
+            $healthStatus = if ($healthCheckFailed) { "Failed" } else { "Passed" }
+            
             $basicSummary = @"
-          # $(if ($healthCheckFailed) { "⚠️" } else { "🚀" }) Live Job Load Test Results
-          
-          ## 📋 Test Execution Summary
-          
-          | Metric | Value |
-          |--------|-------|
-          | **Environment** | $env:ENVIRONMENT |
-          | **Target** | ``$target`` |
-          | **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
-          | **Health Check** | $(if ($healthCheckFailed) { "❌ Failed" } else { "✅ Passed" }) |
-          
-          $(if (-not $filesFound) {
-            "## ⚠️ Warning
-          
-          No JUnit XML files were found. This may indicate:
-          - Tests did not execute
-          - Tests failed before generating reports
-          - File path mismatch
-          
-          $(if ($healthCheckFailed) {
-            "**Note:** Health check failed (server unreachable), which may have prevented tests from running."
-          })
-          
-          **Please check the test execution logs for details.**"
-          } else {
-            "## ⚠️ Warning
-          
-          JUnit XML files were found but report generation failed. Check the logs above for details."
-          })
-          "@
+# $statusIcon Live Job Load Test Results
+
+## Test Execution Summary
+
+| Metric | Value |
+|--------|-------|
+| **Environment** | $env:ENVIRONMENT |
+| **Target** | ``$target`` |
+| **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
+| **Health Check** | $healthStatus |
+
+$(if (-not $filesFound) {
+  "## Warning
+
+No JUnit XML files were found. This may indicate:
+- Tests did not execute
+- Tests failed before generating reports
+- File path mismatch
+
+$(if ($healthCheckFailed) {
+  "**Note:** Health check failed (server unreachable), which may have prevented tests from running."
+})
+
+**Please check the test execution logs for details.**"
+} else {
+  "## Warning
+
+JUnit XML files were found but report generation failed. Check the logs above for details."
+})
+"@
             $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Force
           }
           
-          Write-Host "✅ Comprehensive reports generation completed (processed $filesProcessed file(s))"
+          Write-Host "[OK] Comprehensive reports generation completed (processed $filesProcessed file(s))"
 
       - name: Upload Reports
         if: always()
@@ -326,6 +368,10 @@ jobs:
         if: always()
         shell: powershell
         run: |
+          # Set UTF-8 encoding
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          
           $basicFailed = '${{ steps.basic-tests.outcome }}' -eq 'failure'
           $stressFailed = '${{ steps.stress-tests.outcome }}' -eq 'failure'
           
@@ -340,4 +386,3 @@ jobs:
           if ($basicFailed) {
             exit 1
           }
-
