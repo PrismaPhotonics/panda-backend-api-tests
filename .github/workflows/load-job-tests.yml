@@ -16,17 +16,14 @@ on:
     - cron: '0 2 * * *'
 
 jobs:
-  test:
+  job-load-tests:
+    name: Job Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
     permissions:
       checks: write
       pull-requests: write
       contents: read
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.13.9"]
 
     steps:
       - name: Checkout

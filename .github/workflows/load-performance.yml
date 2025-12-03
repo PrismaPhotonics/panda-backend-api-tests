@@ -7,17 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  load-performance-tests:
+    name: Load & Performance Tests
     runs-on: [self-hosted, windows, "panda_automation"]
     permissions:
       checks: write
       pull-requests: write
       contents: read
     timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.13.9"]
 
     steps:
       - name: Checkout
