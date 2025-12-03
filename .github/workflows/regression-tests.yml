@@ -1,24 +1,62 @@
-name: Regression Tests
+name: Regression Tests (Nightly)
 
 on:
   schedule:
-    # Run every night at 23:00 UTC
+    # Run every night at 23:00 UTC (01:00 Israel time)
     - cron: '0 23 * * *'
   workflow_dispatch:
+    # Manual trigger only - NOT part of regular CI
 
 jobs:
   regression-tests:
-    name: Regression Tests
+    name: Nightly Regression Tests
     runs-on: [self-hosted, windows, "panda_automation"]
     permissions:
       checks: write
       pull-requests: write
       contents: read
-    timeout-minutes: 120
+    timeout-minutes: 240  # 4 hours for comprehensive nightly tests
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Check VPN Connection
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "Checking VPN Connection"
+          Write-Host "========================================"
+          
+          # Check if we can reach the Focus Server (internal network)
+          $focusServerIP = "10.10.10.100"
+          Write-Host "Testing connectivity to Focus Server ($focusServerIP)..."
+          
+          $pingResult = Test-Connection -ComputerName $focusServerIP -Count 2 -Quiet -ErrorAction SilentlyContinue
+          
+          if ($pingResult) {
+            Write-Host "[OK] VPN is connected - can reach internal network"
+          } else {
+            Write-Host "[WARNING] Cannot ping Focus Server directly, trying HTTP..."
+            
+            # Try HTTP as backup (some VPNs block ICMP)
+            $httpResult = curl.exe -k -s -w "%{http_code}" -o nul "https://$focusServerIP/focus-server/ack" 2>&1
+            
+            if ($httpResult -eq "200") {
+              Write-Host "[OK] VPN is connected - Focus Server responding on HTTPS"
+            } else {
+              Write-Host "::error::VPN NOT CONNECTED - Cannot reach internal network!"
+              Write-Host "HTTP status: $httpResult"
+              Write-Host ""
+              Write-Host "Please ensure:"
+              Write-Host "  1. VPN client is running on the self-hosted runner"
+              Write-Host "  2. VPN is connected to the internal network"
+              Write-Host "  3. Focus Server (10.10.10.100) is accessible"
+              exit 1
+            }
+          }
+          
+          Write-Host "========================================"
 
       - name: Set up Python
         shell: powershell
@@ -83,7 +121,7 @@ jobs:
           if (Test-Path requirements.txt) {
             py -m pip install -r requirements.txt
           }
-            py -m pip install pytest pytest-cov requests
+          py -m pip install pytest pytest-cov requests
 
       - name: Install project in editable mode
         shell: powershell
@@ -111,8 +149,13 @@ jobs:
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
           
-          Write-Host "Running comprehensive regression tests"
+          Write-Host "========================================"
+          Write-Host "NIGHTLY REGRESSION TEST SUITE"
+          Write-Host "========================================"
+          Write-Host "Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
           Write-Host "Includes: All tests except UI, slow, nightly, load, stress"
+          Write-Host "========================================"
+          
           py -m pytest be_focus_server_tests/ `
             -m "not slow and not nightly and not load and not stress and not gradual_load" `
             --ignore=be_focus_server_tests/ui `
