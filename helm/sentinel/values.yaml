@@ -1,0 +1,148 @@
+# Default values for automation-run-sentinel
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: automation-run-sentinel
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: sentinel.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Sentinel configuration
+config:
+  environment: "production"
+  
+  k8s_namespaces:
+    - "panda"
+    - "default"
+  
+  k8s_label_selectors:
+    app: "panda"
+    component: "focus-server"
+  
+  # Database configuration
+  database:
+    type: "sqlite"  # sqlite or postgresql
+    path: "/app/data/sentinel_history.db"
+    # PostgreSQL settings (if type is postgresql)
+    # host: ""
+    # port: 5432
+    # database: "sentinel"
+    # user: ""
+    # password: ""
+  
+  # API configuration
+  api:
+    enabled: true
+    host: "0.0.0.0"
+    port: 5000
+    debug: false
+  
+  # Alert configuration
+  alert_cooldown_seconds: 300
+  
+  channels:
+    - type: "slack"
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      severity_min: "warning"
+      enabled: true
+    - type: "email"
+      to:
+        - "qa-leads@example.com"
+      severity_min: "critical"
+      enabled: false
+    - type: "webhook"
+      webhook_url: "${GENERIC_WEBHOOK_URL}"
+      severity_min: "critical"
+      enabled: false
+
+# Secrets configuration
+secrets:
+  SLACK_WEBHOOK_URL: ""
+  GENERIC_WEBHOOK_URL: ""
+  SMTP_USER: ""
+  SMTP_PASSWORD: ""
+  DB_HOST: ""
+  DB_USER: ""
+  DB_PASSWORD: ""
+
+# Persistent volume for data (optional)
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+# Additional environment variables
+env: []
+
+# Additional volume mounts
+extraVolumes: []
+extraVolumeMounts: []
+

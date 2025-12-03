@@ -1,4 +1,13 @@
-"""
+(.venv) PS C:\Projects\focus_server_automation> git push origin chore/add-roy-tests
+To https://github.com/PrismaPhotonics/panda-backend-api-tests.git
+ ! [rejected]        chore/add-roy-tests -> chore/add-roy-tests (fetch first)
+error: failed to push some refs to 'https://github.com/PrismaPhotonics/panda-backend-api-tests.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+(.venv) PS C:\Projects\focus_server_automation> """
 Recording Fixtures - MongoDB Recording Data Provider
 =====================================================
 
@@ -462,122 +471,6 @@ def _setup_mongodb_ssh_tunnel(config_manager) -> bool:
     # Use the professional tunnel manager
     manager = _get_mongodb_tunnel_manager(config_manager)
     return manager.setup()
-    
-    try:
-        # Get SSH and Kubernetes config
-        ssh_config = config_manager.get_ssh_config()
-        k8s_config = config_manager.get_kubernetes_config()
-        mongo_config = config_manager.get_database_config()
-        
-        # Get target host (K8s worker node)
-        target_host_config = ssh_config.get("target_host", {})
-        k8s_host = target_host_config.get("host")
-        ssh_user = target_host_config.get("username")
-        ssh_key_file = target_host_config.get("key_file")
-        ssh_password = target_host_config.get("password")
-        
-        if not k8s_host:
-            logger.warning("No Kubernetes host configured for MongoDB SSH tunnel")
-            return False
-        
-        # Get MongoDB service name and namespace
-        namespace = k8s_config.get("default_namespace", "panda")
-        mongo_service = k8s_config.get("services", {}).get("mongodb", {}).get("name", "mongodb")
-        remote_port = mongo_config.get("port", 27017)
-        local_port = remote_port  # Use same port locally
-        
-        logger.info(f"Setting up SSH tunnel for MongoDB: {mongo_service} in namespace {namespace}")
-        
-        def run_port_forward():
-            global _mongodb_port_forward_active, _mongodb_port_forward_client, _mongodb_port_forward_ssh_manager
-            try:
-                logger.debug(f"Connecting to {ssh_user}@{k8s_host} for MongoDB port-forward...")
-                
-                # Use SSHManager for connection (handles jump host automatically)
-                from src.infrastructure.ssh_manager import SSHManager
-                ssh_manager = SSHManager(config_manager)
-                if ssh_manager.connect():
-                    # Use SSHManager's connection and keep reference to prevent cleanup
-                    client = ssh_manager.ssh_client
-                    _mongodb_port_forward_ssh_manager = ssh_manager  # Keep reference
-                    _mongodb_port_forward_client = client  # Keep reference
-                    logger.debug("Connected via SSHManager (with jump host support)")
-                else:
-                    logger.error("Failed to connect via SSH manager")
-                    return
-                
-                pf_cmd = (
-                    f"kubectl port-forward --address 0.0.0.0 -n {namespace} "
-                    f"svc/{mongo_service} {local_port}:{remote_port}"
-                )
-                
-                logger.info(f"Starting kubectl port-forward for MongoDB: {pf_cmd}")
-                _mongodb_port_forward_client = client
-                stdin, stdout, stderr = client.exec_command(pf_cmd)
-                
-                # Wait for port-forward confirmation
-                port_forward_started = False
-                for line in stdout:
-                    line_str = line.strip()
-                    logger.debug(f"mongodb port-forward: {line_str}")
-                    
-                    # Check for port-forward confirmation message
-                    if "Forwarding from" in line_str or "Forwarding" in line_str:
-                        port_forward_started = True
-                        logger.info(f"✅ MongoDB port-forward confirmed: {line_str}")
-                    
-                    if not _mongodb_port_forward_active:
-                        break
-                
-                if not port_forward_started:
-                    logger.warning("MongoDB port-forward started but no confirmation message received")
-                
-                _mongodb_port_forward_active = True
-                
-                # Keep reading to keep connection alive
-                for line in stdout:
-                    logger.debug(f"mongodb port-forward: {line.strip()}")
-                    if not _mongodb_port_forward_active:
-                        break
-                
-                logger.info("MongoDB port-forward stopped")
-                _mongodb_port_forward_active = False
-                
-            except Exception as e:
-                logger.error(f"MongoDB port-forward thread error: {e}")
-                _mongodb_port_forward_active = False
-        
-        # Start port-forward in background thread
-        _mongodb_port_forward_thread = threading.Thread(target=run_port_forward, daemon=True)
-        _mongodb_port_forward_thread.start()
-        
-        # Wait for port to become available on remote host
-        logger.info("Waiting for MongoDB port-forward to start...")
-        max_wait = 15
-        for i in range(max_wait):
-            time.sleep(1)
-            try:
-                # Check port on remote host (where port-forward is running)
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                result = sock.connect_ex((k8s_host, local_port))
-                sock.close()
-                if result == 0:
-                    logger.info(f"✅ MongoDB port-forward active on {k8s_host}:{local_port}")
-                    return True
-            except Exception as e:
-                logger.debug(f"Port check attempt {i+1} failed: {e}")
-        
-        logger.warning(f"MongoDB port-forward did not become available on {k8s_host}:{local_port} within {max_wait}s")
-        # Cleanup on failure
-        _cleanup_mongodb_ssh_tunnel()
-        return False
-        
-    except Exception as e:
-        logger.error(f"Failed to setup MongoDB SSH tunnel: {e}", exc_info=True)
-        # Cleanup on exception
-        _cleanup_mongodb_ssh_tunnel()
-        return False
 
 
 def _cleanup_mongodb_ssh_tunnel():

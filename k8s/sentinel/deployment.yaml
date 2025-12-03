@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automation-run-sentinel
+  namespace: sentinel
+  labels:
+    app: automation-run-sentinel
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: automation-run-sentinel
+  template:
+    metadata:
+      labels:
+        app: automation-run-sentinel
+        component: monitoring
+    spec:
+      serviceAccountName: sentinel
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      
+      containers:
+      - name: sentinel
+        image: automation-run-sentinel:latest
+        imagePullPolicy: IfNotPresent
+        
+        # Environment variables
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: SENTINEL_DATA_DIR
+          value: "/app/data"
+        - name: SENTINEL_LOG_DIR
+          value: "/app/logs"
+        - name: SENTINEL_CONFIG_PATH
+          value: "/app/config/sentinel_config.yaml"
+        
+        # Load secrets as environment variables
+        envFrom:
+        - secretRef:
+            name: sentinel-secrets
+        
+        # Volume mounts
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+      
+      # Volumes
+      volumes:
+      - name: config
+        configMap:
+          name: sentinel-config
+      - name: data
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Tolerations (optional - adjust based on your cluster)
+      # tolerations:
+      # - key: "node-role.kubernetes.io/master"
+      #   effect: NoSchedule
+      
+      # Node selector (optional)
+      # nodeSelector:
+      #   kubernetes.io/os: linux
+

@@ -120,7 +120,7 @@ class RunHistoryStore:
                     pipeline TEXT NOT NULL,
                     environment TEXT NOT NULL,
                     branch TEXT,
-                    commit TEXT,
+                    commit_hash TEXT,
                     triggered_by TEXT,
                     start_time TIMESTAMP,
                     end_time TIMESTAMP,
@@ -232,7 +232,7 @@ class RunHistoryStore:
             # Save run
             cursor.execute("""
                 INSERT OR REPLACE INTO runs (
-                    run_id, pipeline, environment, branch, commit, triggered_by,
+                    run_id, pipeline, environment, branch, commit_hash, triggered_by,
                     start_time, end_time, status, duration_seconds,
                     total_tests, passed_tests, failed_tests, skipped_tests, metadata
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -241,7 +241,7 @@ class RunHistoryStore:
                 context.pipeline,
                 context.environment,
                 context.branch,
-                context.commit,
+                context.commit if hasattr(context, 'commit') else None,
                 context.triggered_by,
                 context.start_time.isoformat() if context.start_time else None,
                 context.end_time.isoformat() if context.end_time else None,

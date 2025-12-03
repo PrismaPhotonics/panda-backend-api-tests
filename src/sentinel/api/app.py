@@ -228,12 +228,12 @@ class SentinelAPI:
             "timestamp": datetime.now().isoformat()
         })
     
-    def run(self, host="0.0.0.0", port=5000, debug=False):
+    def run(self, host="0.0.0.0", port=5000, debug=False, threaded=False):
         """Run the API server."""
         if not self.app:
             raise RuntimeError("Flask not available, cannot run API server")
         
-        self.app.run(host=host, port=port, debug=debug)
+        self.app.run(host=host, port=port, debug=debug, threaded=threaded)
 
 
 def create_api_app(config_manager: ConfigManager, config: Optional[Dict] = None):
