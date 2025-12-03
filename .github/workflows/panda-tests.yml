@@ -207,7 +207,9 @@ jobs:
               # Use single-line Python command (matches working workflows exactly)
               # Note: This will exit with code 1 if API call fails, but we handle that in PowerShell
               $ErrorActionPreference = 'Continue'
-              $output = py -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; print(check_run_id)" 2>&1
+              # Escape single quotes in Python command by using double quotes for Python strings where possible
+              $pythonCmd = 'import requests, json, os, time; repo = os.environ["GITHUB_REPOSITORY"]; sha = os.environ.get("GITHUB_SHA", ""); token = os.environ["GITHUB_TOKEN"]; headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}; url = f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs"; params = {"check_name": "Pytest Results", "filter": "latest"}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get("check_runs", []); check_run_id = str(check_runs[0].get("id", "")) if check_runs else ""; print(check_run_id)'
+              $output = py -c $pythonCmd 2>&1
               $exitCode = $LASTEXITCODE
               
               Write-Host "Attempt $attempt - Exit code: $exitCode"
