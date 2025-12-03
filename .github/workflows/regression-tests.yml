@@ -16,7 +16,7 @@ jobs:
   regression-tests:
     name: Nightly Regression Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment || 'production' }}
     permissions:
       checks: write
       pull-requests: write
@@ -167,7 +167,7 @@ jobs:
           Write-Host "========================================"
           
           $targetEnv = "${{ inputs.environment }}"
-          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "production" }
           
           py -m pytest be_focus_server_tests/ `
             --env $targetEnv `

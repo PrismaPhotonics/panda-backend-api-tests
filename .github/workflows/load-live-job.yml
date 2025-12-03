@@ -7,7 +7,7 @@ on:
         description: "Target environment"
         type: environment
         required: true
-        default: "staging"
+        default: "production"
       test_type:
         description: "Test type"
         type: choice
@@ -24,7 +24,7 @@ jobs:
   live-job-load-tests:
     name: Live Job Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment || 'production' }}
     permissions:
       checks: write
       pull-requests: write
@@ -129,7 +129,7 @@ jobs:
           }
           
           $targetEnv = "${{ inputs.environment }}"
-          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "production" }
           
           $testType = $env:TEST_TYPE
           if ([string]::IsNullOrEmpty($testType) -or $testType -eq "null") {
@@ -212,7 +212,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'production' }}
         run: |
           py parse_junit_results.py
 
