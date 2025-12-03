@@ -10,7 +10,8 @@ on:
       environment:
         description: "Target environment"
         type: environment
-        required: false
+        required: true
+        default: "staging"
 
 jobs:
   smoke-tests:

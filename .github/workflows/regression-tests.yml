@@ -9,7 +9,8 @@ on:
       environment:
         description: "Target environment"
         type: environment
-        required: false
+        required: true
+        default: "production"
 
 jobs:
   regression-tests:

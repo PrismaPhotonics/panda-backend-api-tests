@@ -9,7 +9,8 @@ on:
         required: true
       marker:
         description: "pytest marker to run (e.g., smoke, regression). Leave empty to run all."
-        required: false
+        required: true
+        default: "staging"
         default: ""
 
 jobs:

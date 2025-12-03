@@ -6,7 +6,8 @@ on:
       environment:
         description: "Target environment"
         type: environment
-        required: false
+        required: true
+        default: "staging"
       test_type:
         description: "Test type"
         type: choice

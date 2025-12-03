@@ -6,7 +6,8 @@ on:
       environment:
         description: "Target environment"
         type: environment
-        required: false
+        required: true
+        default: "staging"
   pull_request:
     branches: [main]
     paths:
