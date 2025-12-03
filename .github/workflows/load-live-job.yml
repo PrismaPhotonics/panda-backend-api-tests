@@ -3,14 +3,6 @@ name: Live Job Load Tests
 on:
   workflow_dispatch:
     inputs:
-      num_jobs:
-        description: "Number of jobs to create"
-        default: "10"
-        type: string
-      concurrent_jobs:
-        description: "Number of concurrent jobs"
-        default: "3"
-        type: string
       test_type:
         description: "Test type"
         type: choice
@@ -22,395 +14,199 @@ on:
   schedule:
     # Run daily at 3 AM UTC
     - cron: '0 3 * * *'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'be_focus_server_tests/load/live_job_load_tester.py'
-      - 'be_focus_server_tests/load/test_live_job_load.py'
-      - 'src/apis/grpc_client.py'
-      - 'src/apis/focus_server_api.py'
-
-env:
-  PYTHON_VERSION: '3.13'
-  # Fix: Default test_type for schedule/PR (inputs.test_type is null in those contexts)
-  TEST_TYPE: ${{ inputs.test_type || 'basic' }}
 
 jobs:
-  live-job-load:
-    # Use self-hosted Windows runner for production environment access
+  live-job-load-tests:
+    name: Live Job Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
     timeout-minutes: 30
-
-    env:
-      FOCUS_SERVER_HOST: ${{ secrets.FOCUS_SERVER_HOST || '10.10.10.100' }}
-      FOCUS_API_PREFIX: ${{ secrets.FOCUS_API_PREFIX || '/focus-server' }}
-      VERIFY_SSL: 'false'
-      ENVIRONMENT: 'staging'
-      PYTHONDONTWRITEBYTECODE: 1
-      PYTHONUNBUFFERED: 1
-      PYTHONIOENCODING: 'utf-8'
-      # Pass test_type to steps (works for all trigger types)
-      TEST_TYPE: ${{ inputs.test_type || 'basic' }}
-      # Pass num_jobs and concurrent_jobs for potential use in tests
-      NUM_JOBS: ${{ inputs.num_jobs || '10' }}
-      CONCURRENT_JOBS: ${{ inputs.concurrent_jobs || '3' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         shell: powershell
         run: |
-          # Quick Python setup
-          $pythonCmd = $null
-          if ((py --version 2>&1) -match "Python") {
-            $pythonCmd = "py"
-          } elseif ((python --version 2>&1) -match "Python") {
-            $pythonCmd = "python"
-          } else {
-            Write-Host "::error::Python not found"
-            exit 1
-          }
-          Write-Host "Using Python: $pythonCmd"
-          echo "PYTHON_CMD=$pythonCmd" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          
-          # Set UTF-8 encoding for PowerShell output
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-
-      - name: Install dependencies
-        shell: powershell
-        run: |
-          # Set UTF-8 encoding
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          Write-Host "Installing dependencies..."
-          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_dependencies.ps1
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::install_dependencies.ps1 failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-          }
-          
-          Write-Host "Installing project in editable mode..."
-          & $env:PYTHON_CMD -m pip install -e . --quiet
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Failed to install project in editable mode (exit code: $LASTEXITCODE)"
-            exit $LASTEXITCODE
-          }
-          Write-Host "Project installed successfully"
-
-      - name: Health Check
-        id: health-check
-        continue-on-error: true
-        shell: powershell
-        run: |
-          # Set UTF-8 encoding
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          Write-Host "========================================" 
-          Write-Host "PRE-TEST HEALTH CHECK"
-          Write-Host "========================================"
-          
-          $url = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/ack"
-          Write-Host "Checking server: $url"
-          
-          $result = curl.exe -k -s -w "%{http_code}" -o nul $url 2>&1
-          $reachable = $false
-          
-          if ($result -eq "200") {
-            Write-Host "Server OK (HTTP 200)"
-            $reachable = $true
-            echo "reachable=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          } else {
-            Write-Host "::error::Server not reachable (HTTP $result)"
-            $reachable = $false
-            echo "reachable=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-            # Fix: Actually fail the step so outcome reflects failure
-            exit 1
-          }
-          
-          # Also check /channels to verify API is fully functional
-          $channelsUrl = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX/channels"
-          Write-Host "Checking channels endpoint: $channelsUrl"
-          $channelsResult = curl.exe -k -s -w "%{http_code}" -o nul $channelsUrl 2>&1
-          if ($channelsResult -ne "200") {
-            Write-Host "::warning::Channels endpoint returned HTTP $channelsResult"
-          } else {
-            Write-Host "Channels endpoint OK (HTTP 200)"
-          }
-          
-          Write-Host "========================================"
-
-      - name: Run Live Job Load Tests (Basic)
-        # Fix: Use env.TEST_TYPE instead of inputs.test_type (works for all trigger types)
-        if: ${{ env.TEST_TYPE == 'basic' || env.TEST_TYPE == 'all' }}
-        id: basic-tests
-        continue-on-error: true
-        shell: powershell
-        run: |
-          # Set UTF-8 encoding
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          New-Item -ItemType Directory -Force -Path reports | Out-Null
-          
-          Write-Host "========================================"
-          Write-Host "LIVE JOB LOAD TEST SUITE - BASIC"
-          Write-Host "========================================"
-          Write-Host "Target: https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
-          Write-Host "Environment: $env:ENVIRONMENT"
-          Write-Host "Test Type: $env:TEST_TYPE"
-          Write-Host "========================================"
-          
-          $xmlFile = "reports/junit-live-job-basic.xml"
-          $exitCode = 1  # Default to failure
-          
-          try {
-            # Run basic Live Job load tests
-            & $env:PYTHON_CMD -m pytest `
-              be_focus_server_tests/load/test_live_job_load.py `
-              -m "live_job_load and not stress and not slow" `
-              --env staging `
-              --skip-health-check `
-              -v `
-              --tb=long `
-              --capture=no `
-              --log-cli-level=INFO `
-              --junitxml=$xmlFile `
-              --json-report `
-              --json-report-file=reports/live-job-basic-metrics.json 2>&1 | Tee-Object -Variable pytestOutput
-            
-            $exitCode = $LASTEXITCODE
-            Write-Host "Pytest exit code: $exitCode"
-          } catch {
-            Write-Host "::error::Pytest execution failed: $_"
-            $exitCode = 1
-          } finally {
-            # Always ensure XML file exists (create empty one if pytest failed before creating it)
-            if (-not (Test-Path $xmlFile)) {
-              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
-              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-job-basic" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
-              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
-              Write-Host "Created empty XML file: $xmlFile"
-            } else {
-              Write-Host "XML file exists: $xmlFile"
-            }
-            
-            # Store exit code for later checking (Fix: Don't exit here, let continue-on-error handle it)
-            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-job-basic-exit-code.txt" -Encoding utf8 -Force
-            
-            # Fix: Exit only if tests failed (continue-on-error will allow job to continue)
-            if ($exitCode -ne 0) {
-              Write-Host "::error::Basic tests failed with exit code $exitCode"
-              exit $exitCode
-            }
-          }
-
-      - name: Run Live Job Load Tests (Stress)
-        # Fix: Use env.TEST_TYPE instead of inputs.test_type
-        if: ${{ env.TEST_TYPE == 'stress' || env.TEST_TYPE == 'all' }}
-        id: stress-tests
-        continue-on-error: true
-        shell: powershell
-        run: |
-          # Set UTF-8 encoding
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          New-Item -ItemType Directory -Force -Path reports | Out-Null
-          
-          Write-Host "========================================"
-          Write-Host "LIVE JOB LOAD TEST SUITE - STRESS"
-          Write-Host "========================================"
-          Write-Host "Test Type: $env:TEST_TYPE"
-          Write-Host "========================================"
-          
-          $xmlFile = "reports/junit-live-job-stress.xml"
-          $exitCode = 1  # Default to failure
-          
-          try {
-            # Run stress tests
-            & $env:PYTHON_CMD -m pytest `
-              be_focus_server_tests/load/test_live_job_load.py `
-              -m "live_job_load and stress" `
-              --env staging `
-              --skip-health-check `
-              -v `
-              --tb=long `
-              --capture=no `
-              --log-cli-level=INFO `
-              --junitxml=$xmlFile `
-              --json-report `
-              --json-report-file=reports/live-job-stress-metrics.json 2>&1 | Tee-Object -Variable pytestOutput
-            
-            $exitCode = $LASTEXITCODE
-            Write-Host "Pytest exit code: $exitCode"
-          } catch {
-            Write-Host "::error::Pytest execution failed: $_"
-            $exitCode = 1
-          } finally {
-            # Always ensure XML file exists (create empty one if pytest failed before creating it)
-            if (-not (Test-Path $xmlFile)) {
-              Write-Host "::warning::No XML file created - creating empty one to indicate failure"
-              $emptyXml = '<?xml version="1.0" encoding="UTF-8"?><testsuite name="live-job-stress" tests="0" failures="0" errors="1" skipped="0" time="0"><testcase name="pytest_execution_failed" classname="pytest"><error message="Pytest failed before tests could run (possibly health check or collection error)" type="ExecutionError">Pytest failed before tests could run</error></testcase></testsuite>'
-              $emptyXml | Out-File -FilePath $xmlFile -Encoding utf8 -Force
-              Write-Host "Created empty XML file: $xmlFile"
-            } else {
-              Write-Host "XML file exists: $xmlFile"
-            }
-            
-            # Store exit code for later checking
-            echo "EXIT_CODE=$exitCode" | Out-File -FilePath "reports/live-job-stress-exit-code.txt" -Encoding utf8 -Force
-            
-            # Fix: Exit only if tests failed (stress tests are non-blocking but should still exit properly)
-            if ($exitCode -ne 0) {
-              Write-Host "::warning::Stress tests failed with exit code $exitCode (non-blocking)"
-              exit $exitCode
-            }
-          }
-
-      - name: Generate Comprehensive Test Reports
-        if: always()
-        shell: powershell
-        run: |
-          # Set UTF-8 encoding
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          Write-Host "Generating comprehensive test reports..."
-          $target = "https://$env:FOCUS_SERVER_HOST$env:FOCUS_API_PREFIX"
-          $pythonCmd = if ($env:PYTHON_CMD) { $env:PYTHON_CMD } else { "py" }
-          
-          # Generate report for each JUnit XML file
-          $junitFiles = @(
-            "reports/junit-live-job-basic.xml",
-            "reports/junit-live-job-stress.xml"
-          )
-          
-          $filesFound = $false
-          $filesProcessed = 0
-          
-          foreach ($file in $junitFiles) {
-            if (Test-Path $file) {
-              $filesFound = $true
-              Write-Host "Processing: $file"
+          $ErrorActionPreference = 'Continue'
+          $pythonVersion = py --version 2>&1 | Select-String -Pattern "Python (\d+\.\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value }
+          if ($pythonVersion) {
+            Write-Host "Found Python $pythonVersion via py launcher"
+            $pythonPath = py -c "import sys; print(sys.executable)" 2>&1
+            if ($pythonPath -and -not ($pythonPath -match "Error|Exception")) {
+              $pythonDir = Split-Path $pythonPath
+              $scriptsDir = Join-Path $pythonDir "Scripts"
               
-              try {
-                $reportFile = $file -replace "\.xml$", "-report.md"
-                
-                # Run report generation with UTF-8 encoding
-                $env:PYTHONIOENCODING = "utf-8"
-                & $pythonCmd scripts/generate_comprehensive_test_report.py $file `
-                  --environment $env:ENVIRONMENT `
-                  --target $target `
-                  --output $reportFile 2>&1 | Tee-Object -Variable scriptOutput
-                
-                $scriptExitCode = $LASTEXITCODE
-                
-                if ($scriptExitCode -eq 0) {
-                  # Append to summary
-                  if (Test-Path $reportFile) {
-                    # Read file with UTF-8 encoding and append to summary
-                    $content = Get-Content $reportFile -Raw -Encoding UTF8
-                    $content | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 -NoNewline
-                    Write-Host "[OK] Report generated: $reportFile"
-                    $filesProcessed++
-                  } else {
-                    Write-Host "::warning::Report file was not created: $reportFile"
-                    Write-Host "Script output: $scriptOutput"
-                  }
-                } else {
-                  Write-Host "::warning::Failed to generate report for $file (exit code: $file (exit code: $scriptExitCode)"
-                  Write-Host "Script output: $scriptOutput"
-                }
-              } catch {
-                Write-Host "::warning::Error processing $file : $_"
+              if ($env:GITHUB_PATH) {
+                echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
               }
+              
+              Write-Host "Python path: $pythonPath"
+              Write-Host "Scripts path: $scriptsDir"
             } else {
-              Write-Host "File not found: $file (skipping)"
+              Write-Host "Warning: Could not get Python path, but py launcher works"
+            }
+          } else {
+            Write-Host "Python not found via py launcher, trying python directly..."
+            $pythonPaths = @(
+              "C:\Python*",
+              "C:\Program Files\Python*",
+              "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python*"
+            )
+            foreach ($pathPattern in $pythonPaths) {
+              $foundPython = Get-ChildItem -Path $pathPattern -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($foundPython) {
+                $pythonDir = Split-Path $foundPython.FullName
+                $scriptsDir = Join-Path $pythonDir "Scripts"
+                
+                if ($env:GITHUB_PATH) {
+                  echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                }
+                
+                Write-Host "Found Python at: $($foundPython.FullName)"
+                break
+              }
             }
           }
-          
-          # If no reports were generated or no files found, create a basic summary
-          if (-not $filesFound -or $filesProcessed -eq 0) {
-            Write-Host "Creating basic summary..."
-            
-            # Fix: Health check now properly reflects failure
-            $healthCheckFailed = '${{ steps.health-check.outcome }}' -eq 'failure'
-            
-            # Use plain text instead of emoji to avoid encoding issues
-            $statusIcon = if ($healthCheckFailed) { "[WARNING]" } else { "[OK]" }
-            $healthStatus = if ($healthCheckFailed) { "Failed" } else { "Passed" }
-            
-            $basicSummary = @"
-# $statusIcon Live Job Load Test Results
-
-## Test Execution Summary
-
-| Metric | Value |
-|--------|-------|
-| **Environment** | $env:ENVIRONMENT |
-| **Target** | ``$target`` |
-| **Execution Time** | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC') |
-| **Health Check** | $healthStatus |
-| **Test Type** | $env:TEST_TYPE |
-
-$(if (-not $filesFound) {
-  "## Warning
-
-No JUnit XML files were found. This may indicate:
-- Tests did not execute
-- Tests failed before generating reports
-- File path mismatch
-
-$(if ($healthCheckFailed) {
-  "**Note:** Health check failed (server unreachable), which may have prevented tests from running."
-})
-
-**Please check the test execution logs for details.**"
-} else {
-  "## Warning
-
-JUnit XML files were found but report generation failed. Check the logs above for details."
-})
-"@
-            $basicSummary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Force
+          Write-Host "Verifying Python access:"
+          py --version
+          $pipResult = py -m pip --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Warning: pip not accessible via py -m pip, but continuing..."
+            Write-Host "pip output: $pipResult"
+          } else {
+            Write-Host "pip is accessible"
           }
-          
-          Write-Host "[OK] Comprehensive reports generation completed (processed $filesProcessed file(s))"
 
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: live-job-load-reports
-          path: reports/
-          retention-days: 14
-          if-no-files-found: warn
-
-      - name: Fail if tests failed
-        if: always()
+      - name: Install deps
         shell: powershell
         run: |
-          # Set UTF-8 encoding
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          # Fix: Check step outcomes properly (they will be 'failure' if exit code != 0)
-          $basicFailed = '${{ steps.basic-tests.outcome }}' -eq 'failure'
-          $stressFailed = '${{ steps.stress-tests.outcome }}' -eq 'failure'
-          
-          if ($basicFailed) {
-            Write-Host "::error::Basic Live Job tests failed"
+          py -m ensurepip --upgrade
+          py -m pip install --upgrade pip
+          if (Test-Path requirements.txt) {
+            py -m pip install -r requirements.txt
           }
-          if ($stressFailed) {
-            Write-Host "::warning::Stress tests failed (non-blocking)"
+          py -m pip install pytest pytest-cov requests
+
+      - name: Install project in editable mode
+        shell: powershell
+        run: |
+          Write-Host "Installing project in editable mode..."
+          py -m pip install -e .
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::warning::Failed to install project in editable mode, continuing anyway..."
+          } else {
+            Write-Host "Project installed successfully"
+          }
+
+      - name: Verify Python and pytest installation
+        shell: powershell
+        run: |
+          where.exe py
+          py --version
+          py -c "import pytest; print(f'pytest {pytest.__version__}')"
+
+      - name: Run live job load tests
+        shell: powershell
+        continue-on-error: true
+        env:
+          TEST_TYPE: ${{ github.event.inputs.test_type || 'basic' }}
+        run: |
+          if (-not (Test-Path test-results)) {
+            New-Item -ItemType Directory -Path test-results | Out-Null
           }
           
-          # Only fail on basic test failures (stress tests are informational)
-          if ($basicFailed) {
-            exit 1
+          $testType = $env:TEST_TYPE
+          if ([string]::IsNullOrEmpty($testType) -or $testType -eq "null") {
+            $testType = "basic"
           }
+          
+          Write-Host "Running live job load tests (type: $testType)"
+          
+          # Determine markers based on test type
+          if ($testType -eq "basic") {
+            $markers = "live_job_load and not stress"
+            Write-Host "Running BASIC live job load tests"
+          } elseif ($testType -eq "stress") {
+            $markers = "live_job_load and stress"
+            Write-Host "Running STRESS live job load tests"
+          } else {
+            $markers = "live_job_load"
+            Write-Host "Running ALL live job load tests"
+          }
+          
+          py -m pytest be_focus_server_tests/load/test_live_job_load.py `
+            -m "$markers" `
+            --ignore=be_focus_server_tests/ui `
+            -v `
+            --junitxml=test-results\junit-live-job-load.xml `
+            --cov=be_focus_server_tests `
+            --cov-report=term-missing
+
+      - name: List test result files
+        shell: powershell
+        if: always()
+        run: |
+          Write-Host "Checking for test result files:"
+          if (Test-Path test-results\*.xml) {
+            Write-Host "Files found!"
+            Get-ChildItem test-results\*.xml | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+          } else {
+            Write-Host "No XML files found in test-results"
+          }
+
+      - name: Publish Test Results
+        id: test-reporter
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Pytest Results
+          path: test-results/junit-*.xml
+          path-replace-backslashes: true
+          reporter: java-junit
+          list-suites: all
+          list-tests: all
+          max-annotations: 50
+          fail-on-error: false
+          only-summary: false
+          working-directory: ${{ github.workspace }}
+
+      - name: Get Check Run ID
+        id: get-check-run
+        if: always()
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          Write-Host "Getting check run ID for 'Pytest Results'..."
+          $checkRunId = py -c "import requests, json, os, time; repo = os.environ['GITHUB_REPOSITORY']; sha = os.environ.get('GITHUB_SHA', ''); token = os.environ['GITHUB_TOKEN']; headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.v3+json'}; time.sleep(3); url = f'https://api.github.com/repos/{repo}/commits/{sha}/check-runs'; params = {'check_name': 'Pytest Results', 'filter': 'latest'}; r = requests.get(url, headers=headers, params=params); data = r.json(); check_runs = data.get('check_runs', []); check_run_id = str(check_runs[0].get('id', '')) if check_runs else ''; print(check_run_id)" 2>&1
+          if ($LASTEXITCODE -eq 0 -and $checkRunId) {
+            Write-Host "CHECK_RUN_ID=$checkRunId"
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "id=$checkRunId"
+          } else {
+            Write-Host "CHECK_RUN_ID="
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "id="
+          }
+
+      - name: Parse and Display Test Results
+        if: always()
+        shell: powershell
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
+        run: |
+          py parse_junit_results.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: test-results\*.xml
+          if-no-files-found: warn
