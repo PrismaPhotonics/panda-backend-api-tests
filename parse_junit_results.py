@@ -74,7 +74,13 @@ def parse_junit_xml():
     passed = total_tests - total_failures - total_errors - total_skipped
     
     with open(summary_path, 'w', encoding='utf-8') as f:
+        # Get environment name
+        environment = os.environ.get('TARGET_ENVIRONMENT', 'unknown')
+        env_emoji = '🏭' if environment == 'production' else '🧪'
+        env_display = environment.upper()
+        
         f.write('## 📊 Test Results Summary\n\n')
+        f.write(f'### {env_emoji} Environment: **{env_display}**\n\n')
         f.write(f'**Total Tests**: {total_tests}  \n')
         f.write(f'**✅ Passed**: {passed}  \n')
         f.write(f'**❌ Failed**: {total_failures}  \n')

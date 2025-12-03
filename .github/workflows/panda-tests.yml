@@ -219,6 +219,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
         run: |
           py parse_junit_results.py
 
