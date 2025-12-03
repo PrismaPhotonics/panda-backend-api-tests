@@ -237,13 +237,13 @@ jobs:
           $exitCode = 1  # Default to failure
           
           try {
-            py -m pytest be_focus_server_tests/ `
-              -m "regression and not slow and not nightly" `
-              --env staging `
-              --ignore=be_focus_server_tests/ui `
-              -v `
+          py -m pytest be_focus_server_tests/ `
+            -m "regression and not slow and not nightly" `
+            --env staging `
+            --ignore=be_focus_server_tests/ui `
+            -v `
               --junitxml=$xmlFile `
-              --cov=be_focus_server_tests `
+            --cov=be_focus_server_tests `
               --cov-report=term-missing 2>&1 | Tee-Object -Variable pytestOutput
             
             $exitCode = $LASTEXITCODE
