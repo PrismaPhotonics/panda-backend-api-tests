@@ -111,10 +111,13 @@ jobs:
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
           
-          Write-Host "Running regression tests"
+          Write-Host "Running comprehensive regression tests"
+          Write-Host "Includes: All tests except UI, slow, nightly, load, stress"
           py -m pytest be_focus_server_tests/ `
-            -m "regression" `
+            -m "not slow and not nightly and not load and not stress and not gradual_load" `
             --ignore=be_focus_server_tests/ui `
+            --ignore=be_focus_server_tests/load `
+            --ignore=be_focus_server_tests/stress `
             -v `
             --junitxml=test-results\junit-regression.xml `
             --cov=be_focus_server_tests `
