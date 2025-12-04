@@ -1,11 +1,11 @@
 # Focus Server Automation Framework - Environment Configuration
 # =============================================================
 # 
-# Environments: staging, local
+# Environments: staging, local, production, kefar_saba
 # Default: staging (November 2025)
 # 
 # Staging environment uses 10.10.10.100 (new IP addresses)
-# Production environment uses 10.10.100.100 (legacy IP addresses)
+# Production/Kefar_Saba environment uses 10.10.100.100 (legacy IP addresses)
 
 environments:
   # ============================================================================
@@ -251,10 +251,11 @@ environments:
       log_working_queue: false          # Logger.LogWorkingQueue
 
   # ============================================================================
-  # PRODUCTION ENVIRONMENT (Production IP: 10.10.100.100)
+  # PRODUCTION / KEFAR_SABA ENVIRONMENT (Production IP: 10.10.100.100)
   # ============================================================================
-  production:
-    name: "production (Kefar Saba)"
+  # Note: 'kefar_saba' is an alias for 'production' - both use the same config
+  production: &production_config
+    name: "Production (Kefar Saba)"
     description: "Production environment (Kefar Saba) with IP address 10.10.100.100"
     
     # Focus Server (Production)
@@ -464,8 +465,19 @@ environments:
       log_paging: false                 # Logger.LogPaging
       log_working_queue: false          # Logger.LogWorkingQueue
 
+  # ============================================================================
+  # KEFAR_SABA ENVIRONMENT (Alias for Production)
+  # ============================================================================
+  # This is an alias for the production environment, matching the GitHub
+  # Environment name 'kefar_saba' used in GitHub Actions workflows
+  kefar_saba: *production_config
+
 # Default environment
 default_environment: "staging"  # UPDATED to new environment
+
+# Environment aliases (for reference)
+environment_aliases:
+  kefar_saba: production  # kefar_saba is an alias for production
 
 # Environment-specific test configurations
 test_configurations:
@@ -509,3 +521,16 @@ test_configurations:
       enabled: false  # Never run load tests in production
       max_concurrent_jobs: 0  # Load tests disabled
   
+  # kefar_saba uses same test config as production
+  kefar_saba:
+    mongodb_outage:
+      enabled: false
+    rabbitmq_outage:
+      enabled: false
+    performance:
+      enabled: true
+      max_concurrent_requests: 5
+      test_duration_minutes: 2
+    load_testing:
+      enabled: false
+      max_concurrent_jobs: 0
