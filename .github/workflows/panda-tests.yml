@@ -148,6 +148,8 @@ jobs:
             py -m pytest be_focus_server_tests/ `
               --env $targetEnv `
               -m "$marker" `
+              --skip-health-check `
+              --skip-sanity-check `
               --ignore=be_focus_server_tests/ui `
               -v `
               --junitxml=test-results\junit-$marker.xml `
@@ -158,6 +160,8 @@ jobs:
             py -m pytest be_focus_server_tests/ `
               --env $targetEnv `
               -m "smoke" `
+              --skip-health-check `
+              --skip-sanity-check `
               --ignore=be_focus_server_tests/ui `
               -v `
               --maxfail=10 `

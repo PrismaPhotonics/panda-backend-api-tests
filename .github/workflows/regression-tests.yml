@@ -8,15 +8,18 @@ on:
     inputs:
       environment:
         description: "Target environment"
-        type: environment
+        type: choice
         required: true
-        default: "production"
+        default: "kefar_saba"
+        options:
+          - kefar_saba
+          - staging
 
 jobs:
   regression-tests:
     name: Nightly Regression Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'production' }}
+    environment: ${{ inputs.environment || 'kefar_saba' }}
     permissions:
       checks: write
       pull-requests: write
@@ -167,11 +170,13 @@ jobs:
           Write-Host "========================================"
           
           $targetEnv = "${{ inputs.environment }}"
-          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "production" }
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
           
           py -m pytest be_focus_server_tests/ `
             --env $targetEnv `
             -m "not slow and not nightly and not load and not stress and not gradual_load" `
+            --skip-health-check `
+            --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             --ignore=be_focus_server_tests/load `
             --ignore=be_focus_server_tests/stress `

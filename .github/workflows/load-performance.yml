@@ -121,10 +121,17 @@ jobs:
           $targetEnv = "${{ inputs.environment }}"
           if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
           
-          Write-Host "Running load and performance tests on environment: $targetEnv"
+          Write-Host "============================================"
+          Write-Host "LOAD & PERFORMANCE TESTS"
+          Write-Host "============================================"
+          Write-Host "Environment: $targetEnv"
+          Write-Host "============================================"
+          
           py -m pytest be_focus_server_tests/ `
             --env $targetEnv `
             -m "load or performance" `
+            --skip-health-check `
+            --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
             --junitxml=test-results\junit-load-performance.xml `

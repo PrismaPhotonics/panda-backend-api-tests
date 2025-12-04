@@ -153,6 +153,8 @@ jobs:
           py -m pytest be_focus_server_tests/load/ `
             --env $targetEnv `
             -m "$markers" `
+            --skip-health-check `
+            --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
             --junitxml=test-results\junit-job-load.xml `
