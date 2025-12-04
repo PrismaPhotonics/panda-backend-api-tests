@@ -27,14 +27,13 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment (staging, production, or kefar_saba)"
+        description: "Target environment"
         type: choice
         required: true
-        default: "staging"
+        default: "kefar_saba"
         options:
-          - staging
-          - production
           - kefar_saba
+          - staging
   pull_request:
     branches: [main]
     paths:
@@ -44,7 +43,7 @@ jobs:
   quick-load-tests:
     name: Quick Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment || 'kefar_saba' }}
     permissions:
       checks: write
       pull-requests: write
@@ -147,7 +146,7 @@ jobs:
           }
           
           $targetEnv = "${{ inputs.environment }}"
-          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
           
           Write-Host "============================================"
           Write-Host "QUICK LOAD TESTS - Creating Real Jobs"
@@ -226,7 +225,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           py parse_junit_results.py
 
