@@ -160,17 +160,36 @@ class TestMongoDBDataQuality(InfrastructureTest):
             self.logger.debug("Discovering recording collection name from base_paths")
             base_paths = self._get_collection(self.BASE_COLLECTION)
             
-            # IMPORTANT: Use the GUID for /prisma/root/recordings (not /prisma/root/recordings/segy)
-            # This is the correct base_path that contains the actual recordings
-            base_path_doc = base_paths.find_one({
-                "base_path": "/prisma/root/recordings",
-                "is_archive": False
-            })
+            # IMPORTANT: Different environments use different base_paths:
+            #   - kefar_saba/production: /prisma/root/recordings/segy
+            #   - staging: /prisma/root/recordings
+            # Try both paths to support all environments
+            possible_base_paths = [
+                "/prisma/root/recordings/segy",   # kefar_saba / production
+                "/prisma/root/recordings",         # staging
+            ]
+            
+            base_path_doc = None
+            used_base_path = None
+            
+            for base_path in possible_base_paths:
+                base_path_doc = base_paths.find_one({
+                    "base_path": base_path,
+                    "is_archive": False
+                })
+                if base_path_doc:
+                    used_base_path = base_path
+                    self.logger.debug(f"Found base_path document for: {base_path}")
+                    break
             
             if not base_path_doc:
+                # Log all available base_paths for debugging
+                all_docs = list(base_paths.find({"is_archive": False}))
+                available_paths = [d.get('base_path', 'N/A') for d in all_docs]
                 raise DatabaseError(
                     f"Collection '{self.BASE_COLLECTION}' has no document for "
-                    f"base_path='/prisma/root/recordings' - cannot discover recording collection"
+                    f"base_path in {possible_base_paths} - cannot discover recording collection. "
+                    f"Available paths: {available_paths}"
                 )
             
             # Extract GUID
@@ -178,7 +197,7 @@ class TestMongoDBDataQuality(InfrastructureTest):
             if not guid:
                 raise DatabaseError(f"Document in '{self.BASE_COLLECTION}' has no 'guid' field")
             
-            self.logger.debug(f"Discovered recording collection name: {guid} (for /prisma/root/recordings)")
+            self.logger.debug(f"Discovered recording collection name: {guid} (for {used_base_path})")
             
             # Cache for future use
             self._recording_collection_name = guid
