@@ -28,7 +28,7 @@ import time
 import pymongo
 import threading
 import socket
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass
 
@@ -696,13 +696,25 @@ def fetch_recordings_from_mongodb(
                 continue
             
             # Convert datetime to epoch milliseconds
+            # IMPORTANT: MongoDB stores datetimes as naive UTC, but Python's timestamp()
+            # assumes local timezone. We need to treat the datetime as UTC explicitly.
             if isinstance(start_time, datetime):
-                start_ms = int(start_time.timestamp() * 1000)
+                # Treat naive datetime as UTC (MongoDB stores UTC)
+                if start_time.tzinfo is None:
+                    start_utc = start_time.replace(tzinfo=timezone.utc)
+                    start_ms = int(start_utc.timestamp() * 1000)
+                else:
+                    start_ms = int(start_time.timestamp() * 1000)
             else:
                 start_ms = int(start_time)
             
             if isinstance(end_time, datetime):
-                end_ms = int(end_time.timestamp() * 1000)
+                # Treat naive datetime as UTC (MongoDB stores UTC)
+                if end_time.tzinfo is None:
+                    end_utc = end_time.replace(tzinfo=timezone.utc)
+                    end_ms = int(end_utc.timestamp() * 1000)
+                else:
+                    end_ms = int(end_time.timestamp() * 1000)
             else:
                 end_ms = int(end_time)
             
