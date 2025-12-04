@@ -44,5 +44,9 @@ python-jose>=3.3
 faker>=25.0
 allure-pytest>=2.13
 
+# gRPC
+grpcio>=1.76.0
+grpcio-tools>=1.76.0
+
 # Miscellaneous
 gymnasium>=0.29

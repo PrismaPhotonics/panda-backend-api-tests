@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.load
 @pytest.mark.performance
 @pytest.mark.network
-@pytest.mark.regression
 class TestNetworkBandwidth:
     """
     Test suite for network bandwidth performance under concurrent load.
@@ -45,7 +44,6 @@ class TestNetworkBandwidth:
     """
     
     @pytest.mark.xray("PZ-15139")
-    @pytest.mark.regression
     def test_network_bandwidth_under_concurrent_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-15139: Performance - Network Bandwidth Under Concurrent Load.
@@ -377,7 +375,6 @@ class TestNetworkBandwidth:
         logger.info(f"{'='*80}\n")
     
     @pytest.mark.xray("PZ-15139")
-    @pytest.mark.regression
     def test_network_throughput_scaling(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-15139.2: Network Throughput Scaling.

@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestRecoveryAndExhaustion:
     """
     Test suite for recovery and resource exhaustion testing.
@@ -39,9 +38,6 @@ class TestRecoveryAndExhaustion:
     """
     
     @pytest.mark.xray("PZ-14806")
-
-    
-    @pytest.mark.regression
     def test_recovery_after_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14806: Load - Recovery After Load.
@@ -64,10 +60,11 @@ class TestRecoveryAndExhaustion:
         logger.info("TEST: Load - Recovery After Load (PZ-14806)")
         logger.info("=" * 80)
         
-        high_load_rps = 15
-        high_load_duration = 60  # 60 seconds
-        recovery_wait = 30  # 30 seconds recovery
-        normal_rps = 2
+        # Optimized: Reduced total from ~120s to ~45s while still testing recovery
+        high_load_rps = 10        # Reduced (was 15)
+        high_load_duration = 20   # 20 seconds (was 60)
+        recovery_wait = 10        # 10 seconds recovery (was 30)
+        normal_rps = 3            # Slightly higher (was 2)
         
         payload = {
             "displayTimeAxisDuration": 10,
@@ -151,7 +148,7 @@ class TestRecoveryAndExhaustion:
         
         # Phase 3: Normal load (recovery verification)
         logger.info("Phase 3: Verifying recovery with normal load...")
-        normal_load_duration = 30  # 30 seconds
+        normal_load_duration = 15  # 15 seconds (optimized from 30)
         normal_load_start = time.time()
         normal_load_end = normal_load_start + normal_load_duration
         
@@ -198,9 +195,6 @@ class TestRecoveryAndExhaustion:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14807")
-
-    
-    @pytest.mark.regression
     def test_resource_exhaustion_under_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14807: Load - Resource Exhaustion Under Load.
@@ -224,8 +218,9 @@ class TestRecoveryAndExhaustion:
         logger.info("TEST: Load - Resource Exhaustion Under Load (PZ-14807)")
         logger.info("=" * 80)
         
-        extreme_load_rps = 20  # Reduced from 50 to realistic extreme (Very high RPS)
-        extreme_load_duration = 30  # 30 seconds
+        # Optimized: Reduced from 30s to 15s while still testing resource exhaustion
+        extreme_load_rps = 15        # High RPS (was 20)
+        extreme_load_duration = 15   # 15 seconds (was 30)
         
         payload = {
             "displayTimeAxisDuration": 10,

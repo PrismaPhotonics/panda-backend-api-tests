@@ -33,7 +33,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.nightly
 @pytest.mark.load
 @pytest.mark.soak
-@pytest.mark.regression
 @pytest.mark.skip(reason="24-hour test - run manually weekly with: pytest -v --no-skip")
 class TestSoakMemoryLeak:
     """
@@ -44,7 +43,6 @@ class TestSoakMemoryLeak:
     """
     
     @pytest.mark.xray("PZ-15138")
-    @pytest.mark.regression
     def test_memory_leak_soak_24_hours(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-15138: Load - Soak Test - 24 Hour Memory Leak Detection.
@@ -460,12 +458,10 @@ class TestSoakMemoryLeak:
 @pytest.mark.nightly
 @pytest.mark.load
 @pytest.mark.soak
-@pytest.mark.regression
 class TestSoakMemoryLeakShort:
     """Shorter 4-hour soak test for nightly runs."""
     
     @pytest.mark.xray("PZ-15138")
-    @pytest.mark.regression
     def test_memory_leak_soak_4_hours(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-15138 (Short Version): 4-Hour Soak Test.

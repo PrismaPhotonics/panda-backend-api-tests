@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.load
 @pytest.mark.performance
 @pytest.mark.database
-@pytest.mark.regression
 class TestDatabasePerformanceUnderLoad:
     """
     Test suite for MongoDB query performance under concurrent API load.
@@ -45,7 +44,6 @@ class TestDatabasePerformanceUnderLoad:
     """
     
     @pytest.mark.xray("PZ-15140")
-    @pytest.mark.regression
     def test_mongodb_query_performance_under_load(
         self, 
         focus_server_api: FocusServerAPI,
@@ -315,7 +313,6 @@ class TestDatabasePerformanceUnderLoad:
         logger.info(f"{'='*80}\n")
     
     @pytest.mark.xray("PZ-15140")
-    @pytest.mark.regression
     def test_mongodb_connection_pool_under_load(
         self,
         focus_server_api: FocusServerAPI,

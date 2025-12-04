@@ -1,0 +1,112 @@
+"""
+פקודות לראות את Focus Server Configuration
+"""
+import sys
+sys.path.insert(0, '.')
+from config.config_manager import ConfigManager
+from src.infrastructure.ssh_manager import SSHManager
+
+cm = ConfigManager()
+ssh = SSHManager(cm)
+ssh.connect()
+
+pod = 'panda-panda-focus-server-7c767d7688-z6n5p'
+
+print('='*70)
+print('1. לראות את הקובץ בתוך ה-POD')
+print('='*70)
+print('פקודה:')
+print(f'kubectl exec -n panda {pod} -- cat /home/prisma/pz/config/py/default_config.py')
+print()
+print('תוצאה:')
+result = ssh.execute_command(f'kubectl exec -n panda {pod} -- cat /home/prisma/pz/config/py/default_config.py 2>/dev/null | grep -A 20 "class Focus"')
+print(result.get('stdout', '') or 'Not found')
+
+print('\n' + '='*70)
+print('2. לראות את ה-ConfigMap ב-Kubernetes')
+print('='*70)
+print('פקודה:')
+print('kubectl get configmap -n panda')
+print()
+print('תוצאה:')
+result = ssh.execute_command('kubectl get configmap -n panda')
+print(result.get('stdout', '') or 'Not found')
+
+print('\n' + '='*70)
+print('3. לראות את תוכן ה-ConfigMap (אם קיים)')
+print('='*70)
+print('פקודה:')
+print('kubectl get configmap <configmap-name> -n panda -o yaml')
+print()
+print('בואו נחפש ConfigMaps שקשורים ל-config:')
+result = ssh.execute_command('kubectl get configmap -n panda | grep -i config')
+print(result.get('stdout', '') or 'No config-related ConfigMaps')
+
+print('\n' + '='*70)
+print('4. לראות את ה-Volume Mounts של ה-POD')
+print('='*70)
+print('פקודה:')
+print(f'kubectl describe pod {pod} -n panda | grep -A 10 "Mounts:"')
+print()
+print('תוצאה:')
+result = ssh.execute_command(f'kubectl describe pod {pod} -n panda 2>/dev/null | grep -A 15 "Mounts:"')
+print(result.get('stdout', '') or 'Not found')
+
+print('\n' + '='*70)
+print('5. לראות את ה-Helm Values (אם זה מוגדר ב-Helm)')
+print('='*70)
+print('פקודה:')
+print('helm get values panda -n panda')
+print()
+print('בואו נחפש הגדרות של config או storage:')
+result = ssh.execute_command('helm get values panda -n panda 2>&1 | grep -i "config\\|storage\\|mount" | head -20')
+print(result.get('stdout', '') or 'Not found')
+
+print('\n' + '='*70)
+print('6. לראות את ה-Deployment/StatefulSet שמכיל את ההגדרות')
+print('='*70)
+print('פקודה:')
+print('kubectl get deployment panda-panda-focus-server -n panda -o yaml | grep -A 20 "volumeMounts"')
+print()
+print('תוצאה:')
+result = ssh.execute_command('kubectl get deployment panda-panda-focus-server -n panda -o yaml 2>/dev/null | grep -A 30 "volumeMounts"')
+print(result.get('stdout', '')[:1000] or 'Not found')
+
+print('\n' + '='*70)
+print('7. לראות את כל ה-Volumes של ה-Deployment')
+print('='*70)
+print('פקודה:')
+print('kubectl get deployment panda-panda-focus-server -n panda -o yaml | grep -A 20 "volumes:"')
+print()
+print('תוצאה:')
+result = ssh.execute_command('kubectl get deployment panda-panda-focus-server -n panda -o yaml 2>/dev/null | grep -A 30 "volumes:"')
+print(result.get('stdout', '')[:1000] or 'Not found')
+
+print('\n' + '='*70)
+print('8. לראות את הקובץ המלא (רק חלק Focus)')
+print('='*70)
+print('פקודה:')
+print(f'kubectl exec -n panda {pod} -- cat /home/prisma/pz/config/py/default_config.py | grep -A 30 "class Focus"')
+print()
+print('תוצאה:')
+result = ssh.execute_command(f'kubectl exec -n panda {pod} -- cat /home/prisma/pz/config/py/default_config.py 2>/dev/null | grep -A 30 "class Focus"')
+print(result.get('stdout', '') or 'Not found')
+
+ssh.disconnect()
+
+print('\n' + '='*70)
+print('סיכום - הפקודות החשובות ביותר:')
+print('='*70)
+print('1. לראות את הקובץ בתוך POD:')
+print(f'   kubectl exec -n panda {pod} -- cat /home/prisma/pz/config/py/default_config.py')
+print()
+print('2. לראות רק את חלק Focus:')
+print(f'   kubectl exec -n panda {pod} -- cat /home/prisma/pz/config/py/default_config.py | grep -A 20 "class Focus"')
+print()
+print('3. לראות את ה-ConfigMaps:')
+print('   kubectl get configmap -n panda')
+print()
+print('4. לראות את ה-Helm Values:')
+print('   helm get values panda -n panda')
+
+

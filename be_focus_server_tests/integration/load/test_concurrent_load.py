@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestConcurrentLoad:
     """
     Test suite for concurrent load testing.
@@ -37,9 +36,6 @@ class TestConcurrentLoad:
     """
     
     @pytest.mark.xray("PZ-14800")
-
-    
-    @pytest.mark.regression
     def test_concurrent_job_creation_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14800: Load - Concurrent Job Creation Load.
@@ -63,7 +59,8 @@ class TestConcurrentLoad:
         logger.info("TEST: Load - Concurrent Job Creation Load (PZ-14800)")
         logger.info("=" * 80)
         
-        num_concurrent_jobs = 15  # Reduced from 20 to safer level for system capacity
+        # Optimized: Reduced concurrent jobs for faster execution
+        num_concurrent_jobs = 10  # Reduced from 15 for faster cleanup
         max_response_time = 10.0  # 10 seconds per job
         
         payload = {

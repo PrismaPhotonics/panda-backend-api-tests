@@ -8,7 +8,7 @@ Manages Focus Server connectivity including automatic port-forwarding via SSH.
 import time
 import logging
 import socket
-from typing import Optional
+from typing import Optional, Any
 
 try:
     import paramiko
@@ -65,6 +65,7 @@ class FocusServerConnectionManager:
         
         self.ssh_client: Optional[paramiko.SSHClient] = None
         self.port_forward_active = False
+        self._ssh_manager_ref: Optional[Any] = None  # Reference to SSHManager if used
         
         logger.info(f"FocusServerConnectionManager initialized for {service_name}")
     
@@ -80,9 +81,12 @@ class FocusServerConnectionManager:
             logger.debug(f"Port check failed: {e}")
             return False
     
-    def discover_service(self) -> Optional[str]:
+    def discover_service(self, config_manager=None) -> Optional[str]:
         """
         Discover Focus Server service in Kubernetes.
+        
+        Args:
+            config_manager: Optional ConfigManager instance (for SSHManager support)
         
         Returns:
             Service name if found, None otherwise
@@ -91,12 +95,32 @@ class FocusServerConnectionManager:
             logger.warning("Paramiko not available, cannot discover service")
             return None
         
-        # Check if we have authentication method
-        if not self.ssh_password and not self.ssh_key_file:
-            logger.warning("No SSH authentication method configured for service discovery")
-            return None
-        
         try:
+            # Use SSHManager if config_manager provided (handles jump host automatically)
+            if config_manager:
+                from src.infrastructure.ssh_manager import SSHManager
+                ssh_manager = SSHManager(config_manager)
+                if ssh_manager.connect():
+                    logger.debug("Using SSHManager for service discovery (with jump host support)")
+                    cmd = f"kubectl get svc -n {self.namespace} -o name | grep {self.service_name}"
+                    result = ssh_manager.execute_command(cmd, timeout=30)
+                    output = result.get("stdout", "").strip()
+                    
+                    if output and self.service_name in output:
+                        service = output.split('/')[-1] if '/' in output else output
+                        logger.info(f"Found Focus Server service: {service}")
+                        return service
+                    else:
+                        logger.warning(f"Focus Server service '{self.service_name}' not found in K8s")
+                        return None
+                else:
+                    logger.warning("SSHManager connection failed, falling back to direct connection")
+            
+            # Fallback: direct connection (legacy)
+            if not self.ssh_password and not self.ssh_key_file:
+                logger.warning("No SSH authentication method configured for service discovery")
+                return None
+            
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
@@ -191,9 +215,12 @@ class FocusServerConnectionManager:
         except Exception as e:
             logger.debug(f"Error cleaning up existing port-forwards: {e}")
 
-    def start_port_forward(self) -> bool:
+    def start_port_forward(self, config_manager=None) -> bool:
         """
         Start kubectl port-forward on remote host via SSH.
+
+        Args:
+            config_manager: Optional ConfigManager instance (for SSHManager support)
 
         Returns:
             True if port-forward started successfully
@@ -204,11 +231,6 @@ class FocusServerConnectionManager:
             logger.error("Paramiko not available for automation")
             return False
 
-        # Check if we have authentication method
-        if not self.ssh_password and not self.ssh_key_file:
-            logger.error("No SSH authentication method configured for automation")
-            return False
-
         # Kill any existing port-forwards on this port
         self._kill_existing_port_forwards()
 
@@ -217,30 +239,47 @@ class FocusServerConnectionManager:
 
             def run_port_forward():
                 try:
-                    client = paramiko.SSHClient()
-                    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    
-                    logger.info(f"Connecting to {self.ssh_user}@{self.k8s_host} for port-forward...")
-                    
-                    # Connect with key file or password
-                    if self.ssh_key_file:
-                        client.connect(
-                            hostname=self.k8s_host,
-                            username=self.ssh_user,
-                            key_filename=self.ssh_key_file,
-                            timeout=30,
-                            look_for_keys=True,
-                            allow_agent=True
-                        )
+                    # Use SSHManager if config_manager provided (handles jump host automatically)
+                    if config_manager:
+                        from src.infrastructure.ssh_manager import SSHManager
+                        ssh_manager = SSHManager(config_manager)
+                        if ssh_manager.connect():
+                            logger.debug("Using SSHManager for port-forward (with jump host support)")
+                            client = ssh_manager.ssh_client
+                            # Keep reference to prevent cleanup (stored in self for cleanup later)
+                            self._ssh_manager_ref = ssh_manager
+                        else:
+                            logger.error("Failed to connect via SSHManager")
+                            return
                     else:
-                        client.connect(
-                            hostname=self.k8s_host,
-                            username=self.ssh_user,
-                            password=self.ssh_password,
-                            timeout=30,
-                            look_for_keys=False,
-                            allow_agent=False
-                        )
+                        # Fallback: direct connection (legacy)
+                        if not self.ssh_password and not self.ssh_key_file:
+                            logger.error("No SSH authentication method configured for automation")
+                            return
+                        
+                        client = paramiko.SSHClient()
+                        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                        
+                        logger.info(f"Connecting to {self.ssh_user}@{self.k8s_host} for port-forward...")
+                        
+                        if self.ssh_key_file:
+                            client.connect(
+                                hostname=self.k8s_host,
+                                username=self.ssh_user,
+                                key_filename=self.ssh_key_file,
+                                timeout=30,
+                                look_for_keys=True,
+                                allow_agent=True
+                            )
+                        else:
+                            client.connect(
+                                hostname=self.k8s_host,
+                                username=self.ssh_user,
+                                password=self.ssh_password,
+                                timeout=30,
+                                look_for_keys=False,
+                                allow_agent=False
+                            )
                     
                     pf_cmd = (
                         f"kubectl port-forward --address 0.0.0.0 -n {self.namespace} "
@@ -251,9 +290,20 @@ class FocusServerConnectionManager:
                     self.ssh_client = client
                     stdin, stdout, stderr = client.exec_command(pf_cmd)
                     
-                    # Keep reading to keep connection alive
+                    # Wait for port-forward confirmation
+                    port_forward_started = False
                     for line in stdout:
-                        logger.debug(f"port-forward: {line.strip()}")
+                        line_str = line.strip()
+                        logger.debug(f"port-forward: {line_str}")
+                        
+                        # Check for port-forward confirmation message
+                        if "Forwarding from" in line_str or "Forwarding" in line_str:
+                            port_forward_started = True
+                            logger.info(f"✅ Port-forward confirmed: {line_str}")
+                        
+                        # Keep reading to keep connection alive
+                        if not port_forward_started:
+                            time.sleep(0.5)  # Give it a moment to start
                     
                     logger.info("Port-forward stopped")
                     
@@ -264,18 +314,40 @@ class FocusServerConnectionManager:
             pf_thread = threading.Thread(target=run_port_forward, daemon=True)
             pf_thread.start()
             
-            # Wait for port to become available
+            # Wait for port to become available and verify it's actually working
             logger.info("Waiting for port-forward to start...")
             max_wait = 15
+            port_open = False
+            
             for i in range(max_wait):
                 time.sleep(1)
                 if self._check_port_open(self.k8s_host, self.local_port):
-                    logger.info(f"SUCCESS: Port-forward active on {self.k8s_host}:{self.local_port}")
-                    self.port_forward_active = True
-                    return True
-                logger.debug(f"Waiting for port... ({i+1}/{max_wait})")
+                    port_open = True
+                    logger.debug(f"Port {self.local_port} is open, verifying Focus Server...")
+                    # Verify Focus Server is actually responding
+                    if self._verify_focus_server_accessible():
+                        logger.info(f"✅ SUCCESS: Port-forward active on {self.k8s_host}:{self.local_port} and Focus Server is responding")
+                        self.port_forward_active = True
+                        return True
+                    else:
+                        logger.debug(f"Port is open but Focus Server not responding yet... ({i+1}/{max_wait})")
+                else:
+                    logger.debug(f"Waiting for port... ({i+1}/{max_wait})")
             
-            logger.error("Port-forward did not start in time")
+            # Provide detailed error message
+            if port_open:
+                logger.error(f"Port {self.local_port} is open on {self.k8s_host} but Focus Server not responding after {max_wait}s")
+                logger.error("This may indicate:")
+                logger.error("  - Focus Server pod is not healthy")
+                logger.error("  - Service selector mismatch")
+                logger.error("  - Wrong port mapping")
+            else:
+                logger.error(f"Port-forward did not start in time - port {self.local_port} not accessible on {self.k8s_host} after {max_wait}s")
+                logger.error("This may indicate:")
+                logger.error("  - kubectl port-forward command failed")
+                logger.error("  - Network connectivity issues")
+                logger.error("  - Port already in use")
+            
             return False
             
         except Exception as e:
@@ -284,6 +356,14 @@ class FocusServerConnectionManager:
     
     def stop_port_forward(self):
         """Stop port-forward and cleanup."""
+        if self._ssh_manager_ref:
+            try:
+                logger.info("Stopping port-forward (via SSHManager)...")
+                self._ssh_manager_ref.disconnect()
+                self._ssh_manager_ref = None
+            except Exception as e:
+                logger.debug(f"Error disconnecting SSHManager: {e}")
+        
         if self.ssh_client:
             try:
                 logger.info("Stopping port-forward...")
@@ -311,9 +391,12 @@ class FocusServerConnectionManager:
             logger.debug(f"Focus Server verification failed: {e}")
             return False
 
-    def setup(self) -> bool:
+    def setup(self, config_manager=None) -> bool:
         """
         Full automated setup: discover service and start port-forward.
+
+        Args:
+            config_manager: Optional ConfigManager instance (for SSHManager support)
 
         Returns:
             True if setup successful
@@ -326,7 +409,7 @@ class FocusServerConnectionManager:
         if self._check_port_open(self.k8s_host, self.local_port):
             logger.debug(f"Port {self.local_port} is open, verifying Focus Server...")
             if self._verify_focus_server_accessible():
-                logger.info(f"Focus Server already accessible at {self.k8s_host}:{self.local_port}")
+                logger.info(f"✅ Focus Server already accessible at {self.k8s_host}:{self.local_port}")
                 self.port_forward_active = True
                 return True
             else:
@@ -334,7 +417,7 @@ class FocusServerConnectionManager:
 
         # Discover service
         logger.info("Step 1: Discovering Focus Server service in Kubernetes...")
-        service = self.discover_service()
+        service = self.discover_service(config_manager=config_manager)
         if not service:
             logger.error("Failed to discover Focus Server service")
             return False
@@ -343,15 +426,17 @@ class FocusServerConnectionManager:
 
         # Start port-forward
         logger.info("Step 2: Starting port-forward...")
-        success = self.start_port_forward()
+        success = self.start_port_forward(config_manager=config_manager)
 
         if success:
             logger.info("=" * 80)
-            logger.info("FOCUS SERVER READY!")
-            logger.info(f"Access at: http://{self.k8s_host}:{self.local_port}")
+            logger.info("✅ FOCUS SERVER READY!")
+            logger.info(f"   Access at: http://{self.k8s_host}:{self.local_port}")
+            logger.info(f"   Service: {self.service_name}")
+            logger.info(f"   Namespace: {self.namespace}")
             logger.info("=" * 80)
         else:
-            logger.error("Focus Server setup FAILED")
+            logger.error("❌ Focus Server setup FAILED")
 
         return success
     

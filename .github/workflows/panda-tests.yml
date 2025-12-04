@@ -1,8 +1,20 @@
 name: Panda Tests
 
 on:
+  push:
+    branches: [ main, develop, master, "chore/add-roy-tests" ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        default: "kefar_saba"
+        options:
+          - kefar_saba
+          - staging
       marker:
         description: "pytest marker to run (e.g., smoke, regression). Leave empty to run all."
         required: false
@@ -11,6 +23,7 @@ on:
 jobs:
   test:
     runs-on: [self-hosted, windows, "panda_automation"]
+    # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write
@@ -130,12 +143,20 @@ jobs:
           if (-not (Test-Path test-results)) {
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
+          # Get target environment
+          $targetEnv = "${{ inputs.environment }}"
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
+          Write-Host "Target environment: $targetEnv"
+          
           # Safely get marker value, handling null/empty cases
           $marker = if ($env:MARKER) { $env:MARKER.Trim() } else { "" }
           if ($marker -ne "" -and $marker -ne "null" -and $null -ne $marker) {
             Write-Host "Running only marker: $marker"
             py -m pytest be_focus_server_tests/ `
+              --env $targetEnv `
               -m "$marker" `
+              --skip-health-check `
+              --skip-sanity-check `
               --ignore=be_focus_server_tests/ui `
               -v `
               --junitxml=test-results\junit-$marker.xml `
@@ -144,7 +165,10 @@ jobs:
           } else {
             Write-Host "Running smoke tests (default when no marker specified)"
             py -m pytest be_focus_server_tests/ `
+              --env $targetEnv `
               -m "smoke" `
+              --skip-health-check `
+              --skip-sanity-check `
               --ignore=be_focus_server_tests/ui `
               -v `
               --maxfail=10 `
@@ -206,6 +230,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           py parse_junit_results.py
 
@@ -214,4 +239,3 @@ jobs:
           name: junit-reports
           path: test-results\*.xml
           if-no-files-found: warn
-

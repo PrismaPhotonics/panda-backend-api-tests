@@ -1237,8 +1237,6 @@ class TestSingleChannelBackendConsistency:
     @pytest.mark.xray("PZ-13859")
     @pytest.mark.slow
     @pytest.mark.nightly
-
-    @pytest.mark.regression
     def test_singlechannel_polling_stability(self, focus_server_api):
         """
         Test: SingleChannel polling stability.
@@ -1332,8 +1330,6 @@ class TestSingleChannelBackendConsistency:
     @pytest.mark.nightly
     @pytest.mark.e2e
     @pytest.mark.xray("PZ-13873")
-
-    @pytest.mark.regression
     def test_singlechannel_complete_e2e_flow(self, focus_server_api):
         """
         Test: SingleChannel complete end-to-end flow.

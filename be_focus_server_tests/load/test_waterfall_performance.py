@@ -33,7 +33,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.load
 @pytest.mark.performance
 @pytest.mark.streaming
-@pytest.mark.regression
 class TestWaterfallPerformance:
     """
     Test suite for waterfall data streaming performance under load.
@@ -43,7 +42,6 @@ class TestWaterfallPerformance:
     """
     
     @pytest.mark.xray("PZ-15141")
-    @pytest.mark.regression
     def test_waterfall_streaming_performance_under_load(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-15141: Performance - Waterfall Data Streaming Under Load.
@@ -415,7 +413,6 @@ class TestWaterfallPerformance:
         logger.info(f"{'='*80}\n")
     
     @pytest.mark.xray("PZ-15141")
-    @pytest.mark.regression
     def test_waterfall_row_count_performance(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-15141.2: Waterfall Row Count Performance.

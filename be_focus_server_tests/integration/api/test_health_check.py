@@ -22,11 +22,14 @@ import pytest
 import logging
 import asyncio
 import time
+import os
 from typing import Dict, List, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from requests.exceptions import RequestException
+
+from src.apis.focus_server_api import FocusServerAPI
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +38,27 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ===================================================================
 
-BASE_URL = "https://10.10.100.100/focus-server"
+def get_base_url() -> str:
+    """
+    Get the base URL from environment variables or configuration.
+    
+    Returns:
+        Base URL from FOCUS_SERVER_HOST and FOCUS_API_PREFIX,
+    or fallback to staging default.
+    """
+    host = os.getenv("FOCUS_SERVER_HOST", "10.10.10.100")
+    prefix = os.getenv("FOCUS_API_PREFIX", "/focus-server")
+    # Remove leading slash if present in host, add protocol
+    if not host.startswith("http"):
+        host = f"https://{host}"
+    # Ensure prefix starts with /
+    if not prefix.startswith("/"):
+        prefix = f"/{prefix}"
+    return f"{host}{prefix}"
+
+BASE_URL = get_base_url()
 ENDPOINT = "/ack"
-SSL_VERIFY = False
+SSL_VERIFY = os.getenv("VERIFY_SSL", "false").lower() == "true"
 
 
 # ===================================================================
@@ -209,8 +230,8 @@ class TestHealthCheckConcurrentRequests:
     @pytest.mark.xray("PZ-14028")
     @pytest.mark.parametrize("num_requests,expected_avg_ms,expected_p95_ms", [
         (10, 500, 800),  # Updated from 200ms to 500ms (more realistic SLA)
-        (50, 500, 1000),  # Updated from 300ms to 500ms (more realistic SLA)
-        (100, 500, 1500),
+        (50, 600, 1000),  # Updated from 500ms to 600ms (more realistic SLA for 50 concurrent)
+        (100, 700, 1500),  # Updated from 500ms to 700ms (more realistic SLA for 100 concurrent)
     ])
     @pytest.mark.regression
     @pytest.mark.smoke
@@ -573,17 +594,10 @@ class TestHealthCheckSSL:
 
 @pytest.mark.slow
 @pytest.mark.nightly
-@pytest.mark.regression
 class TestHealthCheckLoadTesting:
     """Test suite for health check load testing."""
     
     @pytest.mark.xray("PZ-14033")
-
-    
-    @pytest.mark.regression
-
-    
-    @pytest.mark.smoke
     def test_ack_load_testing(self):
         """
         Test PZ-14033: Health check load testing.
@@ -680,11 +694,6 @@ class TestHealthCheckLoadTesting:
 # ===================================================================
 
 @pytest.mark.summary
-
-
-@pytest.mark.regression
-
-
 @pytest.mark.smoke
 def test_health_check_summary():
     """

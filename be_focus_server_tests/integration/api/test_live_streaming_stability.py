@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.slow
 @pytest.mark.nightly
-@pytest.mark.regression
 class TestLiveStreamingStability:
     """
     Test suite for live streaming stability.
@@ -43,8 +42,6 @@ class TestLiveStreamingStability:
     
     @pytest.mark.xray("PZ-13800")
     @pytest.mark.xray("PZ-13570")
-
-    @pytest.mark.regression
     def test_live_streaming_stability(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13800: Live Streaming Stability.

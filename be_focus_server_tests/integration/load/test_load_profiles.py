@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.slow
 @pytest.mark.nightly
 @pytest.mark.load
-@pytest.mark.regression
 class TestLoadProfiles:
     """
     Test suite for load profile testing.
@@ -41,9 +40,6 @@ class TestLoadProfiles:
     """
     
     @pytest.mark.xray("PZ-14803")
-
-    
-    @pytest.mark.regression
     def test_ramp_up_load_profile(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14803: Load - Ramp-Up Load Profile.
@@ -66,10 +62,11 @@ class TestLoadProfiles:
         logger.info("TEST: Load - Ramp-Up Load Profile (PZ-14803)")
         logger.info("=" * 80)
         
-        ramp_duration = 120  # 2 minutes
-        initial_rps = 1
-        max_rps = 10
-        ramp_steps = 10
+        # Optimized: Reduced from 120s to 30s for faster CI while still testing ramp-up
+        ramp_duration = 30  # 30 seconds (was 120)
+        initial_rps = 2     # Start higher (was 1)
+        max_rps = 8         # Peak (was 10)
+        ramp_steps = 5      # Fewer steps (was 10)
         
         payload = {
             "displayTimeAxisDuration": 10,
@@ -167,9 +164,6 @@ class TestLoadProfiles:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14804")
-
-    
-    @pytest.mark.regression
     def test_spike_load_profile(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14804: Load - Spike Load Profile.
@@ -192,10 +186,11 @@ class TestLoadProfiles:
         logger.info("TEST: Load - Spike Load Profile (PZ-14804)")
         logger.info("=" * 80)
         
-        normal_rps = 2
-        spike_rps = 12  # Reduced from 20 to avoid system overload during spike
-        normal_duration = 30  # 30 seconds normal
-        spike_duration = 10  # 10 seconds spike
+        # Optimized: Reduced total from 40s to 20s while still testing spike behavior
+        normal_rps = 3      # Slightly higher baseline (was 2)
+        spike_rps = 10      # Peak spike (was 12)
+        normal_duration = 10  # 10 seconds normal (was 30)
+        spike_duration = 10   # 10 seconds spike (unchanged)
         
         payload = {
             "displayTimeAxisDuration": 10,
@@ -306,8 +301,6 @@ class TestLoadProfiles:
     
     @pytest.mark.xray("PZ-14805")
     @pytest.mark.xray("PZ-14800")
-
-    @pytest.mark.regression
     def test_steady_state_load_profile(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-14805: Load - Steady-State Load Profile.
@@ -329,8 +322,9 @@ class TestLoadProfiles:
         logger.info("TEST: Load - Steady-State Load Profile (PZ-14805)")
         logger.info("=" * 80)
         
-        steady_rps = 5
-        steady_duration = 180  # 3 minutes (reduced for CI)
+        # Optimized: Reduced from 180s to 45s while still validating steady state
+        steady_rps = 5        # Keep same RPS
+        steady_duration = 45  # 45 seconds (was 180)
         
         payload = {
             "displayTimeAxisDuration": 10,

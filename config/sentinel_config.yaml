@@ -1,0 +1,126 @@
+# Automation Run Sentinel Configuration
+# ====================================
+
+# Kubernetes configuration
+k8s_namespaces:
+  - "panda"
+  - "default"
+
+k8s_label_selectors:
+  app: "panda"
+  component: "focus-server"
+
+# Log detection rules
+log_detection_rules:
+  - pattern: "RUN_START.*pipeline=(?P<pipeline>\\w+).*env=(?P<env>\\w+)"
+    pipeline_extractor: "pipeline"
+    environment_extractor: "env"
+  - pattern: "TEST RUN STARTED.*run_id=(?P<run_id>\\S+)"
+    run_id_extractor: "run_id"
+
+# Log patterns for test events
+log_patterns:
+  TEST_START: "(?:TEST_START|test.*started|starting test).*?test[=:]\\s*(?P<test_name>[^\\s,]+)"
+  TEST_PASS: "(?:TEST_PASS|test.*passed|PASSED).*?test[=:]\\s*(?P<test_name>[^\\s,]+)"
+  TEST_FAIL: "(?:TEST_FAIL|test.*failed|FAILED).*?test[=:]\\s*(?P<test_name>[^\\s,]+)"
+  TEST_SKIP: "(?:TEST_SKIP|test.*skipped|SKIPPED).*?test[=:]\\s*(?P<test_name>[^\\s,]+)"
+  SUITE_START: "(?:SUITE_START|suite.*started|starting suite).*?suite[=:]\\s*(?P<suite_name>[^\\s,]+)"
+  SUITE_END: "(?:SUITE_END|suite.*ended|completed suite).*?suite[=:]\\s*(?P<suite_name>[^\\s,]+)"
+
+# Error patterns
+error_patterns:
+  - "\\b(?:error|ERROR|Error)\\b.*"
+  - "\\b(?:exception|Exception|EXCEPTION)\\b.*"
+  - "\\b(?:failed|FAILED|Failed)\\b.*"
+  - "\\b(?:timeout|TIMEOUT|Timeout)\\b.*"
+
+# Pipeline structure rules
+pipeline_structure_rules:
+  regression-nightly:
+    required_suites:
+      - "smoke"
+      - "sanity"
+      - "regression"
+    forbidden_suites:
+      - "load"
+    required_tags:
+      - "@critical"
+    expected_test_count:
+      min: 200
+      max: 400
+    required_test_ids: []
+  
+  smoke:
+    required_suites:
+      - "smoke"
+    expected_test_count:
+      min: 20
+      max: 80
+    required_test_ids: []
+  
+  load:
+    required_suites:
+      - "load"
+    expected_test_count:
+      min: 10
+      max: 100
+    required_test_ids: []
+
+# Anomaly detection thresholds
+anomaly_thresholds:
+  pod_restart_threshold: 3
+  pod_crash_loop_threshold: 2
+  test_failure_rate_threshold: 0.5  # 50%
+  test_stuck_threshold_minutes: 30
+  error_rate_spike_threshold: 0.2  # 20% increase
+  test_duration_deviation_threshold: 0.5  # 50% increase
+
+# Alert configuration
+alert_cooldown_seconds: 300  # 5 minutes
+
+channels:
+  - type: "slack"
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    severity_min: "warning"
+    enabled: true
+  
+  - type: "email"
+    to:
+      - "qa-leads@example.com"
+    severity_min: "critical"
+    enabled: false
+  
+  - type: "webhook"
+    webhook_url: "${GENERIC_WEBHOOK_URL}"
+    severity_min: "critical"
+    enabled: false
+
+# SMTP configuration (for email alerts)
+smtp:
+  host: "smtp.example.com"
+  port: 587
+  user: "${SMTP_USER}"
+  password: "${SMTP_PASSWORD}"
+  from: "sentinel@example.com"
+
+# Database configuration
+database:
+  type: "sqlite"  # sqlite, postgresql
+  path: "sentinel_history.db"
+  
+  # PostgreSQL configuration (if type is postgresql)
+  # host: "localhost"
+  # port: 5432
+  # database: "sentinel"
+  # user: "sentinel"
+  # password: "${DB_PASSWORD}"
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+
+
+
+

@@ -8,6 +8,8 @@ SSH infrastructure manager for remote operations and node access.
 import logging
 import time
 import os
+import sys
+import socket
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -36,6 +38,10 @@ class SSHManager:
         Expand tilde (~) in path to actual home directory.
         Works on both Windows and Unix-like systems.
         
+        On Windows, when running as a service, Path.home() may return the system profile.
+        This method uses USERPROFILE environment variable on Windows to get the correct user profile.
+        If USERPROFILE is not set or points to system profile, uses USERNAME to build the path.
+        
         Args:
             path: Path string that may contain ~
         
@@ -43,8 +49,23 @@ class SSHManager:
             Expanded path string
         """
         if path and path.startswith('~'):
-            # Expand tilde to home directory
-            home = str(Path.home())
+            # On Windows, prefer USERPROFILE env var (works correctly for services)
+            # On Unix-like systems, use Path.home()
+            if sys.platform == 'win32':
+                userprofile = os.environ.get('USERPROFILE')
+                # Check if USERPROFILE is system profile (indicates service context)
+                if userprofile and 'system32\\config\\systemprofile' not in userprofile.lower():
+                    home = userprofile
+                else:
+                    # Fallback: use USERNAME to build path
+                    username = os.environ.get('USERNAME')
+                    if username:
+                        home = f"C:\\Users\\{username}"
+                    else:
+                        # Last resort: use Path.home()
+                        home = str(Path.home())
+            else:
+                home = str(Path.home())
             path = path.replace('~', home, 1)
         return path
     
@@ -345,13 +366,26 @@ class SSHManager:
             raise InfrastructureError("SSH not connected")
         
         try:
-            self.logger.debug(f"Executing command: {command}")
+            self.logger.debug(f"Executing command: {command} (timeout: {timeout}s)")
             
             # Execute command
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
             
-            # Wait for command to complete
-            exit_code = stdout.channel.recv_exit_status()
+            # Set timeout on channel to prevent hanging
+            stdout.channel.settimeout(timeout)
+            stderr.channel.settimeout(timeout)
+            
+            # Wait for command to complete with timeout
+            try:
+                exit_code = stdout.channel.recv_exit_status()
+            except socket.timeout:
+                # Command timed out - try to get partial output
+                self.logger.warning(f"Command timed out after {timeout}s: {command}")
+                try:
+                    stdout.channel.close()
+                except:
+                    pass
+                raise InfrastructureError(f"Command timed out after {timeout} seconds: {command}")
             
             # Get output
             stdout_data = stdout.read().decode('utf-8')
@@ -373,6 +407,8 @@ class SSHManager:
             
             return result
             
+        except socket.timeout:
+            raise InfrastructureError(f"Command timed out after {timeout} seconds: {command}") from None
         except paramiko.SSHException as e:
             raise InfrastructureError(f"SSH command execution failed: {e}") from e
         except Exception as e:

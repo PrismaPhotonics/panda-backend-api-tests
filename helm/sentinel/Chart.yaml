@@ -1,0 +1,17 @@
+apiVersion: v2
+name: automation-run-sentinel
+description: Automation Run Sentinel - Monitoring service for automation runs
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - monitoring
+  - automation
+  - kubernetes
+  - sentinel
+maintainers:
+  - name: DevOps Team
+home: https://github.com/your-org/focus_server_automation
+sources:
+  - https://github.com/your-org/focus_server_automation
+

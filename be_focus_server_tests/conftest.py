@@ -36,6 +36,12 @@ from src.utils.realtime_pod_monitor import PodLogMonitor
 # pytest_plugins = ["pytest_logging_plugin"]
 
 # ===================================================================
+# Register Recording Fixtures (for Historic Playback Tests)
+# ===================================================================
+# Import fixtures from recording_fixtures.py so pytest can discover them
+pytest_plugins = ["be_focus_server_tests.fixtures.recording_fixtures"]
+
+# ===================================================================
 # PZ Development Repository Integration
 # ===================================================================
 # Automatically add PZ repository to PYTHONPATH for seamless imports
@@ -284,7 +290,7 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
                 service_name="focus-server"
             )
             
-            if focus_mgr.setup():
+            if focus_mgr.setup(config_manager=config_manager):
                 managers.append(("Focus Server", focus_mgr))
                 logger.info("Focus Server setup SUCCESS")
             else:
@@ -312,6 +318,14 @@ def auto_setup_infrastructure(config_manager: ConfigManager, request):
                 mgr.cleanup()
             except Exception as e:
                 logger.error(f"Cleanup error for {name}: {e}")
+        
+        # Cleanup MongoDB tunnel if it was created
+        try:
+            from be_focus_server_tests.fixtures.recording_fixtures import _cleanup_mongodb_ssh_tunnel
+            _cleanup_mongodb_ssh_tunnel()
+            logger.info("MongoDB tunnel cleanup complete")
+        except Exception as e:
+            logger.debug(f"MongoDB tunnel cleanup: {e}")
         
         logger.info("AUTO-CLEANUP: Complete")
 
@@ -387,6 +401,20 @@ def focus_server_api(config_manager: ConfigManager):
             logger.warning("⚠️  CI environment detected - skipping Focus Server API fixture due to initialization error")
             pytest.skip(f"Focus Server API initialization failed in CI: {e}")
         raise InfrastructureError(f"Failed to initialize Focus Server API client: {e}")
+
+
+# ===================================================================
+# MongoDB Recording Fixtures (for Historic Playback Tests)
+# ===================================================================
+# NOTE: Recording fixtures are defined in be_focus_server_tests/fixtures/recording_fixtures.py
+# They are automatically discovered by pytest through the fixtures/ directory.
+# Available fixtures:
+#   - mongodb_recordings_info: Session-scoped fixture for MongoDB recordings
+#   - available_recording: Single available recording
+#   - historic_time_range: Valid time range for historic playback
+#   - short_historic_time_range: 1 minute duration
+#   - medium_historic_time_range: 5 minutes duration
+#   - long_historic_time_range: 30 minutes duration
 
 
 @pytest.fixture(scope="session")
