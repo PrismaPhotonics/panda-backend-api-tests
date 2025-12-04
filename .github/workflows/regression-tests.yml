@@ -134,7 +134,7 @@ jobs:
           if (Test-Path requirements.txt) {
             py -m pip install -r requirements.txt
           }
-            py -m pip install pytest pytest-cov requests
+          py -m pip install pytest pytest-cov requests
 
       - name: Install project in editable mode
         shell: powershell
