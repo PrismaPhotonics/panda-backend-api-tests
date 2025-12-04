@@ -516,6 +516,9 @@ def fetch_recordings_from_mongodb(
     tunnel_setup = _setup_mongodb_ssh_tunnel(config_manager)
     use_tunnel = tunnel_setup
     
+    # MongoDB client - will be closed in finally block
+    client = None
+    
     try:
         # Get MongoDB config
         mongo_config = config_manager.get_database_config()
@@ -543,7 +546,6 @@ def fetch_recordings_from_mongodb(
         
         # Connect to MongoDB with retry logic
         max_retries = 2
-        client = None
         
         for attempt in range(max_retries):
             try:
@@ -601,7 +603,6 @@ def fetch_recordings_from_mongodb(
         
         if not base_path_doc:
             logger.warning("No base_paths document found for /prisma/root/recordings in MongoDB")
-            client.close()
             return RecordingsInfo(recordings=[], query_time=datetime.now())
         
         # Get the guid (it's the collection name for recordings)
@@ -700,9 +701,6 @@ def fetch_recordings_from_mongodb(
             else:
                 skipped_duration += 1
         
-        # Close connection
-        client.close()
-        
         # Sort by duration (longest first)
         recordings.sort(key=lambda r: r.duration_seconds, reverse=True)
         
@@ -727,6 +725,15 @@ def fetch_recordings_from_mongodb(
     except Exception as e:
         logger.error(f"Failed to fetch recordings from MongoDB: {e}")
         return RecordingsInfo(recordings=[], query_time=datetime.now())
+    
+    finally:
+        # CRITICAL: Always close MongoDB client to prevent resource leaks
+        if client:
+            try:
+                client.close()
+                logger.debug("MongoDB client closed")
+            except Exception as close_error:
+                logger.warning(f"Error closing MongoDB client: {close_error}")
 
 
 # =============================================================================
