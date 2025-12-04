@@ -5,9 +5,12 @@ on:
     inputs:
       environment:
         description: "Target environment"
-        type: environment
+        type: choice
         required: true
         default: "kefar_saba"
+        options:
+          - kefar_saba
+          - staging
       test_type:
         description: "Test type to run"
         type: choice
@@ -24,7 +27,7 @@ jobs:
   job-load-tests:
     name: Job Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'kefar_saba' }}
+    # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write

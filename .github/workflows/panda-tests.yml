@@ -1,13 +1,20 @@
 name: Panda Tests
 
 on:
+  push:
+    branches: [ main, develop, master, "chore/add-roy-tests" ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       environment:
         description: "Target environment"
-        type: environment
+        type: choice
         required: true
         default: "kefar_saba"
+        options:
+          - kefar_saba
+          - staging
       marker:
         description: "pytest marker to run (e.g., smoke, regression). Leave empty to run all."
         required: false
@@ -16,7 +23,7 @@ on:
 jobs:
   test:
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment }}
+    # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write

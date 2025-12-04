@@ -19,7 +19,7 @@ jobs:
   regression-tests:
     name: Nightly Regression Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'kefar_saba' }}
+    # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write
@@ -35,7 +35,7 @@ jobs:
         run: |
           Write-Host "========================================"
           Write-Host "Checking VPN Connection"
-          Write-Host "Environment: ${{ inputs.environment || 'staging' }}"
+          Write-Host "Environment: ${{ inputs.environment || 'kefar_saba' }}"
           Write-Host "========================================"
           
           # Check if we can reach the Focus Server (internal network)
@@ -238,7 +238,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment || 'production' }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           py parse_junit_results.py
 

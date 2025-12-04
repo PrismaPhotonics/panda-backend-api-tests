@@ -43,7 +43,7 @@ jobs:
   quick-load-tests:
     name: Quick Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'kefar_saba' }}
+    # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write

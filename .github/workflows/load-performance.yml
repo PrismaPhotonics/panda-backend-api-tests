@@ -8,15 +8,18 @@ on:
     inputs:
       environment:
         description: "Target environment"
-        type: environment
+        type: choice
         required: true
         default: "kefar_saba"
+        options:
+          - kefar_saba
+          - staging
 
 jobs:
   load-performance-tests:
     name: Load & Performance Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'kefar_saba' }}
+    # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write
