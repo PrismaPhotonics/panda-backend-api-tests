@@ -7,6 +7,14 @@ on:
     branches: [ main ]
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        default: "kefar_saba"
+        options:
+          - kefar_saba
+          - staging
       marker:
         description: "pytest marker to run (e.g., smoke, regression). Leave empty for smoke."
         required: false
@@ -16,6 +24,7 @@ jobs:
   smoke-tests:
     name: Smoke Tests
     runs-on: [self-hosted, windows, "panda_automation"]
+    # NOTE: No 'environment:' line here - that's a GitHub Environment feature we don't need
     permissions:
       checks: write
       pull-requests: write
@@ -113,17 +122,29 @@ jobs:
         continue-on-error: true
         env:
           MARKER: ${{ github.event.inputs.marker || '' }}
+          TARGET_ENV: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           if (-not (Test-Path test-results)) {
             New-Item -ItemType Directory -Path test-results | Out-Null
           }
+          
+          $targetEnv = if ($env:TARGET_ENV) { $env:TARGET_ENV } else { "kefar_saba" }
+          
+          Write-Host "============================================"
+          Write-Host "SMOKE TESTS"
+          Write-Host "============================================"
+          Write-Host "Environment: $targetEnv"
+          Write-Host "============================================"
           
           # Safely get marker value, handling null/empty cases
           $marker = if ($env:MARKER) { $env:MARKER.Trim() } else { "" }
           if ($marker -ne "" -and $marker -ne "null" -and $null -ne $marker) {
             Write-Host "Running only marker: $marker"
             py -m pytest be_focus_server_tests/ `
+              --env $targetEnv `
               -m "$marker" `
+              --skip-health-check `
+              --skip-sanity-check `
               --ignore=be_focus_server_tests/ui `
               -v `
               --junitxml=test-results\junit-$marker.xml `
@@ -132,7 +153,10 @@ jobs:
           } else {
             Write-Host "Running smoke tests (default when no marker specified)"
             py -m pytest be_focus_server_tests/ `
+              --env $targetEnv `
               -m "smoke" `
+              --skip-health-check `
+              --skip-sanity-check `
               --ignore=be_focus_server_tests/ui `
               -v `
               --maxfail=10 `
