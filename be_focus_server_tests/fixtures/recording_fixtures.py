@@ -596,16 +596,16 @@ def fetch_recordings_from_mongodb(
         logger.info(f"✅ Connected to MongoDB: {mongo_host}:{mongo_port}/{db_name}")
         
         # Step 1: Get guid from base_paths collection
-        # IMPORTANT: Use the GUID for /prisma/root/recordings (not /prisma/root/recordings/segy)
-        # This is the correct base_path that contains the actual recordings
+        # IMPORTANT: The actual base_path in MongoDB is /prisma/root/recordings/segy
+        # This is where Focus Server stores recording metadata
         base_paths = db["base_paths"]
         base_path_doc = base_paths.find_one({
-            "base_path": "/prisma/root/recordings",
+            "base_path": "/prisma/root/recordings/segy",
             "is_archive": False
         })
         
         if not base_path_doc:
-            logger.warning("No base_paths document found for /prisma/root/recordings in MongoDB")
+            logger.warning("No base_paths document found for /prisma/root/recordings/segy in MongoDB")
             return RecordingsInfo(recordings=[], query_time=datetime.now())
         
         # Get the guid (it's the collection name for recordings)
@@ -616,7 +616,7 @@ def fetch_recordings_from_mongodb(
             if isinstance(guid, dict):
                 guid = str(guid)
         
-        logger.info(f"Found guid from base_paths for /prisma/root/recordings: {guid}")
+        logger.info(f"Found guid from base_paths for /prisma/root/recordings/segy: {guid}")
         
         # Step 2: Query the collection named by guid
         collection_name = str(guid)
