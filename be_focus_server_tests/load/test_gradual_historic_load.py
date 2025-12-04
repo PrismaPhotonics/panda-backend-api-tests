@@ -68,12 +68,12 @@ class GradualHistoricLoadConfig:
     NFFT: int = 1024
     FRAMES_TO_RECEIVE: int = 3  # Quick verification per job
     
-    # Historic-specific
+    # Historic-specific - DYNAMIC TIME RANGE
     RECORDING_DURATION_SECONDS: int = 10  # Duration of recording to request
     MIN_DURATION_SECONDS: float = 5.0     # Min recording duration in MongoDB
-    MAX_DURATION_SECONDS: float = 10.0    # Max recording duration in MongoDB
-    WEEKS_BACK: int = 2                   # Weeks back to search in MongoDB
-    MAX_RECORDINGS_TO_LOAD: int = 200     # Max recordings to load from MongoDB
+    MAX_DURATION_SECONDS: float = 300.0   # Max recording duration (5 minutes) - EXTENDED for flexibility
+    WEEKS_BACK: int = 4                   # Weeks back to search (1 month) - EXTENDED from 2
+    MAX_RECORDINGS_TO_LOAD: int = 500     # Max recordings to load from MongoDB - EXTENDED for more options
     
     # Retry configuration
     MAX_GRPC_RETRIES: int = 3       # Reduced retries for faster failure detection
@@ -280,13 +280,20 @@ class GradualHistoricJobLoadTester:
         """
         Get available recordings from MongoDB base_paths collection.
         
+        DYNAMIC TIME RANGE: Searches from current date going back up to 4 weeks.
+        Works with both kefar_saba and staging environments which have different data.
+        
         Returns:
             List of (start_time_ms, end_time_ms) tuples
         """
         try:
             from be_focus_server_tests.fixtures.recording_fixtures import fetch_recordings_from_mongodb
             
-            logger.debug(f"Querying MongoDB for historic recordings...")
+            logger.info(f"🔍 Querying MongoDB for historic recordings...")
+            logger.info(f"   Time range: last {self.cfg.WEEKS_BACK} weeks from NOW")
+            logger.info(f"   Duration filter: {self.cfg.MIN_DURATION_SECONDS}-{self.cfg.MAX_DURATION_SECONDS}s")
+            
+            # Try with configured weeks_back first
             recordings_info = fetch_recordings_from_mongodb(
                 config_manager=self.config_manager,
                 max_recordings=self.cfg.MAX_RECORDINGS_TO_LOAD,
@@ -295,8 +302,20 @@ class GradualHistoricJobLoadTester:
                 weeks_back=self.cfg.WEEKS_BACK
             )
             
+            # If no recordings found, try extending the search range
             if not recordings_info.has_recordings:
-                logger.warning("No recordings found in MongoDB")
+                logger.warning(f"No recordings in last {self.cfg.WEEKS_BACK} weeks, trying 8 weeks...")
+                recordings_info = fetch_recordings_from_mongodb(
+                    config_manager=self.config_manager,
+                    max_recordings=self.cfg.MAX_RECORDINGS_TO_LOAD,
+                    min_duration_seconds=self.cfg.MIN_DURATION_SECONDS,
+                    max_duration_seconds=600.0,  # Up to 10 minutes
+                    weeks_back=8  # 2 months back
+                )
+            
+            if not recordings_info.has_recordings:
+                logger.error("❌ No recordings found in MongoDB even with extended search!")
+                logger.error("   Check MongoDB connection and data availability")
                 return []
             
             # Convert Recording objects to (start_ms, end_ms) tuples
@@ -304,7 +323,17 @@ class GradualHistoricJobLoadTester:
             for rec in recordings_info.recordings:
                 recordings_list.append((rec.start_time_ms, rec.end_time_ms))
             
-            logger.info(f"✅ Loaded {len(recordings_list)} recordings from MongoDB base_paths collection")
+            # Log sample of found recordings
+            logger.info(f"✅ Loaded {len(recordings_list)} recordings from MongoDB")
+            if recordings_list:
+                first_rec = recordings_list[0]
+                last_rec = recordings_list[-1]
+                from datetime import datetime
+                first_dt = datetime.fromtimestamp(first_rec[0] / 1000)
+                last_dt = datetime.fromtimestamp(last_rec[0] / 1000)
+                logger.info(f"   Newest: {first_dt}")
+                logger.info(f"   Oldest: {last_dt}")
+            
             return recordings_list
             
         except Exception as e:

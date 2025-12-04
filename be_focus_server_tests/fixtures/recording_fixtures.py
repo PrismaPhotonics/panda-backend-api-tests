@@ -484,17 +484,20 @@ def _cleanup_mongodb_ssh_tunnel():
 
 def fetch_recordings_from_mongodb(
     config_manager,
-    max_recordings: int = 50,
+    max_recordings: int = 100,
     min_duration_seconds: float = 5.0,
-    max_duration_seconds: float = 10.0,
-    weeks_back: int = 2
+    max_duration_seconds: float = 300.0,  # 5 minutes - extended for flexibility
+    weeks_back: int = 4  # 1 month - extended from 2 weeks for different environments
 ) -> RecordingsInfo:
     """
     Fetch available recordings DIRECTLY from MongoDB (not via Focus Server API).
     
+    DYNAMIC TIME RANGE: Searches from current date going back.
+    Works with both kefar_saba and staging environments which have different data.
+    
     Filters recordings by:
-    - Duration: 5-10 seconds only
-    - Time range: From today to two weeks ago
+    - Duration: configurable (default 5s-5min)
+    - Time range: From NOW to weeks_back weeks ago
     
     MongoDB Structure:
     1. base_paths collection → get the guid
@@ -502,10 +505,10 @@ def fetch_recordings_from_mongodb(
     
     Args:
         config_manager: ConfigManager instance
-        max_recordings: Maximum recordings to return
+        max_recordings: Maximum recordings to return (default: 100)
         min_duration_seconds: Minimum recording duration (default: 5.0)
-        max_duration_seconds: Maximum recording duration (default: 10.0)
-        weeks_back: Number of weeks back to search (default: 2)
+        max_duration_seconds: Maximum recording duration (default: 300.0 = 5 minutes)
+        weeks_back: Number of weeks back to search (default: 4 = 1 month)
         
     Returns:
         RecordingsInfo object with available recordings
@@ -624,8 +627,8 @@ def fetch_recordings_from_mongodb(
         now = datetime.now()
         two_weeks_ago = now - timedelta(weeks=weeks_back)
         
-        logger.info(f"Time range filter: {two_weeks_ago} to {now} (last {weeks_back} weeks)")
-        logger.info(f"Duration filter: {min_duration_seconds}-{max_duration_seconds} seconds")
+        logger.info(f"🔍 Time range filter: {two_weeks_ago.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')} (last {weeks_back} weeks)")
+        logger.info(f"   Duration filter: {min_duration_seconds}-{max_duration_seconds} seconds")
         
         # Query by time range AND deleted: false (Focus Server only uses non-deleted recordings)
         # This matches the structure shown in MongoDB Compass:
