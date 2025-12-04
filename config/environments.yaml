@@ -398,7 +398,7 @@ environments:
         port: 22
         username: "prisma"
         password: "PASSW0RD"
-        key_file: "~/.ssh/panda_kefar_saba_key"
+        key_file: "~/.ssh/panda_production_key"
         description: "worker-node - K8s worker with kubectl/k9s access"
       connect_command: |
         ssh root@10.10.100.3
@@ -611,7 +611,7 @@ environments:
         port: 22
         username: "prisma"
         password: "PASSW0RD"
-        key_file: "~/.ssh/panda_kefar_saba_key"
+        key_file: "~/.ssh/panda_production_key"
         description: "worker-node - K8s worker with kubectl/k9s access"
       connect_command: |
         ssh root@10.10.100.3
