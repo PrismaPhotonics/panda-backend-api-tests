@@ -11,13 +11,13 @@ on:
         description: "Target environment"
         type: environment
         required: true
-        default: "production"
+        default: "kefar_saba"
 
 jobs:
   smoke-tests:
     name: Smoke Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'production' }}
+    environment: ${{ inputs.environment || 'kefar_saba' }}
     permissions:
       checks: write
       pull-requests: write
@@ -119,7 +119,7 @@ jobs:
           }
           
           $targetEnv = "${{ inputs.environment }}"
-          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "production" }
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
           
           Write-Host "Running smoke tests on environment: $targetEnv"
           py -m pytest be_focus_server_tests/ `
@@ -185,7 +185,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment || 'production' }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           py parse_junit_results.py
 
