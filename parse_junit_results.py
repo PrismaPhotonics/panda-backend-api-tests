@@ -112,7 +112,9 @@ def parse_junit_xml():
                     error = testcase.find('error')
                     skipped_elem = testcase.find('skipped')
                     
-                    # Determine status
+                    # Determine status and message
+                    message = ''  # Initialize message to avoid NameError
+                    
                     if failure is not None:
                         status = 'failed'
                         message = failure.text or failure.get('message', '')
