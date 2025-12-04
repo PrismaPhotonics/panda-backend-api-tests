@@ -1,41 +1,13 @@
 # Focus Server Automation Framework - Environment Configuration
 # =============================================================
 # 
-# Environments: staging, local, production, kefar_saba
+# Environments: staging, kefar_saba
 # Default: staging (November 2025)
 # 
 # Staging environment uses 10.10.10.100 (new IP addresses)
-# Production/Kefar_Saba environment uses 10.10.100.100 (legacy IP addresses)
+# Kefar_Saba environment uses 10.10.100.100 (production IP addresses)
 
 environments:
-  # ============================================================================
-  # LOCAL ENVIRONMENT (For Local Development)
-  # ============================================================================
-  local:
-    name: "Local Development"
-    description: "Local development environment"
-    
-    focus_server:
-      base_url: "http://localhost:5000"
-      ssl: false
-      verify_ssl: false
-    
-    mongodb:
-      host: "localhost"
-      port: 27017
-      username: "admin"
-      password: "admin"
-      database: "test"
-    
-    rabbitmq:
-      host: "localhost"
-      port: 5672
-      username: "guest"
-      password: "guest"
-    
-    kubernetes:
-      namespace: "default"
-
   # ============================================================================
   # STAGING ENVIRONMENT (November 2025)
   # ============================================================================
@@ -123,9 +95,9 @@ environments:
       enable_save: true                 # EnableSave
       enable_load: true                 # EnableLoad
     
-    # MongoDB (Staging Environment - Different IP from production)
+    # MongoDB (Staging Environment - Different IP from kefar_saba)
     mongodb:
-      host: "10.10.10.108"                # Staging LoadBalancer IP (NOT same as production!)
+      host: "10.10.10.108"                # Staging LoadBalancer IP
       port: 27017
       username: "prisma"
       password: "prisma"
@@ -135,9 +107,9 @@ environments:
       ssl: false
       replica_set: null
     
-    # RabbitMQ (Staging Environment - Different IP from production)
+    # RabbitMQ (Staging Environment - Different IP from kefar_saba)
     rabbitmq:
-      host: "10.10.10.107"               # Staging LoadBalancer IP (NOT same as production!)
+      host: "10.10.10.107"               # Staging LoadBalancer IP
       port: 5672                         # AMQP
       ssl_port: 5671                     # AMQP SSL
       management_port: 15672             # Management UI
@@ -150,7 +122,7 @@ environments:
       ssl: false
       exchange: "prisma"
     
-    # Kubernetes (Same as production)
+    # Kubernetes
     kubernetes:
       api_server: "https://10.10.100.102:6443"
       dashboard: "https://10.10.100.102/"
@@ -213,10 +185,9 @@ environments:
         host: "10.10.10.150"
         port: 22
         username: "prisma"
-        password: "PASSW0RD"  # Not used - key authentication required
-        key_file: "~/.ssh/panda_staging_key"  # SSH key for target host
+        password: "PASSW0RD"
+        key_file: "~/.ssh/panda_staging_key"
         description: "worker-node - K8s worker with kubectl/k9s access"
-      # SSH command to connect
       connect_command: |
         ssh root@10.10.10.10
         # Then from panda-staging-host:
@@ -225,7 +196,7 @@ environments:
     
     # Test Data
     test_data:
-      base_path: "/tmp/focus_production_v2_test_data"
+      base_path: "/tmp/focus_staging_test_data"
       cleanup_after_test: true
     
     # Infrastructure Services
@@ -245,29 +216,27 @@ environments:
     
     # Logging Configuration (From usersettings.json)
     logging:
-      log_grpc_messages: false          # Logger.LogGrpcMessages
-      log_grpc_validation: false        # Logger.LogGrpcValidation
-      log_paging: false                 # Logger.LogPaging
-      log_working_queue: false          # Logger.LogWorkingQueue
+      log_grpc_messages: false
+      log_grpc_validation: false
+      log_paging: false
+      log_working_queue: false
 
   # ============================================================================
-  # PRODUCTION / KEFAR_SABA ENVIRONMENT (Production IP: 10.10.100.100)
+  # KEFAR_SABA ENVIRONMENT (IP: 10.10.100.100)
   # ============================================================================
-  # Note: 'kefar_saba' is an alias for 'production' - both use the same config
-  production: &production_config
-    name: "Production (Kefar Saba)"
-    description: "Production environment (Kefar Saba) with IP address 10.10.100.100"
+  kefar_saba:
+    name: "Kefar Saba"
+    description: "Kefar Saba environment with IP address 10.10.100.100"
     
-    # Focus Server (Production)
+    # Focus Server (Kefar Saba)
     focus_server:
-      base_url: "https://10.10.100.100/focus-server/"  # Production Backend URL
-      frontend_url: "https://10.10.100.100/liveView"    # Production Frontend URL
-      frontend_api_url: "https://10.10.100.100/prisma/api/internal/sites/prisma-210-1000"  # Production API URL
+      base_url: "https://10.10.100.100/focus-server/"  # Backend URL
+      frontend_url: "https://10.10.100.100/liveView"    # Frontend URL
+      frontend_api_url: "https://10.10.100.100/prisma/api/internal/sites/prisma-210-1000"  # API URL
       site_id: "prisma-210-1000"
       ssl: true
       verify_ssl: false  # Self-signed cert
       
-      # Port forwarding (if needed for local access)
       port_forward:
         enabled: false
         service: "focus-server-service"
@@ -275,32 +244,32 @@ environments:
         local_port: 5000
         remote_port: 5000
     
-    # gRPC Configuration (From usersettings.json)
+    # gRPC Configuration
     grpc:
-      timeout_seconds: 500              # GrpcTimeout
-      stream_min_timeout_seconds: 600   # GrpcStreamMinTimeout_sec
-      num_retries: 10                   # NumGrpcRetries
-      retry_backoff_factor: 2.0         # Exponential backoff
+      timeout_seconds: 500
+      stream_min_timeout_seconds: 600
+      num_retries: 10
+      retry_backoff_factor: 2.0
     
-    # System Constraints (From usersettings.json)
+    # System Constraints
     constraints:
       frequency:
-        max_hz: 1000                    # FrequencyMax
-        min_hz: 0                       # FrequencyMin
-        min_range_hz: 1                 # FrequencyMinRange
+        max_hz: 1000
+        min_hz: 0
+        min_range_hz: 1
       sensors:
-        total_range: 2222               # SensorsRange (0-2222)
-        default_start: 11               # StartChannel
-        default_end: 109                # EndChannel
+        total_range: 2222
+        default_start: 11
+        default_end: 109
       windows:
-        max_concurrent: 30              # MaxWindows
-        num_live_screens: 30            # NumLiveScreens
-        num_tabs: 10                    # NumTabs
+        max_concurrent: 30
+        num_live_screens: 30
+        num_tabs: 10
     
-    # NFFT Configuration (From usersettings.json)
+    # NFFT Configuration
     nfft:
-      default: 1024                     # Default Nfft
-      valid_values:                     # nfftSingleChannel options
+      default: 1024
+      valid_values:
         - 128
         - 256
         - 512
@@ -312,35 +281,35 @@ environments:
         - 32768
         - 65536
     
-    # Display Defaults (From usersettings.json)
+    # Display Defaults
     defaults:
       frequency:
-        start_hz: 0                     # StartFrequency_hz
-        end_hz: 1000                    # EndFrequency_hz
+        start_hz: 0
+        end_hz: 1000
       waterfall:
-        num_lines: 200                  # NumLinesToDisplay
+        num_lines: 200
       time:
-        window_seconds: 30              # TimeWindow "30s"
-        display_axis_duration: 30       # DisplayTimeAxisDuration
-      view_type: "MultiChannelSpectrogram"  # ViewType
-      refresh_rate_hz: 20               # RefreshRate
+        window_seconds: 30
+        display_axis_duration: 30
+      view_type: "MultiChannelSpectrogram"
+      refresh_rate_hz: 20
     
-    # Features (From usersettings.json)
+    # Features
     features:
-      enable_reconnection: true         # EnableReconnection
-      enable_debug_tools: false         # EnableDebugTools
-      split_screen: true                # SplitScreen
-      full_screen: false                # FullScreen
+      enable_reconnection: true
+      enable_debug_tools: false
+      split_screen: true
+      full_screen: false
     
-    # Saved Data (From usersettings.json)
+    # Saved Data
     saved_data:
-      folder: "C:\\Panda\\SavedData"    # SavedData.Folder
-      enable_save: true                 # EnableSave
-      enable_load: true                 # EnableLoad
+      folder: "C:\\Panda\\SavedData"
+      enable_save: true
+      enable_load: true
     
-    # MongoDB (Production LoadBalancer)
+    # MongoDB (Kefar Saba LoadBalancer)
     mongodb:
-      host: "10.10.100.108"              # External LoadBalancer IP
+      host: "10.10.100.108"
       port: 27017
       username: "prisma"
       password: "prisma"
@@ -350,22 +319,22 @@ environments:
       ssl: false
       replica_set: null
     
-    # RabbitMQ (Production LoadBalancer)
+    # RabbitMQ (Kefar Saba LoadBalancer)
     rabbitmq:
-      host: "10.10.100.107"              # External LoadBalancer IP
-      port: 5672                         # AMQP
-      ssl_port: 5671                     # AMQP SSL
-      management_port: 15672             # Management UI
-      prometheus_port: 9419              # Prometheus metrics
-      erlang_port: 4369                  # Erlang Port Mapper
-      inter_node_port: 25672             # Inter-node communication
+      host: "10.10.100.107"
+      port: 5672
+      ssl_port: 5671
+      management_port: 15672
+      prometheus_port: 9419
+      erlang_port: 4369
+      inter_node_port: 25672
       username: "prisma"
       password: "prismapanda"
       vhost: "/"
       ssl: false
       exchange: "prisma"
     
-    # Kubernetes (Production Cluster)
+    # Kubernetes (Kefar Saba Cluster)
     kubernetes:
       api_server: "https://10.10.100.102:6443"
       dashboard: "https://10.10.100.102/"
@@ -375,8 +344,8 @@ environments:
       
       access_method: "ssh_tunnel"
       ssh_gateway:
-        jump_host: "10.10.100.3"         # Production jump host
-        target_host: "10.10.100.113"     # Production worker node
+        jump_host: "10.10.100.3"
+        target_host: "10.10.100.113"
         jump_user: "root"
         jump_password: "PASSW0RD"
         target_user: "prisma"
@@ -416,22 +385,21 @@ environments:
           pod_selector: "app=grpc-service"
           note: "gRPC port starts from 12301 and increments for each service instance"
     
-    # SSH Access (Production Environment)
+    # SSH Access (Kefar Saba Environment)
     ssh:
       jump_host:
         host: "10.10.100.3"
         port: 22
         username: "root"
         password: "PASSW0RD"
-        description: "panda2worker - Proxmox production host"
+        description: "panda2worker - Proxmox host"
       target_host:
         host: "10.10.100.113"
         port: 22
         username: "prisma"
-        password: "PASSW0RD"  # Not used - key authentication required
-        key_file: "~/.ssh/panda_production_key"  # SSH key for target host
+        password: "PASSW0RD"
+        key_file: "~/.ssh/panda_kefar_saba_key"
         description: "worker-node - K8s worker with kubectl/k9s access"
-      # SSH command to connect
       connect_command: |
         ssh root@10.10.100.3
         # Then from panda2worker:
@@ -440,7 +408,7 @@ environments:
     
     # Test Data
     test_data:
-      base_path: "/tmp/focus_production_test_data"
+      base_path: "/tmp/focus_kefar_saba_test_data"
       cleanup_after_test: true
     
     # Infrastructure Services
@@ -458,37 +426,26 @@ environments:
         service: "rabbitmq-panda"
         pod_selector: "app.kubernetes.io/instance=rabbitmq-panda"
     
-    # Logging Configuration (From usersettings.json)
+    # Logging Configuration
     logging:
-      log_grpc_messages: false          # Logger.LogGrpcMessages
-      log_grpc_validation: false        # Logger.LogGrpcValidation
-      log_paging: false                 # Logger.LogPaging
-      log_working_queue: false          # Logger.LogWorkingQueue
-
-  # ============================================================================
-  # KEFAR_SABA ENVIRONMENT (Alias for Production)
-  # ============================================================================
-  # This is an alias for the production environment, matching the GitHub
-  # Environment name 'kefar_saba' used in GitHub Actions workflows
-  kefar_saba: *production_config
+      log_grpc_messages: false
+      log_grpc_validation: false
+      log_paging: false
+      log_working_queue: false
 
 # Default environment
-default_environment: "staging"  # UPDATED to new environment
-
-# Environment aliases (for reference)
-environment_aliases:
-  kefar_saba: production  # kefar_saba is an alias for production
+default_environment: "staging"
 
 # Environment-specific test configurations
 test_configurations:
   staging:
     # MongoDB Outage Tests - ENABLED IN STAGING
     mongodb_outage:
-      enabled: true  # Safe to test in staging
+      enabled: true
       
     # RabbitMQ Outage Tests - ENABLED IN STAGING
     rabbitmq_outage:
-      enabled: true  # Safe to test in staging
+      enabled: true
     
     # Performance Tests - ENABLED
     performance:
@@ -498,17 +455,17 @@ test_configurations:
     
     # Load Tests - ENABLED IN STAGING
     load_testing:
-      enabled: true  # Full load testing in staging
-      max_concurrent_jobs: 200  # Full capacity testing
+      enabled: true
+      max_concurrent_jobs: 200
   
-  production:
-    # MongoDB Outage Tests - DISABLED IN PRODUCTION
+  kefar_saba:
+    # MongoDB Outage Tests - DISABLED
     mongodb_outage:
-      enabled: false  # Do not run destructive tests in production
+      enabled: false
       
-    # RabbitMQ Outage Tests - DISABLED IN PRODUCTION
+    # RabbitMQ Outage Tests - DISABLED
     rabbitmq_outage:
-      enabled: false  # Do not run destructive tests in production
+      enabled: false
     
     # Performance Tests - ENABLED (safe, read-only)
     performance:
@@ -516,21 +473,7 @@ test_configurations:
       max_concurrent_requests: 5
       test_duration_minutes: 2
     
-    # Load Tests - DISABLED IN PRODUCTION
-    load_testing:
-      enabled: false  # Never run load tests in production
-      max_concurrent_jobs: 0  # Load tests disabled
-  
-  # kefar_saba uses same test config as production
-  kefar_saba:
-    mongodb_outage:
-      enabled: false
-    rabbitmq_outage:
-      enabled: false
-    performance:
-      enabled: true
-      max_concurrent_requests: 5
-      test_duration_minutes: 2
+    # Load Tests - DISABLED
     load_testing:
       enabled: false
       max_concurrent_jobs: 0
