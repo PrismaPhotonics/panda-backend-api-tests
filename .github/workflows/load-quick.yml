@@ -142,7 +142,7 @@ jobs:
         continue-on-error: true
         run: |
           if (-not (Test-Path test-results)) {
-            New-Item -ItemType Directory -Path test-results | Out-Null
+            New-Item -ItemType Directory -Path test-results -Force | Out-Null
           }
           
           $targetEnv = "${{ inputs.environment }}"
@@ -159,6 +159,8 @@ jobs:
           Write-Host "============================================"
           
           # Run Quick Load Tests that create REAL jobs (Live + Historic)
+          # Use --junitxml with absolute path to ensure file is created
+          $junitPath = Join-Path $PWD "test-results\junit-quick-load.xml"
           py -m pytest `
             be_focus_server_tests/load/test_gradual_live_load.py::TestGradualLiveLoad::test_quick_gradual_load `
             be_focus_server_tests/load/test_gradual_historic_load.py::TestGradualHistoricJobLoad::test_quick_gradual_load `
@@ -168,9 +170,18 @@ jobs:
             --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
-            --junitxml=test-results\junit-quick-load.xml `
+            --junitxml=$junitPath `
             --cov=be_focus_server_tests `
-            --cov-report=term-missing
+            --cov-report=term-missing `
+            --tb=short
+          
+          # Ensure XML file exists even if pytest fails early
+          if (-not (Test-Path $junitPath)) {
+            Write-Host "Warning: JUnit XML file was not created. Tests may have failed during collection."
+            # Create a minimal XML file to indicate test collection failure
+            $minimalXml = '<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" tests="0" failures="0" errors="1" skipped="0" time="0.0"><error message="Test collection failed or tests crashed before execution"></error></testsuite></testsuites>'
+            $minimalXml | Out-File -FilePath $junitPath -Encoding utf8
+          }
 
       - name: List test result files
         shell: powershell
@@ -220,6 +231,7 @@ jobs:
       - name: Parse and Display Test Results
         if: always()
         shell: powershell
+        continue-on-error: true
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -227,7 +239,11 @@ jobs:
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
           TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
+          Write-Host "Parsing JUnit test results..."
           py parse_junit_results.py
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Warning: parse_junit_results.py exited with code $LASTEXITCODE, but continuing..."
+          }
 
       - uses: actions/upload-artifact@v4
         with:

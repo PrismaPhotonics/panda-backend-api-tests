@@ -13,6 +13,22 @@ from datetime import datetime
 from collections import OrderedDict
 
 
+def safe_print(message: str):
+    """
+    Print message to stdout with fallback for encoding issues.
+    On Windows with cp1255 (Hebrew) encoding, emojis cause UnicodeEncodeError.
+    This function handles that gracefully by stripping problematic characters.
+    """
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        # Remove emojis and other non-ASCII characters for console output
+        safe_message = message.encode('ascii', 'ignore').decode('ascii')
+        # Replace common emoji patterns with text equivalents
+        safe_message = safe_message.replace('', '[PASS]').replace('', '[FAIL]')
+        print(safe_message if safe_message.strip() else message.encode('ascii', 'replace').decode('ascii'))
+
+
 def get_test_category(classname: str) -> str:
     """Categorize test by its module/class name."""
     if 'integration' in classname.lower():
@@ -61,10 +77,28 @@ def get_status_emoji(passed: int, failed: int, errors: int) -> str:
 
 def parse_junit_xml():
     """Parse all JUnit XML files and create comprehensive summary."""
-    xml_files = glob.glob('test-results/*.xml')
+    # Ensure test-results directory exists
+    test_results_dir = 'test-results'
+    if not os.path.exists(test_results_dir):
+        print(f"Warning: {test_results_dir} directory does not exist")
+        write_empty_summary()
+        return
+    
+    # Try both forward and backward slashes for cross-platform compatibility
+    xml_files = []
+    patterns = [
+        os.path.join(test_results_dir, '*.xml'),
+        os.path.join(test_results_dir, '**', '*.xml'),  # Also search subdirectories
+    ]
+    
+    for pattern in patterns:
+        xml_files.extend(glob.glob(pattern))
+    
+    # Remove duplicates while preserving order
+    xml_files = list(dict.fromkeys(xml_files))
     
     if not xml_files:
-        print("No JUnit XML files found in test-results/")
+        print(f"No JUnit XML files found in {test_results_dir}/")
         # Still create a summary showing no tests were found
         write_empty_summary()
         return
@@ -186,21 +220,25 @@ def write_empty_summary():
     """Write summary when no test results are found."""
     summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
     if not summary_path:
-        print("GITHUB_STEP_SUMMARY not set")
+        print("GITHUB_STEP_SUMMARY not set - skipping summary file write")
         return
     
     environment = os.environ.get('TARGET_ENVIRONMENT', 'unknown')
     
-    with open(summary_path, 'w', encoding='utf-8') as f:
-        f.write('# ⚠️ Test Results Summary\n\n')
-        f.write(f'**Environment:** {environment.upper()}\n\n')
-        f.write('## No Test Results Found\n\n')
-        f.write('No JUnit XML files were found in `test-results/` directory.\n\n')
-        f.write('This usually means:\n')
-        f.write('- Tests failed to start (check pytest logs)\n')
-        f.write('- Configuration error prevented test execution\n')
-        f.write('- Test collection failed\n\n')
-        f.write('**Please check the workflow logs above for errors.**\n')
+    try:
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write('# ⚠️ Test Results Summary\n\n')
+            f.write(f'**Environment:** {environment.upper()}\n\n')
+            f.write('## No Test Results Found\n\n')
+            f.write('No JUnit XML files were found in `test-results/` directory.\n\n')
+            f.write('This usually means:\n')
+            f.write('- Tests failed to start (check pytest logs)\n')
+            f.write('- Configuration error prevented test execution\n')
+            f.write('- Test collection failed\n')
+            f.write('- Tests crashed before generating XML output\n\n')
+            f.write('**Please check the workflow logs above for errors.**\n')
+    except Exception as e:
+        print(f"Warning: Could not write summary file: {e}", file=sys.stderr)
 
 
 def write_summary(total_tests, total_failures, total_errors, total_skipped, total_time,
@@ -424,15 +462,27 @@ def write_summary(total_tests, total_failures, total_errors, total_skipped, tota
     print("=" * 60)
     
     if failed_tests or error_tests:
-        print("\n❌ FAILED TESTS:")
+        safe_print("\n[FAIL] FAILED TESTS:")
         for test in (failed_tests + error_tests)[:10]:
             print(f"  - {test['short_name']} ({test['status']})")
         if len(failed_tests) + len(error_tests) > 10:
             print(f"  ... and {len(failed_tests) + len(error_tests) - 10} more")
     else:
-        print("\n✅ All tests passed!")
+        safe_print("\n[OK] All tests passed!")
     print()
 
 
 if __name__ == '__main__':
-    parse_junit_xml()
+    try:
+        parse_junit_xml()
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error parsing JUnit results: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        # Don't fail the workflow - just write an error summary
+        try:
+            write_empty_summary()
+        except:
+            pass
+        sys.exit(0)  # Exit with 0 to not fail the workflow
