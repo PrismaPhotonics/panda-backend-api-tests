@@ -351,7 +351,7 @@ class TestQuickLoadMetrics:
     - Staging: Lenient (accounts for weak infrastructure)
     """
     
-    @pytest.mark.xray("PZ-LOAD-000")
+    @pytest.mark.xray("PZ-14026")
     def test_server_connectivity(self, focus_server_url: str, sla_config: Dict[str, Any]):
         """
         Test: Verify server is reachable before running load tests.
@@ -381,7 +381,7 @@ class TestQuickLoadMetrics:
         except Exception as e:
             pytest.fail(f"Unexpected error connecting to {url}: {e}")
     
-    @pytest.mark.xray("PZ-LOAD-001")
+    @pytest.mark.xray("PZ-14091")
     def test_api_latency_percentiles(self, focus_server_url: str, load_config: Dict[str, Any], 
                                      sla_config: Dict[str, Any]):
         """
@@ -441,7 +441,7 @@ class TestQuickLoadMetrics:
         assert result.latency_p99 < sla_config['api_p99'], \
             f"P99 latency {result.latency_p99:.1f}ms exceeds {sla_config['api_p99']}ms SLA ({env})"
     
-    @pytest.mark.xray("PZ-LOAD-002")
+    @pytest.mark.xray("PZ-14033")
     def test_sustained_throughput(self, focus_server_url: str, load_config: Dict[str, Any],
                                   sla_config: Dict[str, Any]):
         """
@@ -485,7 +485,7 @@ class TestQuickLoadMetrics:
         assert result.requests_per_second > sla_config['min_throughput'], \
             f"Throughput {result.requests_per_second:.1f} req/s below {sla_config['min_throughput']} ({env})"
     
-    @pytest.mark.xray("PZ-LOAD-003")
+    @pytest.mark.xray("PZ-14028")
     def test_concurrent_request_handling(self, focus_server_url: str, load_config: Dict[str, Any],
                                          sla_config: Dict[str, Any]):
         """
@@ -532,7 +532,7 @@ class TestQuickLoadMetrics:
         assert result.latency_p99 < sla_config['api_p99'], \
             f"P99 latency {result.latency_p99:.1f}ms exceeds {sla_config['api_p99']}ms under burst ({env})"
     
-    @pytest.mark.xray("PZ-LOAD-004")
+    @pytest.mark.xray("PZ-14033")
     def test_error_rate_under_load(self, focus_server_url: str, load_config: Dict[str, Any],
                                    sla_config: Dict[str, Any]):
         """
@@ -585,7 +585,7 @@ class TestEndpointLoad:
     Load tests for specific critical endpoints.
     """
     
-    @pytest.mark.xray("PZ-LOAD-010")
+    @pytest.mark.xray("PZ-13762")
     def test_channels_endpoint_performance(self, focus_server_url: str, load_config: Dict[str, Any],
                                            sla_config: Dict[str, Any]):
         """
@@ -625,7 +625,7 @@ class TestEndpointLoad:
         assert result.error_rate < sla_config['channels_error_rate'], \
             f"/channels error rate {result.error_rate:.1f}% exceeds {sla_config['channels_error_rate']}% ({env})"
     
-    @pytest.mark.xray("PZ-LOAD-011")
+    @pytest.mark.xray("PZ-14026")
     def test_ack_endpoint_performance(self, focus_server_url: str, load_config: Dict[str, Any],
                                       sla_config: Dict[str, Any]):
         """

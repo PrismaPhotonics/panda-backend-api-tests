@@ -1577,7 +1577,7 @@ class TestGradualLiveLoad:
         if result.breaking_point:
             logger.warning(f"   Breaking Point: {result.breaking_point} jobs")
     
-    @pytest.mark.xray("PZ-LOAD-301")
+    @pytest.mark.xray("PZ-15374")  # Load - Live - Quick Gradual Load (2→10 Jobs)
     def test_quick_gradual_load(self, quick_gradual_tester, gradual_load_sla):
         """
         Test: Quick gradual load test (2 → 10 jobs).

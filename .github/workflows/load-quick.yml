@@ -1,13 +1,40 @@
+# Quick Load Tests Workflow
+# =========================
+# This workflow runs quick load tests that CREATE REAL JOBS:
+#
+# 1. Quick Gradual Live Load (2→10 jobs)
+#    - Creates Live streaming jobs with gRPC connections
+#    - Increments: 2 jobs every 5 seconds
+#    - Maximum: 10 concurrent Live jobs
+#    - Xray: PZ-15374
+#
+# 2. Quick Gradual Historic Load (2→10 jobs)
+#    - Creates Historic playback jobs from MongoDB recordings
+#    - Increments: 2 jobs every 5 seconds  
+#    - Maximum: 10 concurrent Historic jobs
+#    - Xray: PZ-15318
+#
+# 3. Server Connectivity Check
+#    - Validates /ack endpoint is reachable before load tests
+#    - Xray: PZ-14026
+#
+# Execution Time: ~3-5 minutes
+# Purpose: CI/CD validation without overloading the system
+
 name: Quick Load Tests
 
 on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
-        type: environment
+        description: "Target environment (staging, production, or kefar_saba)"
+        type: choice
         required: true
-        default: "kefar_saba"
+        default: "staging"
+        options:
+          - staging
+          - production
+          - kefar_saba
   pull_request:
     branches: [main]
     paths:
@@ -17,7 +44,7 @@ jobs:
   quick-load-tests:
     name: Quick Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
-    environment: ${{ inputs.environment || 'kefar_saba' }}
+    environment: ${{ inputs.environment || 'staging' }}
     permissions:
       checks: write
       pull-requests: write
@@ -120,12 +147,26 @@ jobs:
           }
           
           $targetEnv = "${{ inputs.environment }}"
-          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
+          if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "staging" }
           
-          Write-Host "Running quick load tests on environment: $targetEnv"
-          py -m pytest be_focus_server_tests/load/test_quick_load_metrics.py `
+          Write-Host "============================================"
+          Write-Host "QUICK LOAD TESTS - Creating Real Jobs"
+          Write-Host "============================================"
+          Write-Host "Environment: $targetEnv"
+          Write-Host "Tests include:"
+          Write-Host "  - Quick Gradual Live Load (2→10 jobs)"
+          Write-Host "  - Quick Gradual Historic Load (2→10 jobs)"
+          Write-Host "  - API Performance Baseline Tests"
+          Write-Host "============================================"
+          
+          # Run Quick Load Tests that create REAL jobs (Live + Historic)
+          py -m pytest `
+            be_focus_server_tests/load/test_gradual_live_load.py::TestGradualLiveLoad::test_quick_gradual_load `
+            be_focus_server_tests/load/test_gradual_historic_load.py::TestGradualHistoricJobLoad::test_quick_gradual_load `
+            be_focus_server_tests/load/test_quick_load_metrics.py::TestQuickLoadMetrics::test_server_connectivity `
             --env $targetEnv `
-            -m "quick_load" `
+            --skip-health-check `
+            --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
             --junitxml=test-results\junit-quick-load.xml `
@@ -185,7 +226,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
           CHECK_RUN_ID: ${{ steps.get-check-run.outputs.id }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
         run: |
           py parse_junit_results.py
 
