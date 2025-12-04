@@ -251,9 +251,15 @@ def write_summary(total_tests, total_failures, total_errors, total_skipped, tota
     
     passed = len(passed_tests)
     environment = os.environ.get('TARGET_ENVIRONMENT', 'unknown')
+    # GitHub Actions automatically provides these environment variables
+    # They are also explicitly set in workflow files for clarity
     repo = os.environ.get('GITHUB_REPOSITORY', '')
     run_id = os.environ.get('GITHUB_RUN_ID', '')
     sha = os.environ.get('GITHUB_SHA', '')[:7] if os.environ.get('GITHUB_SHA') else ''
+    
+    # Debug: Log if variables are missing (only in non-summary output)
+    if not repo or not run_id:
+        print(f"Warning: Missing GitHub context - repo={repo}, run_id={run_id}", file=sys.stderr)
     
     # Determine overall status
     status_emoji = get_status_emoji(passed, total_failures, total_errors)
@@ -429,11 +435,16 @@ def write_summary(total_tests, total_failures, total_errors, total_skipped, tota
     # ==========================================
     if repo and run_id:
         lines.append('## 🔗 Quick Links\n\n')
-        lines.append(f'- [📋 View Full Workflow Run](https://github.com/{repo}/actions/runs/{run_id})\n')
-        lines.append(f'- [📊 View Test Artifacts](https://github.com/{repo}/actions/runs/{run_id}#artifacts)\n')
+        # Generate absolute URLs for GitHub Actions
+        workflow_url = f'https://github.com/{repo}/actions/runs/{run_id}'
+        artifacts_url = f'https://github.com/{repo}/actions/runs/{run_id}#artifacts'
+        # Use markdown links with emojis outside the link text for better compatibility
+        lines.append(f'- 📋 [View Full Workflow Run]({workflow_url})\n')
+        lines.append(f'- 📊 [View Test Artifacts]({artifacts_url})\n')
         check_run_id = os.environ.get('CHECK_RUN_ID', '')
         if check_run_id:
-            lines.append(f'- [🧪 View Detailed Test Report](https://github.com/{repo}/runs/{check_run_id})\n')
+            check_run_url = f'https://github.com/{repo}/runs/{check_run_id}'
+            lines.append(f'- 🧪 [View Detailed Test Report]({check_run_url})\n')
         lines.append('\n')
     
     # ==========================================
