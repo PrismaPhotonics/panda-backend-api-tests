@@ -242,7 +242,8 @@ jobs:
           Write-Host "Parsing JUnit test results..."
           py parse_junit_results.py
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "Warning: parse_junit_results.py exited with code $LASTEXITCODE, but continuing..."
+            Write-Host "::error::parse_junit_results.py detected issues (e.g., all tests skipped)"
+            exit $LASTEXITCODE
           }
 
       - uses: actions/upload-artifact@v4
