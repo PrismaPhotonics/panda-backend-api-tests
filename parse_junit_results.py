@@ -76,13 +76,17 @@ def get_status_emoji(passed: int, failed: int, errors: int) -> str:
 
 
 def parse_junit_xml():
-    """Parse all JUnit XML files and create comprehensive summary."""
+    """Parse all JUnit XML files and create comprehensive summary.
+    
+    Returns:
+        tuple: (total_tests, total_skipped, total_passed, total_failed, total_errors)
+    """
     # Ensure test-results directory exists
     test_results_dir = 'test-results'
     if not os.path.exists(test_results_dir):
         print(f"Warning: {test_results_dir} directory does not exist")
         write_empty_summary()
-        return
+        return (0, 0, 0, 0, 0)
     
     # Try both forward and backward slashes for cross-platform compatibility
     xml_files = []
@@ -101,7 +105,7 @@ def parse_junit_xml():
         print(f"No JUnit XML files found in {test_results_dir}/")
         # Still create a summary showing no tests were found
         write_empty_summary()
-        return
+        return (0, 0, 0, 0, 0)
     
     # Collect all test data
     total_tests = 0
@@ -209,11 +213,17 @@ def parse_junit_xml():
         except Exception as e:
             print(f"Error parsing {xml_file}: {e}", file=sys.stderr)
     
+    # Calculate passed count
+    passed = len(passed_tests)
+    
     # Write comprehensive summary
     write_summary(
         total_tests, total_failures, total_errors, total_skipped, total_time,
         tests_by_category, passed_tests, failed_tests, error_tests, skipped_tests
     )
+    
+    # Return statistics for checking if all tests were skipped
+    return (total_tests, total_skipped, passed, total_failures, total_errors)
 
 
 def write_empty_summary():
@@ -485,7 +495,19 @@ def write_summary(total_tests, total_failures, total_errors, total_skipped, tota
 
 if __name__ == '__main__':
     try:
-        parse_junit_xml()
+        # Parse XML and get results
+        result = parse_junit_xml()
+        
+        if result:
+            total_tests, total_skipped, total_passed, total_failed, total_errors = result
+            
+            # Check if all tests were skipped (and no tests actually ran)
+            if total_tests > 0 and total_skipped == total_tests and total_passed == 0 and total_failed == 0 and total_errors == 0:
+                print(f"::error::All {total_tests} tests were skipped - no tests actually ran!", file=sys.stderr)
+                print(f"::error::This indicates a configuration issue or missing test data.", file=sys.stderr)
+                print(f"::error::Workflow will fail to alert about this issue.", file=sys.stderr)
+                sys.exit(1)  # Fail the workflow
+        
         sys.exit(0)
     except Exception as e:
         print(f"Error parsing JUnit results: {e}", file=sys.stderr)
