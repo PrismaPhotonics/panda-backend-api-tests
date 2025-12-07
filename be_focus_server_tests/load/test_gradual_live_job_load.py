@@ -34,6 +34,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from enum import Enum
 from statistics import mean, stdev
 
+# Import K8s verification module
+from be_focus_server_tests.load.k8s_job_verification import (
+    verify_job_from_k8s,
+    verify_jobs_batch_from_k8s,
+    log_k8s_verification_summary,
+    assert_all_jobs_are_live,
+    K8sJobVerification,
+    JobType
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -225,16 +235,21 @@ class GradualLiveJobLoadTester:
         print(result.to_log_message())
     """
     
-    def __init__(self, config_manager, config: Optional[GradualLoadConfig] = None):
+    def __init__(self, config_manager, config: Optional[GradualLoadConfig] = None, k8s_manager=None):
         """
         Initialize the gradual load tester.
         
         Args:
             config_manager: Configuration manager instance
             config: Optional custom configuration (defaults to GradualLoadConfig)
+            k8s_manager: Optional KubernetesManager for job verification
         """
         self.config_manager = config_manager
         self.cfg = config or GradualLoadConfig()
+        self.k8s_manager = k8s_manager
+        
+        # K8s verification storage
+        self._k8s_verifications: List[K8sJobVerification] = []
         
         # Active jobs tracking
         self._active_jobs: Dict[str, ActiveJob] = {}
@@ -424,6 +439,23 @@ class GradualLiveJobLoadTester:
                             self._active_jobs[job.job_id] = job
                         successful += 1
                         logger.info(f"✅ Job {job.job_id} fully initialized in {(time.time() - start_time)*1000:.0f}ms ({job.frames_received} frames)")
+                        
+                        # K8s verification for each job
+                        if self.k8s_manager:
+                            try:
+                                verification = verify_job_from_k8s(
+                                    kubernetes_manager=self.k8s_manager,
+                                    job_id=job.job_id,
+                                    namespace="panda",
+                                    timeout=15
+                                )
+                                self._k8s_verifications.append(verification)
+                                
+                                if verification.verified:
+                                    job_type_emoji = "🔴" if verification.is_live() else "🕐"
+                                    logger.debug(f"   {job_type_emoji} K8s: {job.job_id} = {verification.job_type.value.upper()}")
+                            except Exception as verify_error:
+                                logger.debug(f"K8s verification failed for {job.job_id}: {verify_error}")
                     else:
                         failed += 1
                         if job:
@@ -798,6 +830,17 @@ class GradualLiveJobLoadTester:
         # Log results
         logger.info(result.to_log_message())
         
+        # K8s verification summary
+        if self._k8s_verifications:
+            verification_summary = log_k8s_verification_summary(self._k8s_verifications, logger)
+            
+            # Verify all jobs are LIVE (this is a Live Job Load Test)
+            try:
+                assert_all_jobs_are_live(self._k8s_verifications)
+                logger.info(f"✅ K8s verification: All {verification_summary['live']} jobs are LIVE")
+            except AssertionError as e:
+                logger.error(f"❌ K8s verification FAILED: {e}")
+        
         return result
 
 
@@ -810,7 +853,8 @@ def create_gradual_load_tester(
     initial_jobs: int = 5,
     step_increment: int = 5,
     max_jobs: int = 50,
-    step_interval: int = 10
+    step_interval: int = 10,
+    k8s_manager=None
 ) -> GradualLiveJobLoadTester:
     """
     Factory function to create a GradualLiveJobLoadTester with custom config.
@@ -821,6 +865,7 @@ def create_gradual_load_tester(
         step_increment: Jobs to add per step (default: 5)
         max_jobs: Maximum jobs (default: 50)
         step_interval: Seconds between steps (default: 10)
+        k8s_manager: Optional KubernetesManager for job verification
         
     Returns:
         Configured GradualLiveJobLoadTester instance
@@ -831,7 +876,7 @@ def create_gradual_load_tester(
     config.MAX_JOBS = max_jobs
     config.STEP_INTERVAL_SECONDS = step_interval
     
-    return GradualLiveJobLoadTester(config_manager, config)
+    return GradualLiveJobLoadTester(config_manager, config, k8s_manager)
 
 
 # =============================================================================
@@ -839,7 +884,7 @@ def create_gradual_load_tester(
 # =============================================================================
 
 @pytest.fixture
-def gradual_load_tester(config_manager) -> GradualLiveJobLoadTester:
+def gradual_load_tester(config_manager, kubernetes_manager) -> GradualLiveJobLoadTester:
     """
     Fixture to create GradualLiveJobLoadTester with default configuration.
     
@@ -847,12 +892,13 @@ def gradual_load_tester(config_manager) -> GradualLiveJobLoadTester:
     - Initial: 5 jobs
     - Step: +5 jobs every 10 seconds
     - Max: 50 jobs
+    - K8s job verification enabled
     """
-    return GradualLiveJobLoadTester(config_manager)
+    return GradualLiveJobLoadTester(config_manager, k8s_manager=kubernetes_manager)
 
 
 @pytest.fixture
-def quick_gradual_load_tester(config_manager) -> GradualLiveJobLoadTester:
+def quick_gradual_load_tester(config_manager, kubernetes_manager) -> GradualLiveJobLoadTester:
     """
     Fixture for quick gradual load testing (smaller scale for CI).
     
@@ -860,6 +906,7 @@ def quick_gradual_load_tester(config_manager) -> GradualLiveJobLoadTester:
     - Initial: 2 jobs
     - Step: +2 jobs every 5 seconds
     - Max: 10 jobs
+    - K8s job verification enabled
     """
     config = GradualLoadConfig()
     config.INITIAL_JOBS = 2
@@ -867,7 +914,7 @@ def quick_gradual_load_tester(config_manager) -> GradualLiveJobLoadTester:
     config.MAX_JOBS = 10
     config.STEP_INTERVAL_SECONDS = 5
     
-    return GradualLiveJobLoadTester(config_manager, config)
+    return GradualLiveJobLoadTester(config_manager, config, kubernetes_manager)
 
 
 # =============================================================================

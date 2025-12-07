@@ -21,7 +21,17 @@ Date: 2025-11-30
 import pytest
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
+
+# Import K8s verification module
+from be_focus_server_tests.load.k8s_job_verification import (
+    verify_job_from_k8s,
+    verify_jobs_batch_from_k8s,
+    log_k8s_verification_summary,
+    assert_all_jobs_are_live,
+    K8sJobVerification,
+    JobType
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,11 +80,11 @@ def live_sla() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def live_tester(config_manager):
-    """Create Live Job Load Tester."""
+def live_tester(config_manager, kubernetes_manager):
+    """Create Live Job Load Tester with K8s verification."""
     from be_focus_server_tests.load.job_load_tester import create_live_job_tester
     
-    return create_live_job_tester(
+    tester = create_live_job_tester(
         config_manager=config_manager,
         channels_min=1,
         channels_max=50,
@@ -85,14 +95,17 @@ def live_tester(config_manager):
         grpc_connect_retry_delay_ms=2000,
         frames_to_receive=5,
     )
+    # Attach kubernetes_manager for K8s verification
+    tester.k8s_manager = kubernetes_manager
+    return tester
 
 
 @pytest.fixture
-def heavy_live_tester(config_manager):
-    """Create heavy Live Job Load Tester."""
+def heavy_live_tester(config_manager, kubernetes_manager):
+    """Create heavy Live Job Load Tester with K8s verification."""
     from be_focus_server_tests.load.job_load_tester import create_live_job_tester
     
-    return create_live_job_tester(
+    tester = create_live_job_tester(
         config_manager=config_manager,
         channels_min=1,
         channels_max=500,
@@ -102,6 +115,9 @@ def heavy_live_tester(config_manager):
         max_grpc_connect_retries=5,
         frames_to_receive=3,
     )
+    # Attach kubernetes_manager for K8s verification
+    tester.k8s_manager = kubernetes_manager
+    return tester
 
 
 # =============================================================================
