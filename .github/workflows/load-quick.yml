@@ -29,7 +29,7 @@ on:
       environment:
         description: "Target environment"
         type: choice
-        required: true
+        required: false  # Not required - uses default for push/PR triggers
         default: "kefar_saba"
         options:
           - kefar_saba
