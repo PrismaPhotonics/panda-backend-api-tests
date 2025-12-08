@@ -31,6 +31,46 @@ logger = logging.getLogger(__name__)
 
 
 # ===================================================================
+# Helper Functions
+# ===================================================================
+
+def get_rabbitmq_pod_selector(k8s_manager_or_config) -> str:
+    """
+    Get the correct RabbitMQ pod selector from environment config.
+    
+    Args:
+        k8s_manager_or_config: Either KubernetesManager or ConfigManager instance
+        
+    Returns:
+        str: Label selector string for RabbitMQ pods
+    """
+    # Try to get config_manager from k8s_manager if needed
+    config_manager = k8s_manager_or_config
+    if hasattr(k8s_manager_or_config, 'config_manager'):
+        config_manager = k8s_manager_or_config.config_manager
+    
+    # Try to get from services config first
+    try:
+        if hasattr(config_manager, 'get_environment_config'):
+            env_config = config_manager.get_environment_config()
+        elif hasattr(config_manager, '_config_data'):
+            env_config = config_manager._config_data
+        else:
+            env_config = {}
+            
+        services = env_config.get("services", {})
+        rabbitmq_config = services.get("rabbitmq", {})
+        pod_selector = rabbitmq_config.get("pod_selector")
+        if pod_selector:
+            return pod_selector
+    except Exception:
+        pass
+    
+    # Fallback to app.kubernetes.io/instance=rabbitmq-panda (works for both staging and kefar_saba)
+    return "app.kubernetes.io/instance=rabbitmq-panda"
+
+
+# ===================================================================
 # Fixtures
 # ===================================================================
 
@@ -133,7 +173,7 @@ class TestRabbitMQPodResilience:
         try:
             # Step 1: Get current RabbitMQ pod
             logger.info("\nStep 1: Getting current RabbitMQ pod...")
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
             if not pods:
                 # Try alternative label selector
                 pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
@@ -158,7 +198,7 @@ class TestRabbitMQPodResilience:
             logger.info("\nStep 4: Waiting for pod deletion...")
             deleted = False
             for attempt in range(30):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if not any(p['name'] == original_pod_name for p in pods):
@@ -172,7 +212,7 @@ class TestRabbitMQPodResilience:
             # Step 5: Wait for new pod to be created
             logger.info("\nStep 5: Waiting for new pod to be created...")
             for attempt in range(60):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if pods:
@@ -277,7 +317,7 @@ class TestRabbitMQPodResilience:
         try:
             # Step 1: Verify RabbitMQ pod exists
             logger.info("\nStep 1: Verifying RabbitMQ pod exists...")
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
             if not pods:
                 pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
             assert len(pods) > 0, "RabbitMQ pod not found"
@@ -293,7 +333,7 @@ class TestRabbitMQPodResilience:
             logger.info("\nStep 3: Waiting for pods to terminate...")
             pods_terminated = False
             for attempt in range(60):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if len(pods) == 0:
@@ -334,7 +374,7 @@ class TestRabbitMQPodResilience:
             logger.info("\nStep 6: Waiting for RabbitMQ pod to be ready...")
             pod_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if pods:
@@ -424,7 +464,7 @@ class TestRabbitMQPodResilience:
         try:
             # Step 1: Get RabbitMQ pod name
             logger.info("\nStep 1: Getting RabbitMQ pod name...")
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
             if not pods:
                 pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
             assert len(pods) > 0, "RabbitMQ pod not found"
@@ -473,7 +513,7 @@ class TestRabbitMQPodResilience:
             logger.info("\nStep 5: Verifying pod restarted successfully...")
             time.sleep(10)
             
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
             if not pods:
                 pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
             assert len(pods) > 0, "RabbitMQ pod not found after restart"
@@ -558,7 +598,7 @@ class TestRabbitMQPodResilience:
             
             # Wait for pods to terminate
             for attempt in range(60):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if len(pods) == 0:
@@ -597,7 +637,7 @@ class TestRabbitMQPodResilience:
                 "Failed to restore RabbitMQ"
             
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if pods:
@@ -666,7 +706,7 @@ class TestRabbitMQPodResilience:
                 "Failed to scale RabbitMQ to 0"
             
             for attempt in range(60):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if len(pods) == 0:
@@ -683,7 +723,7 @@ class TestRabbitMQPodResilience:
             
             recovery_start = time.time()
             
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
             if not pods:
                 pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
             assert len(pods) > 0, "RabbitMQ pod not created"
@@ -751,7 +791,7 @@ class TestRabbitMQPodResilience:
         
         namespace = k8s_manager.k8s_config.get("namespace", "panda")
         
-        pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+        pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
         if not pods:
             pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
         assert len(pods) > 0, "RabbitMQ pod not found"

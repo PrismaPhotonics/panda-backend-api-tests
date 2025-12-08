@@ -174,9 +174,11 @@ class MongoDBManager:
             
             # Fallback to direct API access
             if self.k8s_core_v1 is not None:
+                # Get pod_selector from config, fallback to legacy format
+                pod_selector = self.mongo_config.get("pod_selector", f"app={deployment_name}")
                 pods = self.k8s_core_v1.list_namespaced_pod(
                     namespace=namespace,
-                    label_selector=f"app={deployment_name}"
+                    label_selector=pod_selector
                 )
                 if pods.items:
                     pod_name = pods.items[0].metadata.name

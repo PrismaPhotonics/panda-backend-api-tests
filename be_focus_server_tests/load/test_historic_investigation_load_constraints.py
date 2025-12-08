@@ -1300,13 +1300,13 @@ class TestHistoricInvestigationConstraints:
         INITIAL_CONNECTIONS = 5
         CONNECTIONS_PER_WAVE = 5
         WAVE_INTERVAL_SECONDS = 20
-        TARGET_CONNECTIONS = 40
+        TARGET_CONNECTIONS = 60
         FINAL_SUSTAIN_SECONDS = 60
         TOTAL_WAVES = (TARGET_CONNECTIONS - INITIAL_CONNECTIONS) // CONNECTIONS_PER_WAVE + 1
         
         # Calculate total test duration to determine required job duration
         # Test phases: (waves * interval) + sustain + buffer
-        waves_duration = TOTAL_WAVES * WAVE_INTERVAL_SECONDS  # 8 * 20 = 160 seconds
+        waves_duration = TOTAL_WAVES * WAVE_INTERVAL_SECONDS  # 12 * 20 = 240 seconds for 60 connections
         total_test_duration = waves_duration + FINAL_SUSTAIN_SECONDS + 60  # Add 60s buffer = ~280 seconds
         
         # Historic playback rate - server plays back recordings at ~200x realtime
