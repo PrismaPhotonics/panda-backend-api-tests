@@ -664,7 +664,8 @@ def fetch_recordings_from_mongodb(
         logger.info(f"Found {len(guids)} GUID collections for environment '{current_env}': {guids}")
         
         # Calculate time range: from today to weeks_back weeks ago
-        now = datetime.now()
+        # IMPORTANT: Use UTC time since MongoDB stores all datetimes as timezone-naive UTC
+        now = datetime.now(timezone.utc)
         weeks_ago = now - timedelta(weeks=weeks_back)
         
         logger.info(f"🔍 Time range filter: {weeks_ago.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')} (last {weeks_back} weeks)")
