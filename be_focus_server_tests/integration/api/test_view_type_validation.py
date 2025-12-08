@@ -191,6 +191,10 @@ class TestViewTypeValidation:
             - ViewType.SINGLECHANNEL (1) → accepted
             - ViewType.WATERFALL (2) → accepted
         
+        Note:
+            - Waterfall view does NOT support displayTimeAxisDuration and frequencyRange
+            - These fields must be omitted or set to None for waterfall views
+        
         Jira: PZ-13878
         Priority: HIGH
         """
@@ -207,16 +211,29 @@ class TestViewTypeValidation:
         for view_type_value, view_type_name in valid_view_types:
             logger.info(f"\nTesting {view_type_name} (value={view_type_value})")
             
-            config = {
-                "displayTimeAxisDuration": 10,
-                "nfftSelection": 1024,
-                "displayInfo": {"height": 1000},
-                "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
-                "start_time": None,
-                "end_time": None,
-                "view_type": view_type_value
-            }
+            # Build config based on view type
+            # Waterfall view does NOT support displayTimeAxisDuration and frequencyRange
+            if view_type_value == ViewType.WATERFALL:
+                config = {
+                    "nfftSelection": 1,  # Must be 1 for waterfall
+                    "displayInfo": {"height": 1000},
+                    "channels": {"min": 1, "max": 50},
+                    "start_time": None,
+                    "end_time": None,
+                    "view_type": view_type_value
+                    # Note: displayTimeAxisDuration and frequencyRange are NOT applicable
+                }
+            else:
+                config = {
+                    "displayTimeAxisDuration": 10,
+                    "nfftSelection": 1024,
+                    "displayInfo": {"height": 1000},
+                    "channels": {"min": 1, "max": 50},
+                    "frequencyRange": {"min": 0, "max": 500},
+                    "start_time": None,
+                    "end_time": None,
+                    "view_type": view_type_value
+                }
             
             config_request = ConfigureRequest(**config)
             response = focus_server_api.configure_streaming_job(config_request)

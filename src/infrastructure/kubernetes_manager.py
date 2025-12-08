@@ -198,6 +198,19 @@ class KubernetesManager:
                     "Are you running outside of a Kubernetes environment?"
                 )
     
+    def is_k8s_available(self) -> bool:
+        """
+        Check if Kubernetes operations are available.
+        
+        Returns:
+            True if K8s is available (direct API or SSH fallback)
+        """
+        try:
+            self._ensure_k8s_available()
+            return True
+        except InfrastructureError:
+            return False
+    
     def get_pods(self, namespace: Optional[str] = None, label_selector: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get pods in the specified namespace.
@@ -978,7 +991,7 @@ class KubernetesManager:
         Check if a resource exists in the cluster.
         
         Args:
-            resource_type: Type of resource (pod, deployment, service, etc.)
+            resource_type: Type of resource (pod, deployment, service, job, statefulset)
             resource_name: Name of the resource
             namespace: Kubernetes namespace (defaults to configured namespace)
             
@@ -990,6 +1003,10 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._check_resource_exists_via_ssh(resource_type, resource_name, namespace)
+        
         try:
             if resource_type == "pod":
                 self.k8s_core_v1.read_namespaced_pod(name=resource_name, namespace=namespace)
@@ -999,6 +1016,8 @@ class KubernetesManager:
                 self.k8s_core_v1.read_namespaced_service(name=resource_name, namespace=namespace)
             elif resource_type == "job":
                 self.k8s_batch_v1.read_namespaced_job(name=resource_name, namespace=namespace)
+            elif resource_type == "statefulset":
+                self.k8s_apps_v1.read_namespaced_stateful_set(name=resource_name, namespace=namespace)
             else:
                 raise ValueError(f"Unsupported resource type: {resource_type}")
             
@@ -1010,7 +1029,36 @@ class KubernetesManager:
                 self.logger.debug(f"Resource '{resource_name}' of type '{resource_type}' does not exist")
                 return False
             else:
+                # If API fails, try SSH fallback
+                error_str = str(e).lower()
+                if "timeout" in error_str or "connection" in error_str:
+                    self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                    if self._init_ssh_fallback():
+                        return self._check_resource_exists_via_ssh(resource_type, resource_name, namespace)
                 raise InfrastructureError(f"Error checking resource existence: {e}") from e
+    
+    def _check_resource_exists_via_ssh(self, resource_type: str, resource_name: str, namespace: str) -> bool:
+        """Check if resource exists via SSH kubectl command."""
+        try:
+            cmd = f"get {resource_type} {resource_name}"
+            result = self._execute_kubectl_via_ssh(cmd, timeout=15)
+            
+            if result["success"]:
+                self.logger.debug(f"Resource '{resource_name}' of type '{resource_type}' exists (via SSH)")
+                return True
+            else:
+                # Check if it's a "not found" error
+                stderr = result.get("stderr", "").lower()
+                if "not found" in stderr or "notfound" in stderr:
+                    self.logger.debug(f"Resource '{resource_name}' of type '{resource_type}' does not exist (via SSH)")
+                    return False
+                # Other error
+                self.logger.warning(f"Error checking resource via SSH: {result['stderr']}")
+                return False
+                
+        except Exception as e:
+            self.logger.warning(f"Error checking resource existence via SSH: {e}")
+            return False
     
     def get_pod_by_name(self, pod_name: str, namespace: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
@@ -1182,6 +1230,10 @@ class KubernetesManager:
         if not namespace:
             namespace = self.k8s_config.get("namespace", "default")
         
+        # Use SSH fallback if direct API is not available
+        if self.use_ssh_fallback:
+            return self._scale_statefulset_via_ssh(statefulset_name, replicas, namespace)
+        
         try:
             self.logger.info(f"Scaling StatefulSet '{statefulset_name}' to {replicas} replicas...")
             
@@ -1199,7 +1251,34 @@ class KubernetesManager:
             return True
             
         except ApiException as e:
+            # If API fails, try SSH fallback
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                self.logger.warning("Direct API failed, falling back to SSH-based kubectl")
+                if self._init_ssh_fallback():
+                    return self._scale_statefulset_via_ssh(statefulset_name, replicas, namespace)
             self.logger.error(f"Failed to scale StatefulSet '{statefulset_name}': {e}")
+            return False
+    
+    def _scale_statefulset_via_ssh(self, statefulset_name: str, replicas: int, namespace: str) -> bool:
+        """Scale StatefulSet via SSH kubectl command."""
+        try:
+            self.logger.info(f"Scaling StatefulSet '{statefulset_name}' to {replicas} replicas via SSH...")
+            
+            cmd = f"scale statefulset {statefulset_name} --replicas={replicas}"
+            result = self._execute_kubectl_via_ssh(cmd, timeout=30)
+            
+            if result["success"]:
+                # Wait for scaling to complete
+                self._wait_for_statefulset_scale(statefulset_name, replicas, namespace)
+                self.logger.info(f"StatefulSet '{statefulset_name}' scaled to {replicas} replicas successfully via SSH")
+                return True
+            else:
+                self.logger.error(f"Failed to scale StatefulSet '{statefulset_name}' via SSH: {result['stderr']}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error scaling StatefulSet '{statefulset_name}' via SSH: {e}")
             return False
     
     def _wait_for_statefulset_scale(self, statefulset_name: str, expected_replicas: int, 
@@ -1218,21 +1297,41 @@ class KubernetesManager:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                statefulset = self.k8s_apps_v1.read_namespaced_stateful_set(
-                    name=statefulset_name,
-                    namespace=namespace
-                )
-                
-                ready_replicas = statefulset.status.ready_replicas or 0
-                
-                if ready_replicas == expected_replicas:
-                    self.logger.debug(f"StatefulSet '{statefulset_name}' reached {expected_replicas} replicas")
-                    return
-                
-                self.logger.debug(f"StatefulSet '{statefulset_name}' has {ready_replicas} ready replicas, waiting...")
+                if self.use_ssh_fallback:
+                    # Use kubectl via SSH to check StatefulSet status
+                    cmd = f"get statefulset {statefulset_name} -o json"
+                    result = self._execute_kubectl_via_ssh(cmd, timeout=10)
+                    
+                    if result["success"]:
+                        statefulset_data = json.loads(result["stdout"])
+                        status = statefulset_data.get("status", {})
+                        ready_replicas = status.get("readyReplicas", 0) or 0
+                        
+                        if ready_replicas == expected_replicas:
+                            self.logger.debug(f"StatefulSet '{statefulset_name}' reached {expected_replicas} replicas")
+                            return
+                        
+                        self.logger.debug(f"StatefulSet '{statefulset_name}' has {ready_replicas} ready replicas, waiting...")
+                    else:
+                        self.logger.warning(f"Failed to get StatefulSet status via SSH: {result['stderr']}")
+                else:
+                    statefulset = self.k8s_apps_v1.read_namespaced_stateful_set(
+                        name=statefulset_name,
+                        namespace=namespace
+                    )
+                    
+                    ready_replicas = statefulset.status.ready_replicas or 0
+                    
+                    if ready_replicas == expected_replicas:
+                        self.logger.debug(f"StatefulSet '{statefulset_name}' reached {expected_replicas} replicas")
+                        return
+                    
+                    self.logger.debug(f"StatefulSet '{statefulset_name}' has {ready_replicas} ready replicas, waiting...")
                 
             except ApiException as e:
                 self.logger.warning(f"K8s API error while waiting for StatefulSet scale: {e}")
+            except Exception as e:
+                self.logger.warning(f"Error while waiting for StatefulSet scale: {e}")
             
             time.sleep(5)
         

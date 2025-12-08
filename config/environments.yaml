@@ -1,13 +1,177 @@
 # Focus Server Automation Framework - Environment Configuration
 # =============================================================
 # 
-# Environments: staging, kefar_saba
+# Environments: local, staging, kefar_saba
 # Default: staging (November 2025)
 # 
+# Local environment uses localhost for development
 # Staging environment uses 10.10.10.100 (new IP addresses)
+# Production environment (alias for kefar_saba) uses 10.10.100.100
 # Kefar_Saba environment uses 10.10.100.100 (production IP addresses)
 
 environments:
+  # ============================================================================
+  # LOCAL ENVIRONMENT (Development)
+  # ============================================================================
+  local:
+    name: "Local Development"
+    description: "Local development environment with localhost services"
+    
+    # Focus Server (Local Development)
+    focus_server:
+      base_url: "http://localhost:5000"
+      frontend_url: "http://localhost:3000/liveView"
+      frontend_api_url: "http://localhost:3000/prisma/api/internal/sites/prisma-210-1000"
+      site_id: "prisma-210-1000"
+      ssl: false
+      verify_ssl: false
+      
+      port_forward:
+        enabled: true
+        service: "focus-server-service"
+        namespace: "default"
+        local_port: 5000
+        remote_port: 5000
+    
+    # gRPC Configuration
+    grpc:
+      timeout_seconds: 30
+      stream_min_timeout_seconds: 60
+      num_retries: 3
+      retry_backoff_factor: 2.0
+    
+    # System Constraints
+    constraints:
+      frequency:
+        max_hz: 1000
+        min_hz: 0
+        min_range_hz: 1
+      sensors:
+        total_range: 2222
+        default_start: 11
+        default_end: 109
+      windows:
+        max_concurrent: 10
+        num_live_screens: 10
+        num_tabs: 5
+    
+    # NFFT Configuration
+    nfft:
+      default: 1024
+      valid_values:
+        - 128
+        - 256
+        - 512
+        - 1024
+        - 2048
+        - 4096
+        - 8192
+        - 16384
+        - 32768
+        - 65536
+    
+    # Display Defaults
+    defaults:
+      frequency:
+        start_hz: 0
+        end_hz: 1000
+      waterfall:
+        num_lines: 200
+      time:
+        window_seconds: 30
+        display_axis_duration: 30
+      view_type: "MultiChannelSpectrogram"
+      refresh_rate_hz: 20
+    
+    # Features
+    features:
+      enable_reconnection: true
+      enable_debug_tools: true
+      split_screen: true
+      full_screen: false
+    
+    # Saved Data
+    saved_data:
+      folder: "C:\\Panda\\SavedData"
+      enable_save: true
+      enable_load: true
+    
+    # MongoDB (Local)
+    mongodb:
+      host: "localhost"
+      port: 27017
+      username: "prisma"
+      password: "prisma"
+      database: "prisma"
+      auth_source: "prisma"
+      connection_string: "mongodb://prisma:prisma@localhost:27017/?authSource=prisma"
+      ssl: false
+      replica_set: null
+    
+    # RabbitMQ (Local)
+    rabbitmq:
+      host: "localhost"
+      port: 5672
+      ssl_port: 5671
+      management_port: 15672
+      prometheus_port: 9419
+      erlang_port: 4369
+      inter_node_port: 25672
+      username: "guest"
+      password: "guest"
+      vhost: "/"
+      ssl: false
+      exchange: "prisma"
+    
+    # Kubernetes (Not available locally)
+    kubernetes:
+      api_server: null
+      dashboard: null
+      context: null
+      namespace: "default"
+      config_file: null
+      
+      access_method: "none"
+      ssh_gateway: null
+      
+      k9s:
+        available: false
+        command: "k9s"
+        default_namespace: "default"
+    
+    # SSH Access (Not available locally)
+    ssh:
+      jump_host: null
+      target_host: null
+    
+    # Test Data
+    test_data:
+      base_path: "./test_data"
+      cleanup_after_test: true
+    
+    # Infrastructure Services
+    services:
+      focus_server:
+        deployment: "focus-server"
+        service: "focus-server"
+        pod_selector: "app=focus-server"
+      mongodb:
+        deployment: "mongodb"
+        service: "mongodb"
+        pod_selector: "app=mongodb"
+      rabbitmq:
+        deployment: "rabbitmq"
+        service: "rabbitmq"
+        pod_selector: "app=rabbitmq"
+    
+    # Logging Configuration
+    logging:
+      log_grpc_messages: true
+      log_grpc_validation: true
+      log_paging: true
+      log_working_queue: true
+  
+  # ============================================================================
   # ============================================================================
   # STAGING ENVIRONMENT (November 2025)
   # ============================================================================
@@ -651,6 +815,26 @@ default_environment: "staging"
 
 # Environment-specific test configurations
 test_configurations:
+  local:
+    # MongoDB Outage Tests - DISABLED in local (no K8s)
+    mongodb_outage:
+      enabled: false
+      
+    # RabbitMQ Outage Tests - DISABLED in local (no K8s)
+    rabbitmq_outage:
+      enabled: false
+    
+    # Performance Tests - ENABLED (basic tests only)
+    performance:
+      enabled: true
+      max_concurrent_requests: 5
+      test_duration_minutes: 2
+    
+    # Load Tests - LIMITED in local
+    load_testing:
+      enabled: true
+      max_concurrent_jobs: 10
+  
   staging:
     # MongoDB Outage Tests - ENABLED IN STAGING
     mongodb_outage:
@@ -672,27 +856,7 @@ test_configurations:
       max_concurrent_jobs: 200
   
   kefar_saba:
-    # MongoDB Outage Tests - DISABLED
-    mongodb_outage:
-      enabled: false
-      
-    # RabbitMQ Outage Tests - DISABLED
-    rabbitmq_outage:
-      enabled: false
-    
-    # Performance Tests - ENABLED (safe, read-only)
-    performance:
-      enabled: true
-      max_concurrent_requests: 5
-      test_duration_minutes: 2
-    
-    # Load Tests - DISABLED
-    load_testing:
-      enabled: false  # Never run load tests in production
-      max_concurrent_jobs: 0  # Load tests disabled
-  
-  kefar_saba:
-    # Kefar Saba shares same configuration as production
+    # Kefar Saba - production-like environment
     mongodb_outage:
       enabled: false
     rabbitmq_outage:
@@ -702,6 +866,6 @@ test_configurations:
       max_concurrent_requests: 5
       test_duration_minutes: 2
     load_testing:
-      enabled: true  # Allow load testing in kefar_saba
+      enabled: true  # Allow limited load testing in kefar_saba
       max_concurrent_jobs: 50
 

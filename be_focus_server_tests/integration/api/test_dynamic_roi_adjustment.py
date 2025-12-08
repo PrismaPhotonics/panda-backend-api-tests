@@ -1,4 +1,4 @@
-﻿"""
+"""
 Integration Tests - Dynamic ROI Adjustment
 ============================================
 
@@ -656,14 +656,18 @@ class TestROIErrorHandling:
 @pytest.mark.regression
 class TestROIDataSize:
     """
-    Test suite for verifying data size consistency between different ROIs.
+    Test suite for verifying ROI configuration correctness.
     
-    These tests validate that different ROI configurations produce
-    the SAME data size. If data sizes differ, this indicates a bug.
+    These tests validate that:
+    1. channel_amount in response matches the requested ROI size
+    2. Different ROIs correctly produce different channel counts
+    3. frequencies_amount is ROI-independent (determined by NFFT)
+    4. ROI changes don't affect other configuration parameters
     
-    Bug Detection:
-        This test suite detects bugs where different ROI configurations
-        incorrectly produce different data sizes when they should be consistent.
+    Expected Behavior:
+        - ROI [1, 50] should return channel_amount = 50
+        - ROI [1, 100] should return channel_amount = 100
+        - frequencies_amount should be the same for both (NFFT-dependent)
     """
     
     @pytest.mark.parametrize(
@@ -1072,47 +1076,45 @@ class TestROIDataSize:
         logger.info(f"✅ TEST PASSED ({config_test_id}): Config params remained constant")
     
     @pytest.mark.regression
-    def test_different_rois_should_produce_same_data_size(self, focus_server_api):
+    def test_roi_configuration_returns_correct_channel_amount(self, focus_server_api):
         """
-        Test: Different ROIs should produce the same data size.
+        Test: ROI configuration returns correct channel_amount matching the request.
         
         Objective:
-            Verify that configuring jobs with different ROI ranges
-            produces the SAME data size. If data sizes differ, this indicates a bug.
+            Verify that when configuring a job with a specific ROI (channel range),
+            the response reflects the correct number of channels.
+            
+        This test validates that:
+            - channel_amount matches (max - min + 1) for the requested ROI
+            - frequencies_amount is independent of ROI (determined by NFFT)
+            - stream_amount scales appropriately with channel count
         
         Steps:
-            1. Configure job with ROI [min1, max1] (e.g., [1, 50])
-            2. Get data size (channel_amount or actual data size)
-            3. Configure new job with ROI [min2, max2] (e.g., [1, 100])
-            4. Get data size for second job
-            5. Verify both data sizes are the SAME (expected behavior)
-            6. If different, alert about the bug
+            1. Configure job with ROI [1, 50] (50 channels)
+            2. Verify channel_amount = 50
+            3. Configure job with ROI [1, 100] (100 channels)
+            4. Verify channel_amount = 100
+            5. Verify frequencies_amount is the SAME for both (NFFT-dependent, not ROI-dependent)
         
         Expected:
-            - Both ROIs should produce the same data size
-            - Data size should be consistent regardless of ROI range
-            - If sizes differ, this is a bug that should be reported
-        
-        Bug Detection:
-            This test detects a bug where different ROI configurations
-            incorrectly produce different data sizes when they should be the same.
+            - channel_amount should match the requested ROI size
+            - frequencies_amount should remain constant (same NFFT)
         """
         logger.info("=" * 80)
-        logger.info("TEST: Different ROIs Should Produce Same Data Size")
-        logger.info("=" * 80)
-        logger.info("⚠️  BUG DETECTION TEST: This test will FAIL if data sizes differ")
+        logger.info("TEST: ROI Configuration Returns Correct Channel Amount")
         logger.info("=" * 80)
         
         # Define two different ROIs
         roi1_min = 1
         roi1_max = 50
+        expected_channels_1 = roi1_max - roi1_min + 1  # 50 channels
         
         roi2_min = 1
         roi2_max = 100
+        expected_channels_2 = roi2_max - roi2_min + 1  # 100 channels
         
-        logger.info(f"ROI 1: [{roi1_min}, {roi1_max}]")
-        logger.info(f"ROI 2: [{roi2_min}, {roi2_max}]")
-        logger.info("Expected: Both should produce the SAME data size")
+        logger.info(f"ROI 1: [{roi1_min}, {roi1_max}] → Expected {expected_channels_1} channels")
+        logger.info(f"ROI 2: [{roi2_min}, {roi2_max}] → Expected {expected_channels_2} channels")
         
         # ============================================
         # Step 1: Configure first job with ROI 1
@@ -1273,28 +1275,63 @@ class TestROIDataSize:
         logger.info(f"✅ Job 2 data size: {data_size2}")
         
         # ============================================
-        # Step 3: Verify data sizes are the SAME
+        # Step 3: Verify channel_amounts match requested ROIs
         # ============================================
-        logger.info("\nStep 3: Verifying data sizes are the SAME...")
-        logger.info(f"  Job 1 data size: {data_size1}")
-        logger.info(f"  Job 2 data size: {data_size2}")
+        logger.info("\nStep 3: Verifying channel_amounts match requested ROIs...")
+        logger.info(f"  Job 1: ROI [{roi1_min}, {roi1_max}] → channel_amount: {data_size1}")
+        logger.info(f"  Job 2: ROI [{roi2_min}, {roi2_max}] → channel_amount: {data_size2}")
         
-        if data_size1 != data_size2:
+        bugs_found = []
+        
+        # Verify channel_amount matches requested ROI for job 1
+        if data_size1 != expected_channels_1:
+            bugs_found.append(
+                f"Job 1: Expected channel_amount={expected_channels_1} "
+                f"for ROI [{roi1_min}, {roi1_max}], got {data_size1}"
+            )
+        
+        # Verify channel_amount matches requested ROI for job 2
+        if data_size2 != expected_channels_2:
+            bugs_found.append(
+                f"Job 2: Expected channel_amount={expected_channels_2} "
+                f"for ROI [{roi2_min}, {roi2_max}], got {data_size2}"
+            )
+        
+        # Verify that different ROIs produce different channel_amounts (correct behavior!)
+        if data_size1 == data_size2:
+            bugs_found.append(
+                f"Both ROIs returned same channel_amount ({data_size1}) - "
+                f"this is incorrect! Different ROIs should return different channel counts."
+            )
+        
+        # Get frequencies_amount from responses to verify it's ROI-independent
+        freq_amount1 = getattr(response1, 'frequencies_amount', None)
+        freq_amount2 = getattr(response2, 'frequencies_amount', None)
+        
+        if freq_amount1 is not None and freq_amount2 is not None:
+            if freq_amount1 != freq_amount2:
+                bugs_found.append(
+                    f"frequencies_amount changed with ROI! "
+                    f"Job 1: {freq_amount1}, Job 2: {freq_amount2}. "
+                    f"Expected: frequencies_amount should be NFFT-dependent, not ROI-dependent."
+                )
+            else:
+                logger.info(f"✅ frequencies_amount is ROI-independent: {freq_amount1}")
+        
+        if bugs_found:
             error_msg = (
                 f"\n{'=' * 80}\n"
-                f"🚨 BUG DETECTED: Different ROIs produce different data sizes!\n"
-                f"{'=' * 80}\n"
-                f"ROI [{roi1_min}, {roi1_max}] → Data size: {data_size1}\n"
-                f"ROI [{roi2_min}, {roi2_max}] → Data size: {data_size2}\n"
-                f"\nExpected: Both ROIs should produce the SAME data size\n"
-                f"Actual: Data sizes differ by {abs(data_size1 - data_size2)} units\n"
-                f"\nThis indicates a bug in ROI handling!\n"
+                f"🚨 BUG DETECTED: ROI configuration issues!\n"
                 f"{'=' * 80}\n"
             )
+            for bug in bugs_found:
+                error_msg += f"  - {bug}\n"
+            error_msg += f"{'=' * 80}\n"
             logger.error(error_msg)
             raise AssertionError(error_msg)
         
-        logger.info(f"✅ TEST PASSED: Different ROIs produce the SAME data size")
-        logger.info(f"   ROI [{roi1_min}, {roi1_max}] → Data size: {data_size1}")
-        logger.info(f"   ROI [{roi2_min}, {roi2_max}] → Data size: {data_size2}")
-        logger.info(f"   ✅ Both match: {data_size1}")
+        logger.info(f"✅ TEST PASSED: ROI configuration returns correct channel_amounts")
+        logger.info(f"   ROI [{roi1_min}, {roi1_max}] → channel_amount: {data_size1} ✅")
+        logger.info(f"   ROI [{roi2_min}, {roi2_max}] → channel_amount: {data_size2} ✅")
+        if freq_amount1:
+            logger.info(f"   frequencies_amount (both): {freq_amount1} ✅")

@@ -354,6 +354,258 @@ def retry_on_exception(func, max_retries: int = 3, delay: float = 1.0,
     return wrapper
 
 
+def retry_with_backoff(
+    max_retries: int = 5,
+    initial_delay: float = 1.0,
+    max_delay: float = 60.0,
+    backoff_factor: float = 2.0,
+    retryable_status_codes: tuple = (429, 500, 502, 503, 504),
+    retryable_exceptions: tuple = None
+):
+    """
+    Decorator for retry with exponential backoff - specifically designed for API rate limiting.
+    
+    Features:
+    - Exponential backoff with configurable factor
+    - Respects Retry-After headers for 429 responses
+    - Configurable retryable status codes
+    - Maximum delay cap
+    - Jitter to prevent thundering herd
+    
+    Args:
+        max_retries: Maximum number of retry attempts (default: 5)
+        initial_delay: Initial delay in seconds (default: 1.0)
+        max_delay: Maximum delay between retries in seconds (default: 60.0)
+        backoff_factor: Multiplier for delay on each retry (default: 2.0)
+        retryable_status_codes: HTTP status codes that trigger retry (default: 429, 500, 502, 503, 504)
+        retryable_exceptions: Additional exceptions to retry on (default: None)
+        
+    Returns:
+        Decorated function
+        
+    Example:
+        @retry_with_backoff(max_retries=3)
+        def call_api():
+            response = requests.get(url)
+            response.raise_for_status()
+            return response
+    
+    Note:
+        For 429 (Too Many Requests) responses, the decorator will:
+        1. Check for Retry-After header and use it if present
+        2. Otherwise use exponential backoff
+        3. Add jitter (random 0-25% additional delay) to prevent thundering herd
+    """
+    import functools
+    import random
+    
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            logger = logging.getLogger(__name__)
+            last_exception = None
+            delay = initial_delay
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    result = func(*args, **kwargs)
+                    
+                    # Check if result is an HTTP response with status code
+                    status_code = None
+                    if hasattr(result, 'status_code'):
+                        status_code = result.status_code
+                    elif hasattr(result, 'status'):
+                        status_code = result.status
+                    
+                    # If we got a retryable status code, retry
+                    if status_code and status_code in retryable_status_codes:
+                        if attempt < max_retries:
+                            # Check for Retry-After header (for 429 responses)
+                            retry_after = None
+                            if hasattr(result, 'headers'):
+                                retry_after = result.headers.get('Retry-After')
+                            
+                            if retry_after:
+                                try:
+                                    retry_delay = float(retry_after)
+                                except ValueError:
+                                    retry_delay = delay
+                            else:
+                                retry_delay = delay
+                            
+                            # Add jitter (0-25% additional delay)
+                            jitter = retry_delay * random.uniform(0, 0.25)
+                            actual_delay = min(retry_delay + jitter, max_delay)
+                            
+                            logger.warning(
+                                f"[Retry {attempt + 1}/{max_retries}] "
+                                f"Status {status_code} received. "
+                                f"Retrying in {actual_delay:.2f}s..."
+                            )
+                            time.sleep(actual_delay)
+                            
+                            # Exponential backoff for next attempt
+                            delay = min(delay * backoff_factor, max_delay)
+                            continue
+                        else:
+                            logger.error(
+                                f"[FAILED] Max retries ({max_retries}) exceeded. "
+                                f"Last status code: {status_code}"
+                            )
+                    
+                    return result
+                    
+                except Exception as e:
+                    last_exception = e
+                    
+                    # Check if this exception should be retried
+                    should_retry = False
+                    
+                    # Check for HTTP errors with status codes
+                    if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+                        if e.response.status_code in retryable_status_codes:
+                            should_retry = True
+                    
+                    # Check retryable_exceptions
+                    if retryable_exceptions and isinstance(e, retryable_exceptions):
+                        should_retry = True
+                    
+                    # Check for common connection errors
+                    error_str = str(e).lower()
+                    if any(keyword in error_str for keyword in [
+                        'connection', 'timeout', 'rate limit', '429', 
+                        'too many requests', 'temporarily unavailable'
+                    ]):
+                        should_retry = True
+                    
+                    if should_retry and attempt < max_retries:
+                        # Check for Retry-After in exception response
+                        retry_after = None
+                        if hasattr(e, 'response') and hasattr(e.response, 'headers'):
+                            retry_after = e.response.headers.get('Retry-After')
+                        
+                        if retry_after:
+                            try:
+                                retry_delay = float(retry_after)
+                            except ValueError:
+                                retry_delay = delay
+                        else:
+                            retry_delay = delay
+                        
+                        # Add jitter
+                        jitter = retry_delay * random.uniform(0, 0.25)
+                        actual_delay = min(retry_delay + jitter, max_delay)
+                        
+                        logger.warning(
+                            f"[Retry {attempt + 1}/{max_retries}] "
+                            f"Exception: {type(e).__name__}: {e}. "
+                            f"Retrying in {actual_delay:.2f}s..."
+                        )
+                        time.sleep(actual_delay)
+                        
+                        # Exponential backoff for next attempt
+                        delay = min(delay * backoff_factor, max_delay)
+                    else:
+                        if attempt >= max_retries:
+                            logger.error(
+                                f"[FAILED] Max retries ({max_retries}) exceeded. "
+                                f"Exception: {type(e).__name__}: {e}"
+                            )
+                        raise
+            
+            # If we exhausted all retries, raise the last exception
+            if last_exception:
+                raise last_exception
+        
+        return wrapper
+    return decorator
+
+
+class RateLimiter:
+    """
+    Rate limiter for API calls to prevent 429 errors.
+    
+    Features:
+    - Token bucket algorithm
+    - Configurable rate and burst limits
+    - Thread-safe
+    
+    Example:
+        limiter = RateLimiter(rate=10, per=1.0)  # 10 requests per second
+        
+        for item in items:
+            limiter.wait()  # Blocks if rate limit exceeded
+            make_api_call(item)
+    """
+    
+    def __init__(self, rate: float, per: float = 1.0, burst: int = None):
+        """
+        Initialize rate limiter.
+        
+        Args:
+            rate: Number of requests allowed per time period
+            per: Time period in seconds (default: 1.0)
+            burst: Maximum burst size (default: rate)
+        """
+        import threading
+        
+        self.rate = rate
+        self.per = per
+        self.burst = burst if burst is not None else int(rate)
+        self.tokens = self.burst
+        self.last_update = time.time()
+        self._lock = threading.Lock()
+        self.logger = logging.getLogger(__name__)
+    
+    def _add_tokens(self):
+        """Add tokens based on elapsed time."""
+        now = time.time()
+        elapsed = now - self.last_update
+        self.tokens = min(self.burst, self.tokens + elapsed * (self.rate / self.per))
+        self.last_update = now
+    
+    def acquire(self, tokens: int = 1) -> bool:
+        """
+        Try to acquire tokens without blocking.
+        
+        Args:
+            tokens: Number of tokens to acquire (default: 1)
+            
+        Returns:
+            True if tokens acquired, False if rate limited
+        """
+        with self._lock:
+            self._add_tokens()
+            if self.tokens >= tokens:
+                self.tokens -= tokens
+                return True
+            return False
+    
+    def wait(self, tokens: int = 1):
+        """
+        Wait until tokens are available.
+        
+        Args:
+            tokens: Number of tokens to acquire (default: 1)
+        """
+        while not self.acquire(tokens):
+            # Calculate wait time
+            with self._lock:
+                wait_time = (tokens - self.tokens) * self.per / self.rate
+            
+            self.logger.debug(f"Rate limited. Waiting {wait_time:.2f}s...")
+            time.sleep(min(wait_time, 0.1))  # Sleep in small increments
+    
+    def __enter__(self):
+        """Context manager support."""
+        self.wait()
+        return self
+    
+    def __exit__(self, *args):
+        """Context manager exit."""
+        pass
+
+
 def mask_sensitive_data(data: str, sensitive_keys: List[str] = None) -> str:
     """
     Mask sensitive data in strings.

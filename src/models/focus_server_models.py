@@ -191,6 +191,79 @@ class ConfigureRequest(BaseModel):
         return v
 
 
+def build_configure_request(
+    view_type: ViewType,
+    channels_min: int = 1,
+    channels_max: int = 50,
+    display_height: int = 1000,
+    display_time_axis_duration: int = 10,
+    nfft_selection: int = 1024,
+    frequency_min: int = 0,
+    frequency_max: int = 500,
+    start_time: Optional[int] = None,
+    end_time: Optional[int] = None
+) -> ConfigureRequest:
+    """
+    Factory function to build correct ConfigureRequest based on view type.
+    
+    This function handles view-type-specific constraints automatically:
+    - Waterfall view: does NOT support displayTimeAxisDuration and frequencyRange
+    - Waterfall view: nfftSelection must be 1
+    - Multichannel/Singlechannel: support all parameters
+    
+    Args:
+        view_type: ViewType enum value (MULTICHANNEL, SINGLECHANNEL, WATERFALL)
+        channels_min: Minimum channel number (default: 1)
+        channels_max: Maximum channel number (default: 50)
+        display_height: Canvas height (default: 1000)
+        display_time_axis_duration: Time axis duration (ignored for waterfall)
+        nfft_selection: NFFT selection (forced to 1 for waterfall)
+        frequency_min: Minimum frequency (ignored for waterfall)
+        frequency_max: Maximum frequency (ignored for waterfall)
+        start_time: Start time for historic playback (optional)
+        end_time: End time for historic playback (optional)
+    
+    Returns:
+        ConfigureRequest: Properly configured request for the specified view type
+    
+    Example:
+        >>> # Multichannel request
+        >>> req = build_configure_request(ViewType.MULTICHANNEL)
+        >>> 
+        >>> # Waterfall request (automatically omits unsupported fields)
+        >>> req = build_configure_request(ViewType.WATERFALL)
+        >>> 
+        >>> # Historic playback
+        >>> req = build_configure_request(
+        ...     ViewType.SINGLECHANNEL,
+        ...     start_time=1733400000,
+        ...     end_time=1733403600
+        ... )
+    """
+    if view_type == ViewType.WATERFALL:
+        # Waterfall view does NOT support displayTimeAxisDuration and frequencyRange
+        return ConfigureRequest(
+            nfftSelection=1,  # Must be 1 for waterfall
+            displayInfo=DisplayInfo(height=display_height),
+            channels=Channels(min=channels_min, max=channels_max),
+            start_time=start_time,
+            end_time=end_time,
+            view_type=view_type
+        )
+    else:
+        # Multichannel and Singlechannel support all parameters
+        return ConfigureRequest(
+            displayTimeAxisDuration=display_time_axis_duration,
+            nfftSelection=nfft_selection,
+            displayInfo=DisplayInfo(height=display_height),
+            channels=Channels(min=channels_min, max=channels_max),
+            frequencyRange=FrequencyRange(min=frequency_min, max=frequency_max),
+            start_time=start_time,
+            end_time=end_time,
+            view_type=view_type
+        )
+
+
 class ConfigureResponse(BaseModel):
     """Response model for Focus Server configure endpoint."""
     status: str = Field(..., description="Status of the configuration")

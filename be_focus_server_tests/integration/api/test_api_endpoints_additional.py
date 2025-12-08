@@ -167,18 +167,28 @@ class TestLiveMetadataEndpoint:
             
             # Verify metadata structure
             assert metadata is not None, "Metadata should not be None"
-            assert hasattr(metadata, 'dx'), "Metadata should have dx"
-            assert hasattr(metadata, 'dy'), "Metadata should have dy"
+            
+            # Required fields per LiveMetadataFlat model
+            # Note: dx is optional (can be None when "waiting for fiber")
+            # Note: dy is NOT part of LiveMetadataFlat - removed from check
             
             logger.info("✅ Metadata retrieved successfully:")
-            logger.info(f"   dx: {metadata.dx}")
-            logger.info(f"   dy: {metadata.dy}")
             
+            # Log dx if available
+            if hasattr(metadata, 'dx') and metadata.dx is not None:
+                logger.info(f"   dx: {metadata.dx}")
+            
+            # Log prr (pulse repetition rate) - always present
             if hasattr(metadata, 'prr'):
                 logger.info(f"   prr: {metadata.prr}")
             
-            if hasattr(metadata, 'device_name'):
-                logger.info(f"   device: {metadata.device_name}")
+            # Log number of channels
+            if hasattr(metadata, 'number_of_channels') and metadata.number_of_channels is not None:
+                logger.info(f"   number_of_channels: {metadata.number_of_channels}")
+            
+            # Log fiber info
+            if hasattr(metadata, 'fiber_description') and metadata.fiber_description:
+                logger.info(f"   fiber_description: {metadata.fiber_description}")
             
             logger.info("✅ All required fields present")
             

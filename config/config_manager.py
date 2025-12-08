@@ -216,9 +216,12 @@ class ConfigManager:
         Check if current environment is production.
         
         Returns:
-            True if current environment is production
+            True if current environment is production (kefar_saba)
+        
+        Note:
+            kefar_saba is the production environment (10.10.100.100)
         """
-        return self.environment == "production"
+        return self.environment in ("production", "kefar_saba")
     
     def is_staging(self) -> bool:
         """
