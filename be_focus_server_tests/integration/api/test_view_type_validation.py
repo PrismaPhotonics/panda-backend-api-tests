@@ -75,7 +75,7 @@ class TestViewTypeValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": "multichannel"  # ❌ String instead of int
@@ -138,7 +138,7 @@ class TestViewTypeValidation:
                 "nfftSelection": 1024,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": invalid_view_type  # ❌ Out of range
@@ -150,17 +150,18 @@ class TestViewTypeValidation:
                 
                 # If we get here, validation didn't work
                 if hasattr(response, 'job_id'):
-                    logger.warning(f"⚠️  Server accepted invalid view_type={invalid_view_type}")
-                    logger.warning(f"   Job ID: {response.job_id}")
-                    
-                    # Clean up
+                    # Clean up first
                     try:
                         focus_server_api.cancel_job(response.job_id)
                     except:
                         pass
                     
-                    # Mark as validation gap but don't fail test
-                    logger.warning(f"⚠️  VALIDATION GAP: view_type={invalid_view_type} should be rejected")
+                    # BUG: Server accepted invalid view_type - this should fail
+                    pytest.fail(
+                        f"BUG: Server accepted invalid view_type={invalid_view_type}. "
+                        "Expected: ValidationError or 400 Bad Request. "
+                        f"Actual: Job created with id={response.job_id}"
+                    )
                 
             except (ValueError, APIError) as e:
                 # Expected: Validation error
@@ -229,7 +230,7 @@ class TestViewTypeValidation:
                     "nfftSelection": 1024,
                     "displayInfo": {"height": 1000},
                     "channels": {"min": 1, "max": 50},
-                    "frequencyRange": {"min": 0, "max": 500},
+                    "frequencyRange": {"min": 0, "max": 1000},
                     "start_time": None,
                     "end_time": None,
                     "view_type": view_type_value

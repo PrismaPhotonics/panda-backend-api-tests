@@ -105,7 +105,7 @@ class TestConfigTaskEndpoint:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None
         }
@@ -179,7 +179,7 @@ class TestConfigTaskEndpoint:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None
         }
@@ -257,7 +257,7 @@ class TestConfigTaskEndpoint:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None
         }
@@ -346,7 +346,7 @@ class TestConfigTaskEndpoint:
             "displayTimeAxisDuration": 10.0,
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None
         }
@@ -416,7 +416,7 @@ class TestConfigTaskEndpoint:
         # Test invalid frequency ranges
         invalid_freq_tests = [
             ({"min": 500, "max": 0}, "min > max"),
-            ({"min": -1, "max": 500}, "negative min"),
+            ({"min": -1, "max": 1000}, "negative min"),
             ({"min": 0, "max": 2000}, "exceeds Nyquist limit (assuming PRR=2000)"),
         ]
         

@@ -155,8 +155,7 @@ class TestRecordingsClassification:
 # ===================================================================
 
 @pytest.mark.summary
-
-
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 @pytest.mark.regression
 def test_recordings_classification_summary():
     """
@@ -165,7 +164,8 @@ def test_recordings_classification_summary():
     Xray Tests Covered:
         - PZ-13705: Historical vs Live Recordings Classification
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("Recordings Classification Tests Suite Summary")

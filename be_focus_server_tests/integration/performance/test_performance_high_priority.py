@@ -64,7 +64,7 @@ def performance_config_payload() -> Dict[str, Any]:
         },
         "frequencyRange": {
             "min": 0,
-            "max": 500
+            "max": 1000
         },
         "start_time": None,  # Live mode
         "end_time": None,

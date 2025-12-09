@@ -152,7 +152,7 @@ def configured_task_for_roi(focus_server_api):
         },
         "frequencyRange": {
             "min": 0,
-            "max": 500
+            "max": 1000
         },
         "start_time": None,  # Live mode
         "end_time": None,
@@ -1132,7 +1132,7 @@ class TestROIDataSize:
             },
             "frequencyRange": {
                 "min": 0,
-                "max": 500
+                "max": 1000
             },
             "start_time": None,  # Live mode
             "end_time": None,
@@ -1211,7 +1211,7 @@ class TestROIDataSize:
             },
             "frequencyRange": {
                 "min": 0,
-                "max": 500
+                "max": 1000
             },
             "start_time": None,  # Live mode
             "end_time": None,

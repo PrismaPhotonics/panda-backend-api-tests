@@ -55,7 +55,7 @@ def valid_live_config():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,  # Live mode
         "end_time": None,
         "view_type": ViewType.MULTICHANNEL
@@ -74,7 +74,7 @@ def valid_historic_config():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": int(start_time.timestamp()),
         "end_time": int(end_time.timestamp()),
         "view_type": ViewType.MULTICHANNEL
@@ -400,7 +400,7 @@ class TestTimeRangeValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": future_start,
             "end_time": future_end,
             "view_type": ViewType.MULTICHANNEL
@@ -479,7 +479,7 @@ class TestTimeRangeValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": int(start_time.timestamp()),
             "end_time": int(end_time.timestamp()),
             "view_type": ViewType.MULTICHANNEL
@@ -572,7 +572,7 @@ class TestConfigurationValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": max_channel + 100},  # Exceed max
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -715,7 +715,7 @@ class TestConfigurationValidation:
                 "nfftSelection": nfft,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.MULTICHANNEL
@@ -773,7 +773,7 @@ class TestConfigurationValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": 999  # Invalid view type
@@ -880,7 +880,7 @@ class TestErrorMessageClarity:
                 "nfftSelection": 1024,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.MULTICHANNEL

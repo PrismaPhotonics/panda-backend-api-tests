@@ -66,7 +66,7 @@ def valid_config_payload() -> Dict[str, Any]:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,      # ✅ Live Mode: null
         "end_time": None,        # ✅ Live Mode: null
         "view_type": ViewType.MULTICHANNEL
@@ -99,7 +99,7 @@ def valid_historic_config_payload() -> Dict[str, Any]:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": start_epoch,  # ✅ Historic Mode: epoch timestamp
         "end_time": end_epoch,      # ✅ Historic Mode: epoch timestamp  
         "view_type": ViewType.MULTICHANNEL
@@ -154,7 +154,7 @@ class TestMissingRequiredFields:
         config_payload = {
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "displayInfo": {"height": 1000},
             "view_type": ViewType.MULTICHANNEL
             # Missing "channels" - should fail
@@ -254,7 +254,7 @@ class TestMissingRequiredFields:
         config_payload = {
             "displayTimeAxisDuration": 10,
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "displayInfo": {"height": 1000},
             "view_type": ViewType.MULTICHANNEL
             # Missing "nfftSelection" - should fail
@@ -303,7 +303,7 @@ class TestMissingRequiredFields:
         config_payload = {
             "nfftSelection": 1024,
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "displayInfo": {"height": 1000},
             "view_type": ViewType.MULTICHANNEL
             # Missing "displayTimeAxisDuration" - should fail
@@ -871,7 +871,7 @@ class TestValidConfigurationAllParameters:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -911,7 +911,7 @@ class TestValidConfigurationAllParameters:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 7, "max": 8},  # Narrow channel range (2 channels)
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -956,7 +956,7 @@ class TestValidConfigurationAllParameters:
                 "nfftSelection": nfft,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.MULTICHANNEL

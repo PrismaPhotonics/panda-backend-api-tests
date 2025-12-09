@@ -160,7 +160,7 @@ class TestHistoricPlaybackEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
@@ -239,7 +239,7 @@ class TestHistoricPlaybackEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": int(start_time_dt.timestamp()),
             "end_time": int(end_time_dt.timestamp()),
             "view_type": ViewType.MULTICHANNEL
@@ -297,7 +297,7 @@ class TestHistoricPlaybackEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
@@ -412,7 +412,7 @@ class TestHistoricPlaybackDataQuality:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_ts,
             "end_time": end_ts,
             "view_type": ViewType.MULTICHANNEL
@@ -473,7 +473,7 @@ class TestHistoricPlaybackDataQuality:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
@@ -531,7 +531,7 @@ class TestHistoricPlaybackDataQuality:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": int(start_time_dt.timestamp()),
             "end_time": int(end_time_dt.timestamp()),
             "view_type": ViewType.MULTICHANNEL
@@ -543,24 +543,23 @@ class TestHistoricPlaybackDataQuality:
             configure_request = ConfigureRequest(**config)
             response = focus_server_api.configure_streaming_job(configure_request)
             
-            # If accepted, this is a validation gap
-            logger.warning(f"⚠️  VALIDATION GAP: Future timestamps accepted")
-            logger.warning(f"   Job ID: {response.job_id}")
-            
-            # Clean up
+            # Clean up first
             try:
                 focus_server_api.cancel_job(response.job_id)
             except:
                 pass
             
-            # Don't fail test - this documents current behavior
-            logger.warning("⚠️  Future timestamps should be rejected (validation gap)")
+            # BUG: Server accepted future timestamps - this should fail
+            pytest.fail(
+                "BUG: Server accepted future timestamps. "
+                "Expected: ValidationError or 400 Bad Request. "
+                f"Actual: Job created with id={response.job_id}. "
+                f"Timestamp was set to {start_time_dt} (future)"
+            )
             
         except (APIError, ValueError) as e:
             # Expected: Rejection
             logger.info(f"✅ Future timestamps rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
 
 
 

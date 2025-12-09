@@ -85,7 +85,7 @@ class TestMalformedInputHandling:
             "nfftSelection": "not_a_number",  # String instead of int
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": 0
@@ -107,7 +107,7 @@ class TestMalformedInputHandling:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": 0,
@@ -170,7 +170,7 @@ class TestMalformedInputHandling:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": 0,
@@ -204,8 +204,7 @@ class TestMalformedInputHandling:
 # ===================================================================
 
 @pytest.mark.summary
-
-
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 @pytest.mark.regression
 def test_malformed_input_handling_summary():
     """
@@ -215,7 +214,8 @@ def test_malformed_input_handling_summary():
         - PZ-13572: Security - Robustness to malformed inputs
         - PZ-13769: Security - Malformed input handling
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("Malformed Input Handling Tests Suite Summary")

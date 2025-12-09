@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pytest Configuration
 ====================
 
@@ -51,15 +51,15 @@ try:
     # Initialize PZ integration at module load
     pz = get_pz_integration()
     logging.getLogger(__name__).info(
-        f"ג… PZ repository integrated: {len(pz.list_microservices())} microservices available"
+        f"✅ PZ repository integrated: {len(pz.list_microservices())} microservices available"
     )
 except FileNotFoundError:
     logging.getLogger(__name__).warning(
-        "ג ן¸  PZ repository not found. Run: git submodule update --init --recursive"
+        "⚠️  PZ repository not found. Run: git submodule update --init --recursive"
     )
 except Exception as e:
     logging.getLogger(__name__).warning(
-        f"ג ן¸  PZ integration failed: {e}"
+        f"⚠️  PZ integration failed: {e}"
     )
 
 
@@ -354,7 +354,7 @@ def focus_server_api(config_manager: ConfigManager):
     focus_available = os.getenv("FOCUS_SERVER_AVAILABLE", "true").lower() == "true"
     
     if is_ci and not focus_available:
-        logger.warning("⚠️  CI environment detected and Focus Server not available - skipping Focus Server API fixture")
+        logger.warning("??  CI environment detected and Focus Server not available - skipping Focus Server API fixture")
         logger.warning("   Tests requiring Focus Server API will be skipped")
         pytest.skip("Focus Server not available in CI environment")
     
@@ -370,7 +370,7 @@ def focus_server_api(config_manager: ConfigManager):
             if is_ci:
                 focus_available = os.getenv("FOCUS_SERVER_AVAILABLE", "true").lower() == "true"
                 if not focus_available:
-                    logger.warning("⚠️  CI environment detected - Focus Server not available, skipping health check")
+                    logger.warning("??  CI environment detected - Focus Server not available, skipping health check")
                     pytest.skip("Focus Server not available in CI environment")
             
             is_healthy = api_client.health_check()
@@ -378,7 +378,7 @@ def focus_server_api(config_manager: ConfigManager):
             logger.warning(f"Focus Server API health check failed: {health_error}")
             # In CI, skip instead of failing
             if is_ci:
-                logger.warning("⚠️  CI environment detected - skipping Focus Server API fixture due to health check error")
+                logger.warning("??  CI environment detected - skipping Focus Server API fixture due to health check error")
                 pytest.skip(f"Focus Server health check failed in CI: {health_error}")
             # Don't fail here - let tests handle it, but log warning
             is_healthy = False
@@ -387,7 +387,7 @@ def focus_server_api(config_manager: ConfigManager):
             logger.warning("Focus Server API health check failed - server may not be available")
             # In CI, skip instead of failing
             if is_ci:
-                logger.warning("⚠️  CI environment detected - skipping Focus Server API fixture due to failed health check")
+                logger.warning("??  CI environment detected - skipping Focus Server API fixture due to failed health check")
                 pytest.skip("Focus Server health check failed in CI environment")
             # Don't fail here - let tests handle it, but log warning
             # Some tests may still work even if /health endpoint is not available
@@ -398,7 +398,7 @@ def focus_server_api(config_manager: ConfigManager):
         logger.error(f"Failed to initialize Focus Server API client: {e}")
         # In CI, skip instead of raising error
         if is_ci:
-            logger.warning("⚠️  CI environment detected - skipping Focus Server API fixture due to initialization error")
+            logger.warning("??  CI environment detected - skipping Focus Server API fixture due to initialization error")
             pytest.skip(f"Focus Server API initialization failed in CI: {e}")
         raise InfrastructureError(f"Failed to initialize Focus Server API client: {e}")
 
@@ -474,19 +474,19 @@ def mongodb_manager(config_manager: ConfigManager, kubernetes_manager):
                 return manager
             except Exception as e2:
                 if is_ci:
-                    logger.warning(f"⚠️  CI environment detected - skipping MongoDB manager due to initialization error: {e2}")
+                    logger.warning(f"??  CI environment detected - skipping MongoDB manager due to initialization error: {e2}")
                     pytest.skip(f"MongoDB manager initialization failed in CI: {e2}")
                 raise InfrastructureError(f"Failed to initialize MongoDB manager: {e2}")
         else:
             # Different TypeError, re-raise
             if is_ci:
-                logger.warning(f"⚠️  CI environment detected - skipping MongoDB manager due to initialization error: {e}")
+                logger.warning(f"??  CI environment detected - skipping MongoDB manager due to initialization error: {e}")
                 pytest.skip(f"MongoDB manager initialization failed in CI: {e}")
             raise InfrastructureError(f"Failed to initialize MongoDB manager: {e}")
     except Exception as e:
         # In CI, skip instead of raising error
         if is_ci:
-            logger.warning(f"⚠️  CI environment detected - skipping MongoDB manager due to initialization error: {e}")
+            logger.warning(f"??  CI environment detected - skipping MongoDB manager due to initialization error: {e}")
             pytest.skip(f"MongoDB manager initialization failed in CI: {e}")
         raise InfrastructureError(f"Failed to initialize MongoDB manager: {e}")
 
@@ -508,7 +508,7 @@ def kubernetes_manager(config_manager: ConfigManager):
     
     if is_ci and skip_infra:
         logger = logging.getLogger(__name__)
-        logger.warning("⚠️  CI environment detected with SKIP_INFRASTRUCTURE_TESTS - skipping Kubernetes manager")
+        logger.warning("??  CI environment detected with SKIP_INFRASTRUCTURE_TESTS - skipping Kubernetes manager")
         pytest.skip("Infrastructure tests skipped in CI")
     
     try:
@@ -520,7 +520,7 @@ def kubernetes_manager(config_manager: ConfigManager):
         # In CI, skip instead of raising error
         if is_ci:
             logger = logging.getLogger(__name__)
-            logger.warning(f"⚠️  CI environment detected - skipping Kubernetes manager due to initialization error: {e}")
+            logger.warning(f"??  CI environment detected - skipping Kubernetes manager due to initialization error: {e}")
             pytest.skip(f"Kubernetes manager initialization failed in CI: {e}")
         raise InfrastructureError(f"Failed to initialize Kubernetes manager: {e}")
 
@@ -542,7 +542,7 @@ def ssh_manager(config_manager: ConfigManager):
     
     if is_ci and skip_infra:
         logger = logging.getLogger(__name__)
-        logger.warning("⚠️  CI environment detected with SKIP_INFRASTRUCTURE_TESTS - skipping SSH manager")
+        logger.warning("??  CI environment detected with SKIP_INFRASTRUCTURE_TESTS - skipping SSH manager")
         pytest.skip("Infrastructure tests skipped in CI")
     
     try:
@@ -554,7 +554,7 @@ def ssh_manager(config_manager: ConfigManager):
         # In CI, skip instead of raising error
         if is_ci:
             logger = logging.getLogger(__name__)
-            logger.warning(f"⚠️  CI environment detected - skipping SSH manager due to initialization error: {e}")
+            logger.warning(f"??  CI environment detected - skipping SSH manager due to initialization error: {e}")
             pytest.skip(f"SSH manager initialization failed in CI: {e}")
         raise InfrastructureError(f"Failed to initialize SSH manager: {e}")
 
@@ -581,7 +581,7 @@ def valid_history_payload(config_manager: ConfigManager) -> dict:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 3},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": int(start_time.timestamp()),
         "end_time": int(end_time.timestamp()),
         "view_type": 0  # MULTICHANNEL
@@ -601,7 +601,7 @@ def valid_live_payload() -> dict:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 3},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,
         "end_time": None,
         "view_type": 0  # MULTICHANNEL
@@ -621,7 +621,7 @@ def invalid_payload() -> dict:
         "nfftSelection": 0,  # Invalid zero value
         "displayInfo": {},  # Empty display info
         "channels": {"min": 10, "max": 5},  # Invalid range (min > max)
-        "frequencyRange": {"min": 1000, "max": 500},  # Invalid range (min > max)
+        "frequencyRange": {"min": 1000, "max": 1000},  # Invalid range (min > max)
         "start_time": 9999999999999,  # Invalid future timestamp
         "end_time": 1000000000000,  # Invalid timestamp
         "view_type": 999  # Invalid view type
@@ -818,7 +818,7 @@ def check_metadata_ready(focus_server_api):
             # Don't skip all tests, just log a warning
             logger = logging.getLogger(__name__)
             logger.warning("=" * 80)
-            logger.warning("⚠️  System is in 'waiting for fiber' state")
+            logger.warning("??  System is in 'waiting for fiber' state")
             logger.warning(f"   PRR: {metadata.prr}")
             logger.warning(f"   SW Version: {metadata.sw_version}")
             logger.warning(f"   num_samples_per_trace: {metadata.num_samples_per_trace}")
@@ -833,7 +833,7 @@ def check_metadata_ready(focus_server_api):
             
     except Exception as e:
         logger = logging.getLogger(__name__)
-        logger.warning(f"⚠️  Cannot check metadata: {e}")
+        logger.warning(f"??  Cannot check metadata: {e}")
         logger.warning("   Configure tests may fail")
         pytest.metadata_ready = False
 
@@ -1323,13 +1323,13 @@ def pytest_configure(config):
             # Log results summary
             logger.info("=" * 80)
             if all_passed:
-                logger.info("✅ PRE-TEST HEALTH CHECK: All components OK - Proceeding with tests")
+                logger.info("? PRE-TEST HEALTH CHECK: All components OK - Proceeding with tests")
             else:
-                logger.error("❌ PRE-TEST HEALTH CHECK: Some components failed - Tests will not run")
+                logger.error("? PRE-TEST HEALTH CHECK: Some components failed - Tests will not run")
                 # Print failed components
                 for result in results:
                     if not result.status:
-                        logger.error(f"   ❌ {result.name}: {result.error or 'Check failed'}")
+                        logger.error(f"   ? {result.name}: {result.error or 'Check failed'}")
             logger.info("=" * 80)
             
             # If health checks failed, exit pytest
@@ -1341,7 +1341,7 @@ def pytest_configure(config):
                     "=" * 80 + "\n"
                     "One or more system components are not ready:\n\n"
                     + "\n".join([
-                        f"  ❌ {r.name}: {r.error or 'Check failed'}"
+                        f"  ? {r.name}: {r.error or 'Check failed'}"
                         for r in results if not r.status
                     ]) + "\n\n"
                     "Please fix the issues before running tests.\n"
@@ -1375,7 +1375,7 @@ def pytest_configure(config):
     else:
         # Health check skipped
         logger = logging.getLogger(__name__)
-        logger.warning("⚠️  Pre-test health check SKIPPED (--skip-health-check flag used)")
+        logger.warning("??  Pre-test health check SKIPPED (--skip-health-check flag used)")
         logger.warning("   This is not recommended - tests may fail due to infrastructure issues")
 
 
@@ -1410,7 +1410,7 @@ def pytest_sessionstart(session):
     skip_sanity = session.config.getoption("--skip-sanity-check", default=False)
     
     if skip_sanity:
-        logger.warning("⚠️  Sanity checks SKIPPED (--skip-sanity-check flag used)")
+        logger.warning("??  Sanity checks SKIPPED (--skip-sanity-check flag used)")
         logger.warning("   This is not recommended - tests may fail due to infrastructure issues")
         return
     
@@ -1437,7 +1437,7 @@ def pytest_sessionstart(session):
             failed_components = [r.component for r in results if not r.success and r.component != "RabbitMQ"]
             
             logger.error("=" * 100)
-            logger.error("❌ SANITY CHECK FAILED - Some infrastructure components are not available!")
+            logger.error("? SANITY CHECK FAILED - Some infrastructure components are not available!")
             logger.error("=" * 100)
             logger.error(f"Failed components: {', '.join(failed_components)}")
             logger.error("")
@@ -1451,13 +1451,13 @@ def pytest_sessionstart(session):
             # sys.exit(1)
             
             # Option 2: Warn but continue (more lenient) - current behavior
-            logger.warning("⚠️  Continuing with tests despite sanity check failures...")
+            logger.warning("??  Continuing with tests despite sanity check failures...")
             logger.warning("   Some tests may fail due to infrastructure issues")
         else:
-            logger.info("✅ All sanity checks passed - infrastructure is ready for testing")
+            logger.info("? All sanity checks passed - infrastructure is ready for testing")
             
     except Exception as e:
-        logger.warning(f"⚠️  Sanity check failed to run: {e}")
+        logger.warning(f"??  Sanity check failed to run: {e}")
         logger.warning("   Continuing with tests - sanity check error will be ignored")
         logger.debug(f"   Error details: {e}", exc_info=True)
 
@@ -1554,7 +1554,7 @@ def pod_logs_collector(request, config_manager):
         ssh_password = k8s_config.get("ssh_password")
         
         if not all([ssh_host, ssh_user, ssh_password]):
-            logger.warning("ג ן¸  SSH credentials not configured - pod logs collection disabled")
+            logger.warning("⚠️  SSH credentials not configured - pod logs collection disabled")
             yield None
             return
         
@@ -1591,7 +1591,7 @@ def pod_logs_collector(request, config_manager):
                 except Exception as e:
                     logger.warning(f"Could not start streaming logs for {service}: {e}")
             
-            logger.info("ג… Real-time log streaming active")
+            logger.info("✅ Real-time log streaming active")
         
         yield collector
         
@@ -1622,7 +1622,7 @@ def pod_logs_collector(request, config_manager):
                 except Exception as e:
                     logger.warning(f"Could not save logs for {service}: {e}")
             
-            logger.info(f"ג… Logs saved to {logs_dir}")
+            logger.info(f"✅ Logs saved to {logs_dir}")
         
         # Cleanup
         collector.disconnect()

@@ -62,7 +62,7 @@ def singlechannel_payload_channel_7() -> Dict[str, Any]:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 7, "max": 7},  # Single channel: min=max
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,
         "end_time": None,
         "view_type": ViewType.SINGLECHANNEL  # view_type = 1
@@ -82,7 +82,7 @@ def singlechannel_payload_channel_1() -> Dict[str, Any]:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 1},  # Single channel: min=max
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,
         "end_time": None,
         "view_type": ViewType.SINGLECHANNEL
@@ -102,7 +102,7 @@ def singlechannel_payload_channel_100() -> Dict[str, Any]:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 100, "max": 100},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,
         "end_time": None,
         "view_type": ViewType.SINGLECHANNEL
@@ -361,7 +361,7 @@ class TestSingleChannelViewHappyPath:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 3, "max": 3},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -382,7 +382,7 @@ class TestSingleChannelViewHappyPath:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 3},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -464,7 +464,7 @@ class TestSingleChannelViewEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 5, "max": 10},  # Multiple channels!
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -521,7 +521,7 @@ class TestSingleChannelViewEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 0, "max": 0},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -572,7 +572,7 @@ class TestSingleChannelViewEdgeCases:
         frequency_ranges = [
             {"min": 0, "max": 100},
             {"min": 0, "max": 1000},
-            {"min": 100, "max": 500},
+            {"min": 100, "max": 1000},
             {"min": 200, "max": 300}
         ]
         
@@ -646,7 +646,7 @@ class TestSingleChannelViewErrorHandling:
             "nfftSelection": 0,  # Invalid
             "displayInfo": {"height": 1000},
             "channels": {"min": 5, "max": 5},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -697,7 +697,7 @@ class TestSingleChannelViewErrorHandling:
             "nfftSelection": 1000,  # Invalid - not power of 2
             "displayInfo": {"height": 1000},
             "channels": {"min": 5, "max": 5},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -720,7 +720,7 @@ class TestSingleChannelViewErrorHandling:
             "nfftSelection": 4096,  # Invalid - exceeds max
             "displayInfo": {"height": 1000},
             "channels": {"min": 5, "max": 5},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -781,7 +781,7 @@ class TestSingleChannelViewErrorHandling:
             "nfftSelection": 1024,
             "displayInfo": {"height": 0},  # Invalid
             "channels": {"min": 5, "max": 5},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -886,7 +886,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": channel_num, "max": channel_num},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -914,7 +914,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": channel_num, "max": channel_num},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -995,7 +995,7 @@ class TestSingleChannelBackendConsistency:
                 "nfftSelection": 1024,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": channel_num, "max": channel_num},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.SINGLECHANNEL
@@ -1064,7 +1064,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": middle_channel, "max": middle_channel},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -1118,7 +1118,7 @@ class TestSingleChannelBackendConsistency:
                 "nfftSelection": 1024,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": channel_id, "max": channel_id},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.SINGLECHANNEL
@@ -1167,7 +1167,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": channel_num, "max": channel_num},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -1218,7 +1218,7 @@ class TestSingleChannelBackendConsistency:
                 "nfftSelection": 1024,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": channel_num, "max": channel_num},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.SINGLECHANNEL
@@ -1259,7 +1259,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 7, "max": 7},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -1309,7 +1309,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 7, "max": 7},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -1358,7 +1358,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 7, "max": 7},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -1387,7 +1387,7 @@ class TestSingleChannelBackendConsistency:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 15, "max": 15},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.SINGLECHANNEL
@@ -1414,7 +1414,4 @@ class TestSingleChannelBackendConsistency:
         logger.info("✅ TEST PASSED: Complete E2E Flow")
         logger.info("=" * 80)
 
-
-    
-    assert True  # Always pass
 

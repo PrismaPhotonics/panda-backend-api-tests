@@ -284,7 +284,7 @@ class TestJobMetadataEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -461,7 +461,7 @@ class TestInvalidRangeRejection:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": -1000,  # Negative (invalid)
             "end_time": -500,
             "view_type": ViewType.MULTICHANNEL
@@ -473,19 +473,22 @@ class TestInvalidRangeRejection:
             request = ConfigureRequest(**invalid_config)
             response = focus_server_api.configure_streaming_job(request)
             
-            logger.warning("⚠️  VALIDATION GAP: Negative timestamps accepted")
-            
-            # Cleanup
+            # Cleanup first
             if hasattr(response, 'job_id'):
                 try:
                     focus_server_api.cancel_job(response.job_id)
                 except:
                     pass
+            
+            # BUG: Server accepted negative timestamps - this should fail
+            pytest.fail(
+                "BUG: Server accepted negative timestamps. "
+                "Expected: ValidationError or 400 Bad Request. "
+                f"Actual: Job created with id={getattr(response, 'job_id', 'unknown')}"
+            )
         
         except (ValueError, APIError) as e:
             logger.info(f"✅ Negative timestamps rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13760", "PZ-13554")
     @pytest.mark.xray("PZ-13760")
@@ -514,7 +517,7 @@ class TestInvalidRangeRejection:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": -10, "max": 50},  # Negative min
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -526,18 +529,22 @@ class TestInvalidRangeRejection:
             request = ConfigureRequest(**invalid_config)
             response = focus_server_api.configure_streaming_job(request)
             
-            logger.warning("⚠️  VALIDATION GAP: Negative channels accepted")
-            
+            # Cleanup first
             if hasattr(response, 'job_id'):
                 try:
                     focus_server_api.cancel_job(response.job_id)
                 except:
                     pass
+            
+            # BUG: Server accepted negative channels - this should fail
+            pytest.fail(
+                "BUG: Server accepted negative channels. "
+                "Expected: ValidationError or 400 Bad Request. "
+                f"Actual: Job created with id={getattr(response, 'job_id', 'unknown')}"
+            )
         
         except (ValueError, APIError) as e:
             logger.info(f"✅ Negative channels rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13761", "PZ-13555")
     @pytest.mark.xray("PZ-13761")
@@ -566,7 +573,7 @@ class TestInvalidRangeRejection:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": -100, "max": 500},  # Negative min
+            "frequencyRange": {"min": -100, "max": 1000},  # Negative min
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -578,18 +585,22 @@ class TestInvalidRangeRejection:
             request = ConfigureRequest(**invalid_config)
             response = focus_server_api.configure_streaming_job(request)
             
-            logger.warning("⚠️  VALIDATION GAP: Negative frequency accepted")
-            
+            # Cleanup first
             if hasattr(response, 'job_id'):
                 try:
                     focus_server_api.cancel_job(response.job_id)
                 except:
                     pass
+            
+            # BUG: Server accepted negative frequency - this should fail
+            pytest.fail(
+                "BUG: Server accepted negative frequency. "
+                "Expected: ValidationError or 400 Bad Request. "
+                f"Actual: Job created with id={getattr(response, 'job_id', 'unknown')}"
+            )
         
         except (ValueError, APIError) as e:
             logger.info(f"✅ Negative frequency rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
 
 
 

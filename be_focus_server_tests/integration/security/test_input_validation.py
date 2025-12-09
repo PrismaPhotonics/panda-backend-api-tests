@@ -2,15 +2,23 @@
 Integration Tests - Security: Input Validation
 ===============================================
 
-Security tests for input validation and sanitization.
+Tests for Pydantic type validation that provides inherent protection against
+malformed inputs in Focus Server.
+
+NOTE: Focus Server uses MongoDB (not SQL) and Pydantic typed models.
+      ConfigureRequest has no string fields that could be exploited for
+      SQL injection or XSS attacks. The protection is inherent in the
+      type system - Pydantic rejects non-conforming inputs before they
+      reach the database or response.
 
 Tests Covered (Xray):
-    - PZ-14774: Security - SQL Injection Prevention
-    - PZ-14775: Security - XSS Prevention
-    - PZ-14788: Security - Input Sanitization
+    - PZ-14774: Type Validation - Rejects Invalid Types
+    - PZ-14775: Type Validation - Response Contains No Executable Code
+    - PZ-14788: Type Validation - Malformed Input Handling
 
 Author: QA Automation Architect
 Date: 2025-11-09
+Updated: 2025-12-09 (Converted to meaningful type validation tests)
 """
 
 import pytest
@@ -24,48 +32,50 @@ from src.models.focus_server_models import ConfigureRequest, ViewType
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.critical
 @pytest.mark.high
 @pytest.mark.regression
 class TestInputValidation:
     """
-    Test suite for input validation security.
+    Test suite for input type validation.
+    
+    Focus Server uses MongoDB + Pydantic typed models, which provides
+    inherent protection against injection attacks by rejecting invalid types.
     
     Tests covered:
-        - PZ-14774: SQL Injection Prevention
-        - PZ-14775: XSS Prevention
-        - PZ-14788: Input Sanitization
+        - PZ-14774: Type validation rejects strings where numbers expected
+        - PZ-14775: API responses do not contain executable code
+        - PZ-14788: Malformed inputs are handled gracefully
     """
     
     @pytest.mark.xray("PZ-14774")
-
-    
     @pytest.mark.regression
-    def test_sql_injection_prevention(self, focus_server_api: FocusServerAPI):
+    def test_pydantic_rejects_invalid_types(self, focus_server_api: FocusServerAPI):
         """
-        Test PZ-14774: Security - SQL Injection Prevention.
+        Test PZ-14774: Pydantic Type Validation.
         
         Objective:
-            Verify that API endpoints properly sanitize input and prevent
-            SQL injection attacks.
+            Verify that Pydantic rejects invalid types in ConfigureRequest,
+            providing inherent protection against malformed inputs.
         
         Steps:
-            1. Send POST /configure with SQL injection in task_id
-            2. Send POST /configure with SQL injection in payload fields
-            3. Verify database integrity
+            1. Attempt to create ConfigureRequest with string in numeric field
+            2. Verify Pydantic raises ValidationError
         
         Expected:
-            SQL injection attempts are prevented and do not execute against the database.
+            Pydantic rejects invalid types with clear error message.
+        
+        Note:
+            Focus Server uses MongoDB (not SQL) and has no string fields
+            in ConfigureRequest. SQL injection is not applicable.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Security - SQL Injection Prevention (PZ-14774)")
+        logger.info("TEST: Pydantic Type Validation (PZ-14774)")
         logger.info("=" * 80)
         
-        sql_injection_payloads = [
-            "' OR '1'='1",
-            "'; DROP TABLE users; --",
-            "' UNION SELECT * FROM users --",
-            "1' OR '1'='1' --"
+        invalid_type_payloads = [
+            {"field": "nfftSelection", "invalid_value": "' OR '1'='1", "description": "string in nfftSelection"},
+            {"field": "nfftSelection", "invalid_value": "1024; DROP TABLE", "description": "SQL-like string"},
+            {"field": "displayTimeAxisDuration", "invalid_value": "ten", "description": "word in numeric field"},
         ]
         
         base_payload = {
@@ -73,227 +83,168 @@ class TestInputValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        for sql_payload in sql_injection_payloads:
-            logger.info(f"Testing SQL injection payload: {sql_payload}")
+        validation_errors_caught = 0
+        
+        for test_case in invalid_type_payloads:
+            logger.info(f"Testing: {test_case['description']}")
+            
+            test_payload = base_payload.copy()
+            test_payload[test_case['field']] = test_case['invalid_value']
             
             try:
-                # Try to inject SQL in various fields
-                # Note: Pydantic validation will catch most of these before they reach the API
-                
-                # Test 1: Try in string fields (if any)
-                test_payload = base_payload.copy()
-                
-                # Attempt to create request (Pydantic will validate)
-                try:
-                    config_request = ConfigureRequest(**test_payload)
-                    
-                    # If validation passes, send request
-                    response = focus_server_api.configure_streaming_job(config_request)
-                    
-                    # Request succeeded - verify no SQL was executed
-                    logger.info(f"Request succeeded (SQL injection prevented by validation)")
-                    
-                    # Cleanup
-                    if response.job_id:
-                        try:
-                            focus_server_api.cancel_job(response.job_id)
-                        except Exception:
-                            pass
-                    
-                    # Verify: Request should either fail validation or succeed safely
-                    # If it succeeds, it means SQL was sanitized/prevented
-                    assert response.job_id is not None, "Request should succeed safely"
-                    
-                except ValidationError as e:
-                    # Pydantic validation caught the issue - good!
-                    logger.info(f"✅ Validation error (expected): {e}")
-                    assert True, "SQL injection attempt caught by validation"
-                    
-            except Exception as e:
-                logger.error(f"Unexpected error with payload {sql_payload}: {e}")
-                # Don't fail - verify error is safe
-                assert "sql" not in str(e).lower() or "database" not in str(e).lower(), \
-                    "Error message should not expose database details"
+                config_request = ConfigureRequest(**test_payload)
+                # If we get here, Pydantic didn't catch it - this is unexpected
+                pytest.fail(f"Pydantic should have rejected {test_case['description']}, "
+                           f"but created ConfigureRequest successfully")
+            except (ValueError, ValidationError, TypeError) as e:
+                validation_errors_caught += 1
+                logger.info(f"  Pydantic rejected invalid input: {type(e).__name__}")
+                # Verify error message doesn't expose sensitive info
+                error_msg = str(e).lower()
+                assert "sql" not in error_msg or "database" not in error_msg, \
+                    "Error should not expose database details"
         
-        logger.info("✅ All SQL injection attempts handled safely")
+        assert validation_errors_caught == len(invalid_type_payloads), \
+            f"Expected {len(invalid_type_payloads)} validation errors, got {validation_errors_caught}"
+        
+        logger.info(f"All {validation_errors_caught} invalid inputs rejected by Pydantic")
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14775")
-
-    
     @pytest.mark.regression
-    def test_xss_prevention(self, focus_server_api: FocusServerAPI):
+    def test_api_response_safe(self, focus_server_api: FocusServerAPI):
         """
-        Test PZ-14775: Security - XSS Prevention.
+        Test PZ-14775: API Response Safety.
         
         Objective:
-            Verify that API endpoints properly sanitize input and prevent
-            Cross-Site Scripting (XSS) attacks.
+            Verify that API responses do not contain executable code.
         
         Steps:
-            1. Send POST /configure with XSS in payload fields
-            2. Verify response does not contain executable scripts
+            1. Send valid configure request
+            2. Verify response does not contain script tags or javascript
         
         Expected:
-            XSS attempts are prevented and input is properly sanitized.
+            API responses are JSON/protobuf data, not HTML with scripts.
+        
+        Note:
+            Focus Server is a backend API returning JSON/protobuf.
+            XSS is not applicable as there's no HTML rendering.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Security - XSS Prevention (PZ-14775)")
+        logger.info("TEST: API Response Safety (PZ-14775)")
         logger.info("=" * 80)
         
-        xss_payloads = [
-            "<script>alert('XSS')</script>",
-            "<img src=x onerror=alert('XSS')>",
-            "javascript:alert('XSS')",
-            "<svg onload=alert('XSS')>"
-        ]
-        
-        base_payload = {
+        payload = {
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        for xss_payload in xss_payloads:
-            logger.info(f"Testing XSS payload: {xss_payload}")
-            
-            try:
-                test_payload = base_payload.copy()
-                
-                # Pydantic validation will catch invalid types
-                try:
-                    config_request = ConfigureRequest(**test_payload)
-                    response = focus_server_api.configure_streaming_job(config_request)
-                    
-                    # Verify response doesn't contain executable scripts
-                    response_str = str(response)
-                    assert "<script>" not in response_str.lower(), \
-                        "Response should not contain script tags"
-                    assert "javascript:" not in response_str.lower(), \
-                        "Response should not contain javascript: protocol"
-                    
-                    logger.info(f"✅ XSS payload sanitized: {xss_payload}")
-                    
-                    # Cleanup
-                    if response.job_id:
-                        try:
-                            focus_server_api.cancel_job(response.job_id)
-                        except Exception:
-                            pass
-                            
-                except ValidationError as e:
-                    logger.info(f"✅ Validation error (expected): {e}")
-                    assert True, "XSS attempt caught by validation"
-                    
-            except Exception as e:
-                logger.error(f"Unexpected error with payload {xss_payload}: {e}")
-                # Verify error doesn't contain executable code
-                error_str = str(e).lower()
-                assert "<script>" not in error_str, \
-                    "Error message should not contain script tags"
+        config_request = ConfigureRequest(**payload)
+        response = focus_server_api.configure_streaming_job(config_request)
         
-        logger.info("✅ All XSS attempts handled safely")
+        # Verify response structure is safe
+        response_str = str(response)
+        
+        assert "<script>" not in response_str.lower(), \
+            "Response should not contain script tags"
+        assert "javascript:" not in response_str.lower(), \
+            "Response should not contain javascript: protocol"
+        assert "<html>" not in response_str.lower(), \
+            "Response should not contain HTML (should be JSON/protobuf)"
+        
+        logger.info("Response verified as safe (no executable code)")
+        
+        # Cleanup
+        if response.job_id:
+            try:
+                focus_server_api.cancel_job(response.job_id)
+            except Exception:
+                pass
+        
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14788")
-
-    
     @pytest.mark.regression
-    def test_input_sanitization(self, focus_server_api: FocusServerAPI):
+    def test_malformed_input_handling(self, focus_server_api: FocusServerAPI):
         """
-        Test PZ-14788: Security - Input Sanitization.
+        Test PZ-14788: Malformed Input Handling.
         
         Objective:
-            Verify that API endpoints properly sanitize and validate all input parameters.
+            Verify that malformed inputs are handled gracefully without
+            exposing system internals in error messages.
         
         Steps:
-            1. Send request with special characters in input
-            2. Send request with Unicode characters
-            3. Send request with control characters
-            4. Send request with path traversal attempts
+            1. Send requests with various malformed inputs
+            2. Verify errors are handled gracefully
+            3. Verify error messages don't expose sensitive paths
         
         Expected:
-            All input is properly sanitized and validated before processing.
+            All malformed inputs handled gracefully with safe error messages.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Security - Input Sanitization (PZ-14788)")
+        logger.info("TEST: Malformed Input Handling (PZ-14788)")
         logger.info("=" * 80)
         
-        # Test special characters
-        special_chars = ['<>"\'&{}[]']
-        
-        # Test Unicode characters (line separators)
-        unicode_chars = ['\u2028', '\u2029']  # Line separator, paragraph separator
-        
-        # Test control characters
-        control_chars = ['\n', '\r', '\t']
-        
-        # Test path traversal
-        path_traversal = ['../../../etc/passwd', '..\\..\\..\\windows\\system32']
+        malformed_inputs = [
+            {"field": "channels", "value": "not_a_dict", "description": "string for dict field"},
+            {"field": "displayInfo", "value": 12345, "description": "int for dict field"},
+            {"field": "frequencyRange", "value": None, "description": "None for required dict"},
+        ]
         
         base_payload = {
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        all_test_cases = [
-            ("Special Characters", special_chars),
-            ("Unicode Characters", unicode_chars),
-            ("Control Characters", control_chars),
-            ("Path Traversal", path_traversal)
-        ]
+        errors_handled_safely = 0
         
-        for test_name, test_values in all_test_cases:
-            logger.info(f"\nTesting {test_name}:")
+        for test_case in malformed_inputs:
+            logger.info(f"Testing: {test_case['description']}")
             
-            for test_value in test_values:
-                logger.info(f"  Testing: {repr(test_value)}")
+            test_payload = base_payload.copy()
+            test_payload[test_case['field']] = test_case['value']
+            
+            try:
+                config_request = ConfigureRequest(**test_payload)
+                # Unexpected - Pydantic should catch this
+                logger.warning(f"  Pydantic accepted malformed input - checking API response")
                 
                 try:
-                    test_payload = base_payload.copy()
+                    response = focus_server_api.configure_streaming_job(config_request)
+                    if response.job_id:
+                        focus_server_api.cancel_job(response.job_id)
+                except APIError as api_err:
+                    error_str = str(api_err).lower()
+                    assert "/etc/passwd" not in error_str, "Error should not expose system paths"
+                    assert "system32" not in error_str, "Error should not expose system paths"
+                    errors_handled_safely += 1
+                    logger.info(f"  API error handled safely")
                     
-                    # Pydantic will validate and sanitize
-                    try:
-                        config_request = ConfigureRequest(**test_payload)
-                        response = focus_server_api.configure_streaming_job(config_request)
-                        
-                        logger.info(f"  ✅ Input sanitized: {test_name}")
-                        
-                        # Cleanup
-                        if response.job_id:
-                            try:
-                                focus_server_api.cancel_job(response.job_id)
-                            except Exception:
-                                pass
-                                
-                    except ValidationError as e:
-                        logger.info(f"  ✅ Validation error (expected): {e}")
-                        assert True, f"{test_name} caught by validation"
-                        
-                except Exception as e:
-                    logger.warning(f"  ⚠️  Error with {test_name}: {e}")
-                    # Verify error is safe
-                    error_str = str(e).lower()
-                    assert "passwd" not in error_str or "system32" not in error_str, \
-                        "Error should not expose file system paths"
+            except (ValueError, ValidationError, TypeError) as e:
+                errors_handled_safely += 1
+                error_str = str(e).lower()
+                # Verify error doesn't expose sensitive info
+                assert "/etc/passwd" not in error_str, "Error should not expose system paths"
+                assert "system32" not in error_str, "Error should not expose system paths"
+                logger.info(f"  Pydantic error handled safely: {type(e).__name__}")
         
-        logger.info("\n✅ All input sanitization tests completed")
+        logger.info(f"All {errors_handled_safely} malformed inputs handled safely")
         logger.info("=" * 80)
-
