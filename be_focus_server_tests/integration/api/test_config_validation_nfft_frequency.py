@@ -205,7 +205,7 @@ class TestFrequencyRangeConfiguration:
     def test_frequency_range_variations(self, focus_server_api):
         """Test: Various frequency ranges.
         
-        PZ-13819: API – SingleChannel View with Various Frequency Ranges
+        PZ-13819: API - SingleChannel View with Various Frequency Ranges
         PZ-13904: Integration - Frequency Range Variations"""
         frequency_ranges = [
             (0, 100),
