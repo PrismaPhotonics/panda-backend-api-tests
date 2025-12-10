@@ -38,6 +38,7 @@ from typing import Dict, Any
 
 from src.apis.focus_server_api import FocusServerAPI
 from src.models.focus_server_models import ConfigureRequest, ViewType
+from be_focus_server_tests.constants import SENSORS_RANGE
 from src.core.exceptions import APIError
 
 logger = logging.getLogger(__name__)
@@ -560,9 +561,9 @@ class TestConfigurationValidation:
         # First, get valid channel range
         try:
             channels_info = focus_server_api.get_channels()
-            max_channel = channels_info.highest_channel if hasattr(channels_info, 'highest_channel') else 2500
+            max_channel = channels_info.highest_channel if hasattr(channels_info, 'highest_channel') else SENSORS_RANGE
         except:
-            max_channel = 2500  # Default assumption
+            max_channel = SENSORS_RANGE  # Production value from constants
         
         logger.info(f"System max channel: {max_channel}")
         
