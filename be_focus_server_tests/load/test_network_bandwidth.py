@@ -92,7 +92,7 @@ class TestNetworkBandwidth:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,  # Live mode
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -404,7 +404,7 @@ class TestNetworkBandwidth:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL

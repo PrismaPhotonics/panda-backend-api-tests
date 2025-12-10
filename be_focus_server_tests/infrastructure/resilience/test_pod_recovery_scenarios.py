@@ -29,6 +29,74 @@ logger = logging.getLogger(__name__)
 
 
 # ===================================================================
+# Helper Functions
+# ===================================================================
+
+def get_mongodb_pod_selector(k8s_manager_or_config) -> str:
+    """
+    Get the correct MongoDB pod selector from environment config.
+    
+    Args:
+        k8s_manager_or_config: Either KubernetesManager or ConfigManager instance
+        
+    Returns:
+        str: Label selector string for MongoDB pods
+    """
+    config_manager = k8s_manager_or_config
+    if hasattr(k8s_manager_or_config, 'config_manager'):
+        config_manager = k8s_manager_or_config.config_manager
+    
+    try:
+        if hasattr(config_manager, 'get_environment_config'):
+            env_config = config_manager.get_environment_config()
+        elif hasattr(config_manager, '_config_data'):
+            env_config = config_manager._config_data
+        else:
+            env_config = {}
+            
+        services = env_config.get("services", {})
+        mongodb_config = services.get("mongodb", {})
+        pod_selector = mongodb_config.get("pod_selector")
+        if pod_selector:
+            return pod_selector
+    except Exception:
+        pass
+    return "app.kubernetes.io/instance=mongodb"
+
+
+def get_rabbitmq_pod_selector(k8s_manager_or_config) -> str:
+    """
+    Get the correct RabbitMQ pod selector from environment config.
+    
+    Args:
+        k8s_manager_or_config: Either KubernetesManager or ConfigManager instance
+        
+    Returns:
+        str: Label selector string for RabbitMQ pods
+    """
+    config_manager = k8s_manager_or_config
+    if hasattr(k8s_manager_or_config, 'config_manager'):
+        config_manager = k8s_manager_or_config.config_manager
+    
+    try:
+        if hasattr(config_manager, 'get_environment_config'):
+            env_config = config_manager.get_environment_config()
+        elif hasattr(config_manager, '_config_data'):
+            env_config = config_manager._config_data
+        else:
+            env_config = {}
+            
+        services = env_config.get("services", {})
+        rabbitmq_config = services.get("rabbitmq", {})
+        pod_selector = rabbitmq_config.get("pod_selector")
+        if pod_selector:
+            return pod_selector
+    except Exception:
+        pass
+    return "app.kubernetes.io/instance=rabbitmq-panda"
+
+
+# ===================================================================
 # Fixtures
 # ===================================================================
 
@@ -63,7 +131,7 @@ def test_config():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,
         "end_time": None,
         "view_type": ViewType.MULTICHANNEL
@@ -153,7 +221,7 @@ class TestPodRecoveryScenarios:
             # Wait for MongoDB pod to be ready
             mongodb_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if pods:
                     pod_name = pods[0]['name']
                     if k8s_manager.wait_for_pod_ready(pod_name, namespace=namespace, timeout=10):
@@ -184,7 +252,7 @@ class TestPodRecoveryScenarios:
             # Wait for RabbitMQ pod to be ready
             rabbitmq_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if pods:
@@ -323,7 +391,7 @@ class TestPodRecoveryScenarios:
             # Wait for MongoDB
             mongodb_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if pods:
                     pod_name = pods[0]['name']
                     if k8s_manager.wait_for_pod_ready(pod_name, namespace=namespace, timeout=10):
@@ -337,7 +405,7 @@ class TestPodRecoveryScenarios:
             # Wait for RabbitMQ
             rabbitmq_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if pods:
@@ -460,7 +528,7 @@ class TestPodRecoveryScenarios:
             
             mongodb_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if pods:
                     pod_name = pods[0]['name']
                     if k8s_manager.wait_for_pod_ready(pod_name, namespace=namespace, timeout=10):
@@ -482,7 +550,7 @@ class TestPodRecoveryScenarios:
             
             rabbitmq_ready = False
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=rabbitmq")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_rabbitmq_pod_selector(k8s_manager))
                 if not pods:
                     pods = k8s_manager.get_pods(namespace=namespace, label_selector="app.kubernetes.io/instance=rabbitmq-panda")
                 if pods:

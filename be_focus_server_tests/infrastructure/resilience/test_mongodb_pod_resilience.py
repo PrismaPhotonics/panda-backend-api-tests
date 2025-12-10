@@ -32,6 +32,46 @@ logger = logging.getLogger(__name__)
 
 
 # ===================================================================
+# Helper Functions
+# ===================================================================
+
+def get_mongodb_pod_selector(k8s_manager_or_config) -> str:
+    """
+    Get the correct MongoDB pod selector from environment config.
+    
+    Args:
+        k8s_manager_or_config: Either KubernetesManager or ConfigManager instance
+        
+    Returns:
+        str: Label selector string for MongoDB pods
+    """
+    # Try to get config_manager from k8s_manager if needed
+    config_manager = k8s_manager_or_config
+    if hasattr(k8s_manager_or_config, 'config_manager'):
+        config_manager = k8s_manager_or_config.config_manager
+    
+    # Try to get from services config first
+    try:
+        if hasattr(config_manager, 'get_environment_config'):
+            env_config = config_manager.get_environment_config()
+        elif hasattr(config_manager, '_config_data'):
+            env_config = config_manager._config_data
+        else:
+            env_config = {}
+            
+        services = env_config.get("services", {})
+        mongodb_config = services.get("mongodb", {})
+        pod_selector = mongodb_config.get("pod_selector")
+        if pod_selector:
+            return pod_selector
+    except Exception:
+        pass
+    
+    # Fallback to app.kubernetes.io/instance=mongodb (works for both staging and kefar_saba)
+    return "app.kubernetes.io/instance=mongodb"
+
+
+# ===================================================================
 # Fixtures
 # ===================================================================
 
@@ -76,7 +116,7 @@ def test_config():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,
         "end_time": None,
         "view_type": ViewType.MULTICHANNEL
@@ -154,7 +194,7 @@ class TestMongoDBPodResilience:
         try:
             # Step 1: Get current MongoDB pod
             logger.info("\nStep 1: Getting current MongoDB pod...")
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
             assert len(pods) > 0, "MongoDB pod not found"
             original_pod = pods[0]
             original_pod_name = original_pod['name']
@@ -176,7 +216,7 @@ class TestMongoDBPodResilience:
             logger.info("\nStep 4: Waiting for pod deletion...")
             deleted = False
             for attempt in range(30):  # 30 seconds timeout
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if not any(p['name'] == original_pod_name for p in pods):
                     deleted = True
                     logger.info("✅ Pod deleted")
@@ -188,7 +228,7 @@ class TestMongoDBPodResilience:
             # Step 5: Wait for new pod to be created
             logger.info("\nStep 5: Waiting for new pod to be created...")
             for attempt in range(60):  # 60 seconds timeout
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if pods:
                     new_pod = pods[0]
                     if new_pod['name'] != original_pod_name:
@@ -317,7 +357,7 @@ class TestMongoDBPodResilience:
             logger.info("\nStep 3: Waiting for pods to terminate...")
             pods_terminated = False
             for attempt in range(60):  # 60 seconds timeout
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if len(pods) == 0:
                     pods_terminated = True
                     logger.info("✅ All MongoDB pods terminated")
@@ -370,7 +410,7 @@ class TestMongoDBPodResilience:
             logger.info("\nStep 7: Waiting for MongoDB pod to be ready...")
             pod_ready = False
             for attempt in range(120):  # 120 seconds timeout
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if pods:
                     pod_name = pods[0]['name']
                     if k8s_manager.wait_for_pod_ready(pod_name, namespace=namespace, timeout=10):
@@ -472,7 +512,7 @@ class TestMongoDBPodResilience:
         try:
             # Step 1: Get MongoDB pod name
             logger.info("\nStep 1: Getting MongoDB pod name...")
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
             assert len(pods) > 0, "MongoDB pod not found"
             pod_name = pods[0]['name']
             logger.info(f"✅ MongoDB pod: {pod_name}")
@@ -525,7 +565,7 @@ class TestMongoDBPodResilience:
             logger.info("\nStep 4: Verifying pod restarted successfully...")
             time.sleep(10)  # Give pod time to restart
             
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
             assert len(pods) > 0, "MongoDB pod not found after restart"
             
             new_pod_name = pods[0]['name']
@@ -625,7 +665,7 @@ class TestMongoDBPodResilience:
             # Step 2: Wait for pods to terminate
             logger.info("\nStep 2: Waiting for pods to terminate...")
             for attempt in range(60):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if len(pods) == 0:
                     logger.info("✅ All pods terminated")
                     break
@@ -675,7 +715,7 @@ class TestMongoDBPodResilience:
             
             # Wait for pod to be ready
             for attempt in range(120):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if pods:
                     pod_name = pods[0]['name']
                     if k8s_manager.wait_for_pod_ready(pod_name, namespace=namespace, timeout=10):
@@ -748,7 +788,7 @@ class TestMongoDBPodResilience:
             
             # Wait for pods to terminate
             for attempt in range(60):
-                pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+                pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
                 if len(pods) == 0:
                     break
                 time.sleep(1)
@@ -765,7 +805,7 @@ class TestMongoDBPodResilience:
             logger.info("\nStep 3: Waiting for MongoDB recovery...")
             recovery_start = time.time()
             
-            pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+            pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
             assert len(pods) > 0, "MongoDB pod not created"
             
             pod_name = pods[0]['name']
@@ -853,7 +893,7 @@ class TestMongoDBPodResilience:
         
         # Step 1: Get MongoDB pod
         logger.info("\nStep 1: Getting MongoDB pod...")
-        pods = k8s_manager.get_pods(namespace=namespace, label_selector="app=mongodb")
+        pods = k8s_manager.get_pods(namespace=namespace, label_selector=get_mongodb_pod_selector(k8s_manager))
         assert len(pods) > 0, "MongoDB pod not found"
         pod_name = pods[0]['name']
         logger.info(f"✅ MongoDB pod: {pod_name}")
@@ -894,8 +934,7 @@ class TestMongoDBPodResilience:
 # ===================================================================
 
 @pytest.mark.summary
-
-
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 @pytest.mark.regression
 def test_mongodb_pod_resilience_summary():
     """
@@ -909,7 +948,8 @@ def test_mongodb_pod_resilience_summary():
         - PZ-14719: MongoDB recovery after outage
         - PZ-14720: MongoDB pod status monitoring
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("MongoDB Pod Resilience Tests Suite Summary")

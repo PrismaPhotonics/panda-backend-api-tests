@@ -160,7 +160,7 @@ class TestHistoricPlaybackEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
@@ -239,7 +239,7 @@ class TestHistoricPlaybackEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": int(start_time_dt.timestamp()),
             "end_time": int(end_time_dt.timestamp()),
             "view_type": ViewType.MULTICHANNEL
@@ -297,7 +297,7 @@ class TestHistoricPlaybackEdgeCases:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
@@ -412,7 +412,7 @@ class TestHistoricPlaybackDataQuality:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_ts,
             "end_time": end_ts,
             "view_type": ViewType.MULTICHANNEL
@@ -473,7 +473,7 @@ class TestHistoricPlaybackDataQuality:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": start_time,
             "end_time": end_time,
             "view_type": ViewType.MULTICHANNEL
@@ -497,32 +497,33 @@ class TestHistoricPlaybackDataQuality:
         logger.info("✅ TEST PASSED")
     
     @pytest.mark.xray("PZ-13870")
-    @pytest.mark.xray("PZ-13984")
-
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PZ-13870: Backend accepts future timestamps instead of returning 400"
+    )
     @pytest.mark.regression
-    def test_historic_playback_future_timestamps_rejection(self, focus_server_api: FocusServerAPI):
+    def test_future_timestamps_rejected(self, focus_server_api: FocusServerAPI):
         """
         Test PZ-13870: Historic playback with future timestamps should be rejected.
         
         Steps:
-            1. Create config with future timestamps
-            2. Attempt to configure
-            3. Verify rejection
+            1. Create config with future timestamps (tomorrow)
+            2. Send configure request
+            3. Verify server rejects with validation error
         
         Expected:
-            - Future timestamps rejected
-            - Error message indicates invalid time range
+            - Server returns 400 Bad Request or ValidationError
+            - Future timestamps are NOT accepted for historic playback
         
-        Jira: PZ-13870
-        Priority: HIGH
-        
-        Note: Similar to PZ-13984, this is a validation gap test
+        Known Issue:
+            PZ-13870 - Backend currently accepts future timestamps.
+            Test marked xfail(strict=True) until backend is fixed.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Historic Playback - Future Timestamps (PZ-13870)")
+        logger.info("TEST: Future Timestamps Rejection (PZ-13870)")
         logger.info("=" * 80)
         
-        # Future timestamps
+        # Future timestamps (tomorrow)
         start_time_dt = datetime.now() + timedelta(days=1)
         end_time_dt = start_time_dt + timedelta(minutes=5)
         
@@ -531,36 +532,27 @@ class TestHistoricPlaybackDataQuality:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": int(start_time_dt.timestamp()),
             "end_time": int(end_time_dt.timestamp()),
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info(f"Attempting future timestamps: {start_time_dt} to {end_time_dt}")
+        logger.info(f"Sending request with future timestamps: {start_time_dt} to {end_time_dt}")
         
-        try:
-            configure_request = ConfigureRequest(**config)
+        configure_request = ConfigureRequest(**config)
+        
+        # Expected: This should raise ValidationError or APIError
+        # Current behavior (bug): Server accepts it
+        with pytest.raises((APIError, ValueError)) as exc_info:
             response = focus_server_api.configure_streaming_job(configure_request)
-            
-            # If accepted, this is a validation gap
-            logger.warning(f"⚠️  VALIDATION GAP: Future timestamps accepted")
-            logger.warning(f"   Job ID: {response.job_id}")
-            
-            # Clean up
-            try:
-                focus_server_api.cancel_job(response.job_id)
-            except:
-                pass
-            
-            # Don't fail test - this documents current behavior
-            logger.warning("⚠️  Future timestamps should be rejected (validation gap)")
-            
-        except (APIError, ValueError) as e:
-            # Expected: Rejection
-            logger.info(f"✅ Future timestamps rejected: {e}")
+            if hasattr(response, 'job_id') and response.job_id:
+                try:
+                    focus_server_api.cancel_job(response.job_id)
+                except:
+                    pass
         
-        logger.info("✅ TEST PASSED")
+        logger.info(f"✅ Future timestamps correctly rejected: {exc_info.value}")
 
 
 

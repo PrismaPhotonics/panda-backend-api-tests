@@ -38,6 +38,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from enum import Enum
 from statistics import mean, stdev
 
+# Import K8s verification module
+from be_focus_server_tests.load.k8s_job_verification import (
+    verify_job_from_k8s,
+    verify_jobs_batch_from_k8s,
+    log_k8s_verification_summary,
+    assert_all_jobs_are_historic,
+    K8sJobVerification,
+    JobType
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -244,20 +254,25 @@ class GradualHistoricJobLoadTester:
         print(result.to_log_message())
     """
     
-    def __init__(self, config_manager, config: Optional[GradualHistoricLoadConfig] = None):
+    def __init__(self, config_manager, config: Optional[GradualHistoricLoadConfig] = None, k8s_manager=None):
         """
         Initialize the gradual historic load tester.
         
         Args:
             config_manager: Configuration manager instance
             config: Optional custom configuration (defaults to GradualHistoricLoadConfig)
+            k8s_manager: Optional KubernetesManager for job verification
         """
         self.config_manager = config_manager
         self.cfg = config or GradualHistoricLoadConfig()
+        self.k8s_manager = k8s_manager
         
         # Active jobs tracking
         self._active_jobs: Dict[str, ActiveHistoricJob] = {}
         self._lock = threading.Lock()
+        
+        # K8s verification tracking
+        self._k8s_verifications: List[K8sJobVerification] = []
         
         # API client (lazy initialization)
         self._api = None
@@ -267,6 +282,8 @@ class GradualHistoricJobLoadTester:
             f"Initial={self.cfg.INITIAL_JOBS}, Step={self.cfg.STEP_INCREMENT}, "
             f"Max={self.cfg.MAX_JOBS}, Interval={self.cfg.STEP_INTERVAL_SECONDS}s"
         )
+        if k8s_manager:
+            logger.info("   K8s verification: ENABLED")
     
     @property
     def api(self):
@@ -345,6 +362,13 @@ class GradualHistoricJobLoadTester:
         Create Historic job payload with time range from MongoDB.
         
         Uses round-robin selection to distribute load across different recordings.
+        
+        IMPORTANT CONSTRAINTS:
+        - Maximum time period is limited by window size: max_duration = displayTimeAxisDuration × 30
+        - Example: If displayTimeAxisDuration=30 seconds, max duration = 15 minutes (900 seconds)
+        - Example: If displayTimeAxisDuration=1 day, max duration = 30 days
+        - Load occurs only when there are many active investigations processing data simultaneously
+        - Longer time periods allow investigations to run longer and remain active
         """
         recordings = self._get_available_recordings()
         
@@ -357,6 +381,19 @@ class GradualHistoricJobLoadTester:
             duration_ms = self.cfg.RECORDING_DURATION_SECONDS * 1000
             actual_duration_ms = min(duration_ms, rec_end_ms - rec_start_ms)
             
+            # IMPORTANT: Validate against 30-window limit
+            # Max duration = displayTimeAxisDuration × 30 windows
+            display_time_axis_duration = 10  # seconds (window size)
+            max_allowed_duration_ms = display_time_axis_duration * 30 * 1000  # 30 windows in milliseconds
+            
+            if actual_duration_ms > max_allowed_duration_ms:
+                logger.warning(
+                    f"Requested duration {actual_duration_ms/1000:.1f}s exceeds max allowed "
+                    f"{max_allowed_duration_ms/1000:.1f}s (30 windows × {display_time_axis_duration}s). "
+                    f"Truncating to maximum."
+                )
+                actual_duration_ms = max_allowed_duration_ms
+            
             # Convert to seconds for API (epoch seconds)
             start_time = rec_start_ms // 1000
             end_time = (rec_start_ms + actual_duration_ms) // 1000
@@ -368,7 +405,7 @@ class GradualHistoricJobLoadTester:
             end_time = now - 50     # 50 seconds ago (in seconds)
         
         return {
-            "displayTimeAxisDuration": 10,
+            "displayTimeAxisDuration": 10,  # Window size in seconds - affects max duration (30 windows limit)
             "nfftSelection": self.cfg.NFFT,
             "displayInfo": {"height": 600},
             "channels": {
@@ -549,6 +586,23 @@ class GradualHistoricJobLoadTester:
                             self._active_jobs[job.job_id] = job
                         successful += 1
                         logger.info(f"✅ Job {job.job_id} fully initialized ({job.frames_received} frames)")
+                        
+                        # K8s verification for each job
+                        if self.k8s_manager:
+                            try:
+                                verification = verify_job_from_k8s(
+                                    kubernetes_manager=self.k8s_manager,
+                                    job_id=job.job_id,
+                                    namespace="panda",
+                                    timeout=15
+                                )
+                                self._k8s_verifications.append(verification)
+                                
+                                if verification.verified:
+                                    job_type_emoji = "🕐" if verification.is_historic() else "🔴"
+                                    logger.info(f"   {job_type_emoji} K8s: {job.job_id} = {verification.job_type.value.upper()}")
+                            except Exception as verify_error:
+                                logger.debug(f"K8s verification failed for {job.job_id}: {verify_error}")
                     else:
                         failed += 1
                         if job:
@@ -897,6 +951,20 @@ class GradualHistoricJobLoadTester:
         
         # Log results
         logger.info(result.to_log_message())
+        
+        # ================================================================
+        # K8S JOB VERIFICATION SUMMARY
+        # ================================================================
+        if self._k8s_verifications:
+            verification_summary = log_k8s_verification_summary(self._k8s_verifications, logger)
+            
+            # Verify all jobs are HISTORIC (this is a Historic Job Load Test)
+            try:
+                assert_all_jobs_are_historic(self._k8s_verifications)
+                logger.info(f"✅ K8s verification: All {verification_summary['historic']} jobs are HISTORIC")
+            except AssertionError as e:
+                logger.error(f"❌ K8s verification FAILED: {e}")
+        
         return result
 
 
@@ -909,7 +977,8 @@ def create_gradual_historic_load_tester(
     initial_jobs: int = 5,
     step_increment: int = 5,
     max_jobs: int = 100,
-    step_interval: int = 10
+    step_interval: int = 10,
+    k8s_manager=None
 ) -> GradualHistoricJobLoadTester:
     """
     Factory function to create a GradualHistoricJobLoadTester with custom config.
@@ -925,6 +994,7 @@ def create_gradual_historic_load_tester(
         step_increment: Jobs to add per step (default: 5)
         max_jobs: Maximum jobs (default: 100)
         step_interval: Seconds between steps (default: 10)
+        k8s_manager: Optional KubernetesManager for job verification
         
     Returns:
         Configured GradualHistoricJobLoadTester instance
@@ -935,7 +1005,7 @@ def create_gradual_historic_load_tester(
     config.MAX_JOBS = max_jobs
     config.STEP_INTERVAL_SECONDS = step_interval
     
-    return GradualHistoricJobLoadTester(config_manager, config)
+    return GradualHistoricJobLoadTester(config_manager, config, k8s_manager)
 
 
 # =============================================================================
@@ -943,7 +1013,7 @@ def create_gradual_historic_load_tester(
 # =============================================================================
 
 @pytest.fixture
-def gradual_historic_tester(config_manager) -> GradualHistoricJobLoadTester:
+def gradual_historic_tester(config_manager, kubernetes_manager) -> GradualHistoricJobLoadTester:
     """
     Fixture to create GradualHistoricJobLoadTester with default configuration.
     
@@ -951,12 +1021,14 @@ def gradual_historic_tester(config_manager) -> GradualHistoricJobLoadTester:
     - Initial: 5 jobs
     - Step: +5 jobs every 10 seconds
     - Max: 100 jobs
+    
+    Includes K8s verification for job type validation.
     """
-    return GradualHistoricJobLoadTester(config_manager)
+    return GradualHistoricJobLoadTester(config_manager, k8s_manager=kubernetes_manager)
 
 
 @pytest.fixture
-def quick_gradual_historic_tester(config_manager) -> GradualHistoricJobLoadTester:
+def quick_gradual_historic_tester(config_manager, kubernetes_manager) -> GradualHistoricJobLoadTester:
     """
     Fixture for quick gradual historic load testing (smaller scale for CI).
     
@@ -964,6 +1036,8 @@ def quick_gradual_historic_tester(config_manager) -> GradualHistoricJobLoadTeste
     - Initial: 2 jobs
     - Step: +2 jobs every 5 seconds
     - Max: 10 jobs
+    
+    Includes K8s verification for job type validation.
     """
     config = GradualHistoricLoadConfig()
     config.INITIAL_JOBS = 2
@@ -971,7 +1045,7 @@ def quick_gradual_historic_tester(config_manager) -> GradualHistoricJobLoadTeste
     config.MAX_JOBS = 10
     config.STEP_INTERVAL_SECONDS = 5
     
-    return GradualHistoricJobLoadTester(config_manager, config)
+    return GradualHistoricJobLoadTester(config_manager, config, kubernetes_manager)
 
 
 # =============================================================================

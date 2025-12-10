@@ -73,13 +73,39 @@ class MongoDBManager:
             self.k8s_core_v1 = None
     
     def _ensure_k8s_available(self):
-        """Ensure Kubernetes is available, raise error if not."""
-        if self.k8s_apps_v1 is None or self.k8s_core_v1 is None:
-            raise InfrastructureError(
-                "Kubernetes is not available. "
-                "This operation requires a valid kubeconfig. "
-                "Are you running outside of a Kubernetes environment?"
-            )
+        """Ensure Kubernetes is available (either direct API or via KubernetesManager with SSH fallback)."""
+        # Check if KubernetesManager with SSH fallback is available
+        if self.kubernetes_manager is not None:
+            # KubernetesManager handles its own availability check
+            if hasattr(self.kubernetes_manager, 'use_ssh_fallback') and self.kubernetes_manager.use_ssh_fallback:
+                # SSH fallback is available
+                return
+            if hasattr(self.kubernetes_manager, 'k8s_apps_v1') and self.kubernetes_manager.k8s_apps_v1 is not None:
+                # Direct K8s API via KubernetesManager is available
+                return
+        
+        # Check direct K8s API clients
+        if self.k8s_apps_v1 is not None and self.k8s_core_v1 is not None:
+            return
+        
+        raise InfrastructureError(
+            "Kubernetes is not available. "
+            "This operation requires a valid kubeconfig or SSH access to the cluster. "
+            "Are you running outside of a Kubernetes environment?"
+        )
+    
+    def is_k8s_available(self) -> bool:
+        """
+        Check if Kubernetes operations are available.
+        
+        Returns:
+            True if K8s is available (direct API or SSH fallback)
+        """
+        try:
+            self._ensure_k8s_available()
+            return True
+        except InfrastructureError:
+            return False
     
     def connect(self) -> bool:
         """
@@ -174,9 +200,11 @@ class MongoDBManager:
             
             # Fallback to direct API access
             if self.k8s_core_v1 is not None:
+                # Get pod_selector from config, fallback to legacy format
+                pod_selector = self.mongo_config.get("pod_selector", f"app={deployment_name}")
                 pods = self.k8s_core_v1.list_namespaced_pod(
                     namespace=namespace,
-                    label_selector=f"app={deployment_name}"
+                    label_selector=pod_selector
                 )
                 if pods.items:
                     pod_name = pods.items[0].metadata.name

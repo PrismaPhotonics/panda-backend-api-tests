@@ -29,7 +29,7 @@ on:
       environment:
         description: "Target environment"
         type: choice
-        required: true
+        required: false  # Not required - uses default for push/PR triggers
         default: "kefar_saba"
         options:
           - kefar_saba
@@ -179,7 +179,8 @@ jobs:
           if (-not (Test-Path $junitPath)) {
             Write-Host "Warning: JUnit XML file was not created. Tests may have failed during collection."
             # Create a minimal XML file to indicate test collection failure
-            $minimalXml = '<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" tests="0" failures="0" errors="1" skipped="0" time="0.0"><error message="Test collection failed or tests crashed before execution"></error></testsuite></testsuites>'
+            # JUnit XML spec requires <error> to be inside <testcase>, not directly in <testsuite>
+            $minimalXml = '<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" tests="1" failures="0" errors="1" skipped="0" time="0.0"><testcase name="test_collection" classname="pytest.collection" time="0.0"><error message="Test collection failed or tests crashed before execution">Test collection failed. Check workflow logs for details.</error></testcase></testsuite></testsuites>'
             $minimalXml | Out-File -FilePath $junitPath -Encoding utf8
           }
 
@@ -231,7 +232,6 @@ jobs:
       - name: Parse and Display Test Results
         if: always()
         shell: powershell
-        continue-on-error: true
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -242,7 +242,8 @@ jobs:
           Write-Host "Parsing JUnit test results..."
           py parse_junit_results.py
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "Warning: parse_junit_results.py exited with code $LASTEXITCODE, but continuing..."
+            Write-Host "::error::parse_junit_results.py detected issues (e.g., all tests skipped)"
+            exit $LASTEXITCODE
           }
 
       - uses: actions/upload-artifact@v4

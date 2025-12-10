@@ -77,7 +77,7 @@ class TestLiveMonitoringCore:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,  # Live mode
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -146,7 +146,7 @@ class TestLiveMonitoringCore:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -207,15 +207,24 @@ class TestLiveMonitoringCore:
             metadata = focus_server_api.get_live_metadata_flat()
             
             # Verify metadata structure
-            assert hasattr(metadata, 'dx'), "Metadata should have dx"
-            assert hasattr(metadata, 'dy'), "Metadata should have dy"
+            # Note: dx is optional (can be None when "waiting for fiber")
+            # Note: dy is NOT part of LiveMetadataFlat model - removed from check
+            
+            assert metadata is not None, "Metadata should not be None"
             
             logger.info(f"✅ Metadata retrieved successfully:")
-            logger.info(f"   dx: {metadata.dx}")
-            logger.info(f"   dy: {metadata.dy}")
             
-            if hasattr(metadata, 'device_name'):
-                logger.info(f"   device: {metadata.device_name}")
+            # Log dx if available
+            if hasattr(metadata, 'dx') and metadata.dx is not None:
+                logger.info(f"   dx: {metadata.dx}")
+            
+            # Log prr (pulse repetition rate)
+            if hasattr(metadata, 'prr'):
+                logger.info(f"   prr: {metadata.prr}")
+            
+            # Log number of channels
+            if hasattr(metadata, 'number_of_channels') and metadata.number_of_channels is not None:
+                logger.info(f"   number_of_channels: {metadata.number_of_channels}")
             
             logger.info("✅ TEST PASSED")
             

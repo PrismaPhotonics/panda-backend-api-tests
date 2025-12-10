@@ -1,17 +1,17 @@
-﻿"""
+"""
 Integration Tests - Configuration Validation (NFFT & Frequency Range)
 ======================================================================
 
-⚠️  SCOPE REFINED - 2025-10-27
+??  SCOPE REFINED - 2025-10-27
 --------------------------------------
 Following meeting decision (PZ-13756), this file focuses on:
-- ✅ IN SCOPE: Configuration validation (NFFT, frequency, channels)
-- ✅ IN SCOPE: Pre-launch validations
-- ✅ IN SCOPE: Predictable error handling
-- ❌ OUT OF SCOPE: Spectrogram content validation (removed)
-- ❌ OUT OF SCOPE: Baby processing validation (removed)
+- ? IN SCOPE: Configuration validation (NFFT, frequency, channels)
+- ? IN SCOPE: Pre-launch validations
+- ? IN SCOPE: Predictable error handling
+- ? OUT OF SCOPE: Spectrogram content validation (removed)
+- ? OUT OF SCOPE: Baby processing validation (removed)
 
-⚠️  MIGRATED TO OLD API - 2025-10-23
+??  MIGRATED TO OLD API - 2025-10-23
 These tests have been MIGRATED to work with POST /configure API.
 
 Test Flow:
@@ -69,7 +69,7 @@ class TestNFFTConfiguration:
             "nfftSelection": 256,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -78,7 +78,7 @@ class TestNFFTConfiguration:
         response = focus_server_api.configure_streaming_job(config_request)
         
         assert hasattr(response, 'job_id') and response.job_id
-        logger.info("✅ NFFT=256 configuration successful")
+        logger.info("? NFFT=256 configuration successful")
     
     @pytest.mark.xray("PZ-13873")
 
@@ -99,7 +99,7 @@ class TestNFFTConfiguration:
                 "nfftSelection": nfft,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.MULTICHANNEL
@@ -109,7 +109,7 @@ class TestNFFTConfiguration:
             
             assert hasattr(response, 'job_id') and response.job_id
         
-        logger.info(f"✅ All {len(nfft_values)} NFFT values tested successfully")
+        logger.info(f"? All {len(nfft_values)} NFFT values tested successfully")
     
     @pytest.mark.xray("PZ-13901")
 
@@ -133,7 +133,7 @@ class TestNFFTConfiguration:
             "nfftSelection": nfft,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -142,7 +142,7 @@ class TestNFFTConfiguration:
         response = focus_server_api.configure_streaming_job(config_request)
         
         assert hasattr(response, 'job_id') and response.job_id
-        logger.info("✅ Non-power-of-2 NFFT accepted with warning")
+        logger.info("? Non-power-of-2 NFFT accepted with warning")
 
 
 # ===================================================================
@@ -196,7 +196,7 @@ class TestFrequencyRangeConfiguration:
         response = focus_server_api.configure_streaming_job(config_request)
         
         assert hasattr(response, 'job_id') and response.job_id
-        logger.info(f"✅ Frequency range [0, {freq_max}] configured successfully")
+        logger.info(f"? Frequency range [0, {freq_max}] configured successfully")
     
     @pytest.mark.xray("PZ-13819", "PZ-13904")
 
@@ -205,7 +205,7 @@ class TestFrequencyRangeConfiguration:
     def test_frequency_range_variations(self, focus_server_api):
         """Test: Various frequency ranges.
         
-        PZ-13819: API – SingleChannel View with Various Frequency Ranges
+        PZ-13819: API � SingleChannel View with Various Frequency Ranges
         PZ-13904: Integration - Frequency Range Variations"""
         frequency_ranges = [
             (0, 100),
@@ -235,7 +235,7 @@ class TestFrequencyRangeConfiguration:
             
             assert hasattr(response, 'job_id') and response.job_id
         
-        logger.info(f"✅ All {len(frequency_ranges)} frequency ranges tested")
+        logger.info(f"? All {len(frequency_ranges)} frequency ranges tested")
 
 
 # ===================================================================
@@ -272,7 +272,7 @@ class TestConfigurationCompatibility:
         logger.info(f"  - Output data rate: {compat_result['estimates']['output_data_rate_mbps']:.2f} Mbps")
         
         assert compat_result["is_compatible"]
-        logger.info("✅ Configuration compatible")
+        logger.info("? Configuration compatible")
     
     @pytest.mark.xray("PZ-13905")
 
@@ -302,7 +302,7 @@ class TestConfigurationCompatibility:
             "nfftSelection": 256,  # Small NFFT = high output rate
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 200},  # Large sensor range
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -312,7 +312,7 @@ class TestConfigurationCompatibility:
         response = focus_server_api.configure_streaming_job(config_request)
         
         assert hasattr(response, 'job_id') and response.job_id
-        logger.info("✅ High throughput configuration accepted")
+        logger.info("? High throughput configuration accepted")
     
     @pytest.mark.xray("PZ-13906")
 
@@ -349,7 +349,7 @@ class TestConfigurationCompatibility:
         response = focus_server_api.configure_streaming_job(config_request)
         
         assert hasattr(response, 'job_id') and response.job_id
-        logger.info("✅ Low throughput configuration accepted")
+        logger.info("? Low throughput configuration accepted")
 
 
 # ===================================================================
@@ -377,7 +377,7 @@ class TestSpectrogramPipelineErrors:
             validate_nfft_value(0)
         
         assert "positive" in str(exc_info.value).lower()
-        logger.info(f"✅ NFFT=0 rejected: {exc_info.value}")
+        logger.info(f"? NFFT=0 rejected: {exc_info.value}")
     
     @pytest.mark.xray("PZ-13875")
     @pytest.mark.xray("PZ-13555")
@@ -391,7 +391,7 @@ class TestSpectrogramPipelineErrors:
             validate_nfft_value(-512)
         
         assert "positive" in str(exc_info.value).lower()
-        logger.info(f"✅ Negative NFFT rejected: {exc_info.value}")
+        logger.info(f"? Negative NFFT rejected: {exc_info.value}")
 
 
 # ===================================================================

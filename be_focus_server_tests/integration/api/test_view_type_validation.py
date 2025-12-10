@@ -75,7 +75,7 @@ class TestViewTypeValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": "multichannel"  # ❌ String instead of int
@@ -105,74 +105,59 @@ class TestViewTypeValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14093")
-
-    
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PZ-14093: Backend may accept invalid view_type values instead of returning 400"
+    )
     @pytest.mark.regression
-    def test_invalid_view_type_out_of_range(self, focus_server_api: FocusServerAPI):
+    @pytest.mark.parametrize("invalid_view_type", [999, -1, 100, 3])
+    def test_invalid_view_type_rejected(self, focus_server_api: FocusServerAPI, invalid_view_type: int):
         """
-        Test PZ-13914: View Type with invalid integer value should be rejected.
+        Test PZ-13914: Invalid view_type values should be rejected.
         
         Steps:
-            1. Create config with view_type = 999 (invalid)
-            2. Send POST /configure
-            3. Verify rejection
+            1. Create config with invalid view_type
+            2. Send configure request
+            3. Verify server rejects with validation error
         
         Expected:
-            - Pydantic or server rejects out-of-range values
+            - Server returns 400 Bad Request or ValidationError
+            - Invalid view_type values are NOT accepted
             - Valid range: 0 (MULTICHANNEL), 1 (SINGLECHANNEL), 2 (WATERFALL)
         
-        Jira: PZ-13914
-        Priority: HIGH
+        Known Issue:
+            PZ-14093 - Backend may accept invalid view_type values.
+            Test marked xfail(strict=True) until backend validation is confirmed.
         """
-        logger.info("=" * 80)
-        logger.info("TEST: Invalid View Type - Out of Range (PZ-13914)")
-        logger.info("=" * 80)
+        logger.info(f"Testing invalid view_type = {invalid_view_type}")
         
-        invalid_values = [999, -1, 100, 3]  # All invalid
+        invalid_config = {
+            "displayTimeAxisDuration": 10,
+            "nfftSelection": 1024,
+            "displayInfo": {"height": 1000},
+            "channels": {"min": 1, "max": 50},
+            "frequencyRange": {"min": 0, "max": 1000},
+            "start_time": None,
+            "end_time": None,
+            "view_type": invalid_view_type
+        }
         
-        for invalid_view_type in invalid_values:
-            logger.info(f"\nTesting view_type = {invalid_view_type}")
-            
-            invalid_config = {
-                "displayTimeAxisDuration": 10,
-                "nfftSelection": 1024,
-                "displayInfo": {"height": 1000},
-                "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
-                "start_time": None,
-                "end_time": None,
-                "view_type": invalid_view_type  # ❌ Out of range
-            }
-            
-            try:
-                config_request = ConfigureRequest(**invalid_config)
-                response = focus_server_api.configure_streaming_job(config_request)
-                
-                # If we get here, validation didn't work
-                if hasattr(response, 'job_id'):
-                    logger.warning(f"⚠️  Server accepted invalid view_type={invalid_view_type}")
-                    logger.warning(f"   Job ID: {response.job_id}")
-                    
-                    # Clean up
-                    try:
-                        focus_server_api.cancel_job(response.job_id)
-                    except:
-                        pass
-                    
-                    # Mark as validation gap but don't fail test
-                    logger.warning(f"⚠️  VALIDATION GAP: view_type={invalid_view_type} should be rejected")
-                
-            except (ValueError, APIError) as e:
-                # Expected: Validation error
-                logger.info(f"✅ view_type={invalid_view_type} rejected: {e}")
-                
-                error_message = str(e).lower()
-                assert any(keyword in error_message for keyword in ['view_type', 'view', 'type', 'invalid', 'range']), \
-                    f"Error should mention view_type: {e}"
+        # Expected: This should raise ValidationError or APIError
+        with pytest.raises((ValueError, APIError)) as exc_info:
+            config_request = ConfigureRequest(**invalid_config)
+            response = focus_server_api.configure_streaming_job(config_request)
+            if hasattr(response, 'job_id') and response.job_id:
+                try:
+                    focus_server_api.cancel_job(response.job_id)
+                except:
+                    pass
         
-        logger.info("=" * 80)
-        logger.info("✅ TEST PASSED: Out of Range View Types Validated")
-        logger.info("=" * 80)
+        logger.info(f"✅ view_type={invalid_view_type} correctly rejected: {exc_info.value}")
+        
+        # Verify error message mentions view_type
+        error_message = str(exc_info.value).lower()
+        assert any(keyword in error_message for keyword in ['view_type', 'view', 'type', 'invalid', 'range']), \
+            f"Error should mention view_type: {exc_info.value}"
     
     @pytest.mark.xray("PZ-13878")
     @pytest.mark.xray("PZ-13873")
@@ -191,6 +176,10 @@ class TestViewTypeValidation:
             - ViewType.SINGLECHANNEL (1) → accepted
             - ViewType.WATERFALL (2) → accepted
         
+        Note:
+            - Waterfall view does NOT support displayTimeAxisDuration and frequencyRange
+            - These fields must be omitted or set to None for waterfall views
+        
         Jira: PZ-13878
         Priority: HIGH
         """
@@ -207,16 +196,29 @@ class TestViewTypeValidation:
         for view_type_value, view_type_name in valid_view_types:
             logger.info(f"\nTesting {view_type_name} (value={view_type_value})")
             
-            config = {
-                "displayTimeAxisDuration": 10,
-                "nfftSelection": 1024,
-                "displayInfo": {"height": 1000},
-                "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
-                "start_time": None,
-                "end_time": None,
-                "view_type": view_type_value
-            }
+            # Build config based on view type
+            # Waterfall view does NOT support displayTimeAxisDuration and frequencyRange
+            if view_type_value == ViewType.WATERFALL:
+                config = {
+                    "nfftSelection": 1,  # Must be 1 for waterfall
+                    "displayInfo": {"height": 1000},
+                    "channels": {"min": 1, "max": 50},
+                    "start_time": None,
+                    "end_time": None,
+                    "view_type": view_type_value
+                    # Note: displayTimeAxisDuration and frequencyRange are NOT applicable
+                }
+            else:
+                config = {
+                    "displayTimeAxisDuration": 10,
+                    "nfftSelection": 1024,
+                    "displayInfo": {"height": 1000},
+                    "channels": {"min": 1, "max": 50},
+                    "frequencyRange": {"min": 0, "max": 1000},
+                    "start_time": None,
+                    "end_time": None,
+                    "view_type": view_type_value
+                }
             
             config_request = ConfigureRequest(**config)
             response = focus_server_api.configure_streaming_job(config_request)

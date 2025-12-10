@@ -23,12 +23,21 @@ import psutil
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Semaphore
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import json
 
 from src.apis.focus_server_api import FocusServerAPI
 from src.models.focus_server_models import ConfigureRequest
 from src.core.exceptions import APIError
+
+# Import K8s verification module
+from be_focus_server_tests.load.k8s_job_verification import (
+    verify_job_from_k8s,
+    verify_jobs_batch_from_k8s,
+    log_k8s_verification_summary,
+    K8sJobVerification,
+    JobType
+)
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +224,7 @@ def standard_config_payload():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},  # 50 channels - medium load
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,  # Live mode
         "end_time": None,
         "view_type": 0  # MultiChannel
@@ -300,7 +309,8 @@ def create_single_job(api: FocusServerAPI, config_payload: Dict[str, Any],
 
 
 def create_concurrent_jobs(api: FocusServerAPI, config_payload: Dict[str, Any],
-                          num_jobs: int, max_workers: int = 20) -> Tuple[JobMetrics, SystemMetrics]:
+                          num_jobs: int, max_workers: int = 20,
+                          k8s_manager=None) -> Tuple[JobMetrics, SystemMetrics]:
     """
     Create concurrent jobs and measure performance.
     
@@ -309,6 +319,7 @@ def create_concurrent_jobs(api: FocusServerAPI, config_payload: Dict[str, Any],
         config_payload: Configuration for jobs
         num_jobs: Number of jobs to create
         max_workers: Maximum number of concurrent threads
+        k8s_manager: Optional KubernetesManager for job verification
     
     Returns:
         Tuple of (JobMetrics, SystemMetrics)
@@ -364,6 +375,17 @@ def create_concurrent_jobs(api: FocusServerAPI, config_payload: Dict[str, Any],
                    f"Max: {system_summary['cpu']['max']:.1f}%")
         logger.info(f"  🧠 Memory - Mean: {system_summary['memory']['mean']:.1f}%, "
                    f"Max: {system_summary['memory']['max']:.1f}%")
+    
+    # K8s verification for created jobs
+    if k8s_manager:
+        job_ids = [r['job_id'] for r in job_metrics.job_results if r.get('job_id')]
+        if job_ids:
+            logger.info(f"\n  🔍 Verifying {len(job_ids)} jobs from K8s...")
+            verifications = verify_jobs_batch_from_k8s(k8s_manager, job_ids[:20], namespace="panda")  # Verify first 20
+            verification_summary = log_k8s_verification_summary(verifications, logger)
+            
+            # Store verifications in job_metrics for later use
+            job_metrics.k8s_verifications = verifications
     
     return job_metrics, system_metrics
 

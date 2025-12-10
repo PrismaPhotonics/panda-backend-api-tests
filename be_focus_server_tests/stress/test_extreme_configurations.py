@@ -123,8 +123,7 @@ class TestExtremeConfigurationValues:
 # ===================================================================
 
 @pytest.mark.summary
-
-
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 @pytest.mark.regression
 def test_extreme_configurations_summary():
     """
@@ -133,7 +132,8 @@ def test_extreme_configurations_summary():
     Xray Tests Covered:
         - PZ-13880: Configuration with Extreme Values
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("Extreme Configuration Tests Suite Summary")

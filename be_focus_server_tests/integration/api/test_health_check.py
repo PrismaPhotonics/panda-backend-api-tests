@@ -694,6 +694,7 @@ class TestHealthCheckLoadTesting:
 # ===================================================================
 
 @pytest.mark.summary
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 @pytest.mark.smoke
 def test_health_check_summary():
     """
@@ -709,7 +710,8 @@ def test_health_check_summary():
         - PZ-14032: Health check with SSL/TLS
         - PZ-14033: Health check load testing
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("Health Check Endpoint Tests Suite Summary")

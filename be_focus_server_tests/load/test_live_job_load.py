@@ -19,7 +19,17 @@ Date: 2025-11-30
 import pytest
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
+
+# Import K8s verification module
+from be_focus_server_tests.load.k8s_job_verification import (
+    verify_job_from_k8s,
+    verify_jobs_batch_from_k8s,
+    log_k8s_verification_summary,
+    assert_all_jobs_are_live,
+    K8sJobVerification,
+    JobType
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,18 +102,19 @@ def live_job_sla() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def live_job_tester(config_manager):
+def live_job_tester(config_manager, kubernetes_manager):
     """
-    Create LiveJobLoadTester instance.
+    Create LiveJobLoadTester instance with K8s verification.
     
     Configured with:
     - 50 channels (small load)
     - 500 Hz frequency range
     - 5 retries for gRPC connection (Yonatan's feedback!)
+    - K8s job verification enabled
     """
     from be_focus_server_tests.load.live_job_load_tester import create_live_job_load_tester
     
-    return create_live_job_load_tester(
+    tester = create_live_job_load_tester(
         config_manager=config_manager,
         channels_min=1,
         channels_max=50,
@@ -117,20 +128,24 @@ def live_job_tester(config_manager):
         # Stream config
         frames_to_receive=5,
     )
+    # Attach kubernetes_manager for K8s verification
+    tester.k8s_manager = kubernetes_manager
+    return tester
 
 
 @pytest.fixture
-def heavy_load_tester(config_manager):
+def heavy_load_tester(config_manager, kubernetes_manager):
     """
-    Create LiveJobLoadTester for heavy load testing.
+    Create LiveJobLoadTester for heavy load testing with K8s verification.
     
     Configured with:
     - 500 channels (heavy load)
     - Full frequency range
+    - K8s job verification enabled
     """
     from be_focus_server_tests.load.live_job_load_tester import create_live_job_load_tester
     
-    return create_live_job_load_tester(
+    tester = create_live_job_load_tester(
         config_manager=config_manager,
         channels_min=1,
         channels_max=500,
@@ -142,6 +157,9 @@ def heavy_load_tester(config_manager):
         grpc_connect_retry_delay_ms=3000,
         frames_to_receive=3,
     )
+    # Attach kubernetes_manager for K8s verification
+    tester.k8s_manager = kubernetes_manager
+    return tester
 
 
 # =============================================================================

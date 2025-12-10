@@ -98,7 +98,7 @@ class TestConfigureEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -181,7 +181,7 @@ class TestConfigureEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -267,7 +267,7 @@ class TestConfigureEndpoint:
             "displayTimeAxisDuration": 10.0,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -335,9 +335,9 @@ class TestConfigureEndpoint:
         # Test invalid frequency ranges
         invalid_freq_tests = [
             ({"min": 500, "max": 0}, "min > max"),
-            ({"min": -1, "max": 500}, "negative min"),
+            ({"min": -1, "max": 1000}, "negative min"),
             ({"min": 0, "max": 1500}, "exceeds maximum (1000 Hz)"),
-            ({"min": 500, "max": 500}, "min == max (range must be > 0)"),
+            ({"min": 500, "max": 1000}, "min == max (range must be > 0)"),
         ]
         
         base_payload = {
@@ -413,7 +413,7 @@ class TestConfigureEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None
         }
@@ -575,7 +575,7 @@ class TestConfigureEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": invalid_channels,
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -636,7 +636,7 @@ class TestConfigureEndpoint:
             "displayTimeAxisDuration": 10.0,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -708,7 +708,7 @@ class TestConfigureEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "view_type": ViewType.MULTICHANNEL
         }
         
@@ -782,7 +782,7 @@ class TestConfigureEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL

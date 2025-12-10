@@ -32,6 +32,15 @@ from datetime import datetime
 from enum import Enum
 from statistics import mean
 
+# Import K8s verification module
+from be_focus_server_tests.load.k8s_job_verification import (
+    verify_job_from_k8s,
+    verify_jobs_batch_from_k8s,
+    log_k8s_verification_summary,
+    K8sJobVerification,
+    JobType as K8sJobType
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -248,6 +257,10 @@ class BaseJobLoadTester(ABC):
         self.frames_to_receive = frames_to_receive
         
         self._lock = threading.Lock()
+        
+        # K8s verification support
+        self.k8s_manager = None  # Set externally via fixture
+        self._k8s_verifications: List[K8sJobVerification] = []
     
     @property
     @abstractmethod
@@ -480,6 +493,23 @@ class BaseJobLoadTester(ABC):
                         f"{status} [{self.job_type.value}] Job {completed}/{num_jobs}: "
                         f"{result.job_id} ({result.total_duration_ms:.0f}ms)"
                     )
+                    
+                    # K8s verification for each successful job
+                    if result.success and result.job_id and self.k8s_manager:
+                        try:
+                            verification = verify_job_from_k8s(
+                                kubernetes_manager=self.k8s_manager,
+                                job_id=result.job_id,
+                                namespace="panda",
+                                timeout=15
+                            )
+                            self._k8s_verifications.append(verification)
+                            
+                            if verification.verified:
+                                job_type_emoji = "🕐" if verification.is_historic() else "🔴"
+                                logger.debug(f"   {job_type_emoji} K8s: {result.job_id} = {verification.job_type.value.upper()}")
+                        except Exception as verify_error:
+                            logger.debug(f"K8s verification failed for {result.job_id}: {verify_error}")
                 except Exception as e:
                     completed += 1
                     logger.warning(f"❌ Job {completed}/{num_jobs} failed: {e}")
@@ -564,6 +594,15 @@ class BaseJobLoadTester(ABC):
         )
         
         logger.info(result.to_log_message())
+        
+        # K8s verification summary
+        if self._k8s_verifications:
+            verification_summary = log_k8s_verification_summary(self._k8s_verifications, logger)
+            
+            expected_type = K8sJobType.HISTORIC if self.job_type == JobType.HISTORIC else K8sJobType.LIVE
+            matching_jobs = sum(1 for v in self._k8s_verifications if v.job_type == expected_type)
+            logger.info(f"   ✅ K8s verification: {matching_jobs}/{verification_summary['total']} jobs match expected type {expected_type.value.upper()}")
+        
         return result
 
 

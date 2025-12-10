@@ -1,5 +1,26 @@
 name: Load and Performance Tests
 
+# ============================================================================
+# Load & Performance Tests with K8s Job Verification
+# ============================================================================
+# 
+# This workflow runs comprehensive load and performance tests for Focus Server.
+# All tests now include K8s job verification to ensure jobs are created with
+# the correct type (HISTORIC or LIVE).
+#
+# Test Files with K8s Verification:
+#   - test_historic_investigation_load_constraints.py (40 concurrent historic jobs)
+#   - test_gradual_historic_load.py (gradual historic job load)
+#   - test_gradual_live_load.py (gradual live job load)
+#   - test_job_capacity_limits.py (capacity limit testing)
+#   - test_historic_load.py (historic job performance)
+#   - test_live_load.py (live job performance)
+#   - test_live_job_load.py (live job end-to-end)
+#   - test_gradual_live_job_load.py (gradual live job testing)
+#
+# GitHub: https://github.com/PrismaPhotonics/panda-backend-api-tests
+# ============================================================================
+
 on:
   schedule:
     # Run every night at 02:00 UTC
@@ -14,6 +35,17 @@ on:
         options:
           - kefar_saba
           - staging
+      test_type:
+        description: "Test type to run"
+        type: choice
+        required: false
+        default: "all"
+        options:
+          - all
+          - historic
+          - live
+          - gradual
+          - capacity
 
 jobs:
   load-performance-tests:
@@ -124,19 +156,46 @@ jobs:
           $targetEnv = "${{ inputs.environment }}"
           if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
           
+          $testType = "${{ inputs.test_type }}"
+          if ([string]::IsNullOrEmpty($testType)) { $testType = "all" }
+          
           Write-Host "============================================"
-          Write-Host "LOAD & PERFORMANCE TESTS"
+          Write-Host "LOAD & PERFORMANCE TESTS WITH K8S VERIFICATION"
           Write-Host "============================================"
           Write-Host "Environment: $targetEnv"
+          Write-Host "Test Type: $testType"
+          Write-Host "============================================"
+          Write-Host ""
+          Write-Host "Test Files with K8s Job Verification:"
+          Write-Host "  - test_historic_investigation_load_constraints.py"
+          Write-Host "  - test_gradual_historic_load.py"
+          Write-Host "  - test_gradual_live_load.py"
+          Write-Host "  - test_job_capacity_limits.py"
+          Write-Host "  - test_historic_load.py"
+          Write-Host "  - test_live_load.py"
+          Write-Host "  - test_live_job_load.py"
+          Write-Host "  - test_gradual_live_job_load.py"
           Write-Host "============================================"
           
-          py -m pytest be_focus_server_tests/ `
+          # Determine pytest markers based on test type
+          switch ($testType) {
+            "historic" { $markers = "historic and load" }
+            "live"     { $markers = "live and load" }
+            "gradual"  { $markers = "gradual_load" }
+            "capacity" { $markers = "load and performance" }
+            default    { $markers = "load or performance" }
+          }
+          
+          Write-Host "Running tests with markers: $markers"
+          
+          py -m pytest be_focus_server_tests/load/ `
             --env $targetEnv `
-            -m "load or performance" `
+            -m "$markers" `
             --skip-health-check `
             --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
+            --tb=short `
             --junitxml=test-results\junit-load-performance.xml `
             --cov=be_focus_server_tests `
             --cov-report=term-missing
@@ -197,6 +256,10 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           py parse_junit_results.py
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::parse_junit_results.py detected issues (e.g., all tests skipped)"
+            exit $LASTEXITCODE
+          }
 
       - uses: actions/upload-artifact@v4
         with:

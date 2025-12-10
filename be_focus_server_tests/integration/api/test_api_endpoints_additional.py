@@ -167,18 +167,28 @@ class TestLiveMetadataEndpoint:
             
             # Verify metadata structure
             assert metadata is not None, "Metadata should not be None"
-            assert hasattr(metadata, 'dx'), "Metadata should have dx"
-            assert hasattr(metadata, 'dy'), "Metadata should have dy"
+            
+            # Required fields per LiveMetadataFlat model
+            # Note: dx is optional (can be None when "waiting for fiber")
+            # Note: dy is NOT part of LiveMetadataFlat - removed from check
             
             logger.info("✅ Metadata retrieved successfully:")
-            logger.info(f"   dx: {metadata.dx}")
-            logger.info(f"   dy: {metadata.dy}")
             
+            # Log dx if available
+            if hasattr(metadata, 'dx') and metadata.dx is not None:
+                logger.info(f"   dx: {metadata.dx}")
+            
+            # Log prr (pulse repetition rate) - always present
             if hasattr(metadata, 'prr'):
                 logger.info(f"   prr: {metadata.prr}")
             
-            if hasattr(metadata, 'device_name'):
-                logger.info(f"   device: {metadata.device_name}")
+            # Log number of channels
+            if hasattr(metadata, 'number_of_channels') and metadata.number_of_channels is not None:
+                logger.info(f"   number_of_channels: {metadata.number_of_channels}")
+            
+            # Log fiber info
+            if hasattr(metadata, 'fiber_description') and metadata.fiber_description:
+                logger.info(f"   fiber_description: {metadata.fiber_description}")
             
             logger.info("✅ All required fields present")
             
@@ -274,7 +284,7 @@ class TestJobMetadataEndpoint:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -422,81 +432,85 @@ class TestInvalidRangeRejection:
     """
     
     @pytest.mark.xray("PZ-13759", "PZ-13552")
-    @pytest.mark.xray("PZ-13759")
-
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PZ-13759: Backend accepts negative timestamps instead of returning 400"
+    )
     @pytest.mark.regression
-    def test_invalid_time_range_rejection(self, focus_server_api: FocusServerAPI):
+    def test_negative_timestamps_rejected(self, focus_server_api: FocusServerAPI):
         """
-        Test PZ-13759, PZ-13552: Invalid time range rejection.
+        Test PZ-13759, PZ-13552: Negative timestamps should be rejected.
         
         Steps:
-            1. Create config with invalid time range (negative timestamps)
-            2. Attempt to configure
-            3. Verify rejection
+            1. Create config with negative timestamps
+            2. Send configure request
+            3. Verify server rejects with validation error
         
         Expected:
-            - Negative timestamps rejected
-            - Error message indicates invalid time
+            - Server returns 400 Bad Request or ValidationError
+            - Negative timestamps are NOT accepted
         
-        Jira: PZ-13759, PZ-13552
-        Priority: HIGH
+        Known Issue:
+            PZ-13759 - Backend currently accepts negative timestamps.
+            Test marked xfail(strict=True) until backend is fixed.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Invalid Time Range Rejection (PZ-13759, 13552)")
+        logger.info("TEST: Negative Timestamps Rejection (PZ-13759)")
         logger.info("=" * 80)
         
-        # Negative timestamps
         invalid_config = {
             "displayTimeAxisDuration": 10,
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": -1000,  # Negative (invalid)
             "end_time": -500,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info("Attempting negative timestamps...")
+        logger.info("Sending request with negative timestamps...")
         
-        try:
-            request = ConfigureRequest(**invalid_config)
+        request = ConfigureRequest(**invalid_config)
+        
+        # Expected: This should raise ValidationError or APIError
+        # Current behavior (bug): Server accepts it
+        with pytest.raises((ValueError, APIError)) as exc_info:
             response = focus_server_api.configure_streaming_job(request)
-            
-            logger.warning("⚠️  VALIDATION GAP: Negative timestamps accepted")
-            
-            # Cleanup
-            if hasattr(response, 'job_id'):
+            # If we get here without exception, clean up and let pytest.raises fail
+            if hasattr(response, 'job_id') and response.job_id:
                 try:
                     focus_server_api.cancel_job(response.job_id)
                 except:
                     pass
         
-        except (ValueError, APIError) as e:
-            logger.info(f"✅ Negative timestamps rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
+        logger.info(f"✅ Negative timestamps correctly rejected: {exc_info.value}")
     
     @pytest.mark.xray("PZ-13760", "PZ-13554")
-    @pytest.mark.xray("PZ-13760")
-
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PZ-13760: Backend accepts negative channel values instead of returning 400"
+    )
     @pytest.mark.regression
-    def test_invalid_channel_range_rejection(self, focus_server_api: FocusServerAPI):
+    def test_negative_channels_rejected(self, focus_server_api: FocusServerAPI):
         """
-        Test PZ-13760, PZ-13554: Invalid channel range rejection.
+        Test PZ-13760, PZ-13554: Negative channels should be rejected.
         
         Steps:
-            1. Create config with negative channels
-            2. Verify rejection
+            1. Create config with negative channel min
+            2. Send configure request
+            3. Verify server rejects with validation error
         
         Expected:
-            - Negative channels rejected
+            - Server returns 400 Bad Request or ValidationError
+            - Negative channels are NOT accepted
         
-        Jira: PZ-13760, PZ-13554
-        Priority: HIGH
+        Known Issue:
+            PZ-13760 - Backend currently accepts negative channels.
+            Test marked xfail(strict=True) until backend is fixed.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Invalid Channel Range Rejection (PZ-13760, 13554)")
+        logger.info("TEST: Negative Channels Rejection (PZ-13760)")
         logger.info("=" * 80)
         
         invalid_config = {
@@ -504,51 +518,53 @@ class TestInvalidRangeRejection:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": -10, "max": 50},  # Negative min
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info("Attempting negative channel range...")
+        logger.info("Sending request with negative channels...")
         
-        try:
-            request = ConfigureRequest(**invalid_config)
+        request = ConfigureRequest(**invalid_config)
+        
+        # Expected: This should raise ValidationError or APIError
+        # Current behavior (bug): Server accepts it
+        with pytest.raises((ValueError, APIError)) as exc_info:
             response = focus_server_api.configure_streaming_job(request)
-            
-            logger.warning("⚠️  VALIDATION GAP: Negative channels accepted")
-            
-            if hasattr(response, 'job_id'):
+            if hasattr(response, 'job_id') and response.job_id:
                 try:
                     focus_server_api.cancel_job(response.job_id)
                 except:
                     pass
         
-        except (ValueError, APIError) as e:
-            logger.info(f"✅ Negative channels rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
+        logger.info(f"✅ Negative channels correctly rejected: {exc_info.value}")
     
     @pytest.mark.xray("PZ-13761", "PZ-13555")
-    @pytest.mark.xray("PZ-13761")
-
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PZ-13761: Backend accepts negative frequency instead of returning 400"
+    )
     @pytest.mark.regression
-    def test_invalid_frequency_range_rejection(self, focus_server_api: FocusServerAPI):
+    def test_negative_frequency_rejected(self, focus_server_api: FocusServerAPI):
         """
-        Test PZ-13761, PZ-13555: Invalid frequency range rejection.
+        Test PZ-13761, PZ-13555: Negative frequency should be rejected.
         
         Steps:
-            1. Create config with negative frequency
-            2. Verify rejection
+            1. Create config with negative frequency min
+            2. Send configure request
+            3. Verify server rejects with validation error
         
         Expected:
-            - Negative frequency rejected
+            - Server returns 400 Bad Request or ValidationError
+            - Negative frequency is NOT accepted
         
-        Jira: PZ-13761, PZ-13555
-        Priority: HIGH
+        Known Issue:
+            PZ-13761 - Backend currently accepts negative frequency.
+            Test marked xfail(strict=True) until backend is fixed.
         """
         logger.info("=" * 80)
-        logger.info("TEST: Invalid Frequency Range Rejection (PZ-13761, 13555)")
+        logger.info("TEST: Negative Frequency Rejection (PZ-13761)")
         logger.info("=" * 80)
         
         invalid_config = {
@@ -556,30 +572,27 @@ class TestInvalidRangeRejection:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": -100, "max": 500},  # Negative min
+            "frequencyRange": {"min": -100, "max": 1000},  # Negative min
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
         }
         
-        logger.info("Attempting negative frequency range...")
+        logger.info("Sending request with negative frequency...")
         
-        try:
-            request = ConfigureRequest(**invalid_config)
+        request = ConfigureRequest(**invalid_config)
+        
+        # Expected: This should raise ValidationError or APIError
+        # Current behavior (bug): Server accepts it
+        with pytest.raises((ValueError, APIError)) as exc_info:
             response = focus_server_api.configure_streaming_job(request)
-            
-            logger.warning("⚠️  VALIDATION GAP: Negative frequency accepted")
-            
-            if hasattr(response, 'job_id'):
+            if hasattr(response, 'job_id') and response.job_id:
                 try:
                     focus_server_api.cancel_job(response.job_id)
                 except:
                     pass
         
-        except (ValueError, APIError) as e:
-            logger.info(f"✅ Negative frequency rejected: {e}")
-        
-        logger.info("✅ TEST PASSED")
+        logger.info(f"✅ Negative frequency correctly rejected: {exc_info.value}")
 
 
 

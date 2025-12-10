@@ -495,9 +495,10 @@ def fetch_recordings_from_mongodb(
     DYNAMIC TIME RANGE: Searches from current date going back.
     Works with both kefar_saba and staging environments which have different data.
     
-    Filters recordings by:
-    - Duration: configurable (default 5s-5min)
+    Collects ALL recordings in the time range without any filters:
     - Time range: From NOW to weeks_back weeks ago
+    - No duration filters - collects recordings of any duration
+    - No deleted status filters - collects all recordings (deleted and non-deleted)
     
     MongoDB Structure:
     1. base_paths collection → get the guid
@@ -506,14 +507,14 @@ def fetch_recordings_from_mongodb(
     Args:
         config_manager: ConfigManager instance
         max_recordings: Maximum recordings to return (default: 100)
-        min_duration_seconds: Minimum recording duration (default: 5.0)
-        max_duration_seconds: Maximum recording duration (default: 300.0 = 5 minutes)
+        min_duration_seconds: Ignored - kept for backward compatibility
+        max_duration_seconds: Ignored - kept for backward compatibility
         weeks_back: Number of weeks back to search (default: 4 = 1 month)
         
     Returns:
         RecordingsInfo object with available recordings
     """
-    logger.info(f"Querying MongoDB directly for recordings (duration: {min_duration_seconds}-{max_duration_seconds}s, time range: last {weeks_back} weeks)...")
+    logger.info(f"Querying MongoDB directly for ALL recordings in time range: last {weeks_back} weeks (no filters)...")
     
     # Setup SSH tunnel for MongoDB
     tunnel_setup = _setup_mongodb_ssh_tunnel(config_manager)
@@ -595,155 +596,209 @@ def fetch_recordings_from_mongodb(
         
         logger.info(f"✅ Connected to MongoDB: {mongo_host}:{mongo_port}/{db_name}")
         
-        # Step 1: Get guid from base_paths collection
-        # NOTE: Different environments have different base_paths:
-        #   - kefar_saba/production: /prisma/root/recordings/segy
-        #   - staging: /prisma/root/recordings
-        # Try both paths to support all environments
+        # Step 1: Identify current environment and get GUIDs ONLY for that environment
+        # CRITICAL: Each environment has its own GUIDs/collections:
+        #   - kefar_saba: /prisma/root/recordings/segy → 24774bcb-a6f6-4e23-aa49-c100ad717bf0
+        #   - staging: /prisma/root/recordings → 25b4875f-5785-4b24-8895-121039474bcd, 873ea296-a3a3-4c22-a880-608766f004cd
+        # We MUST query only the GUIDs for the current environment, NOT mix data from different environments!
+        
+        current_env = config_manager.get_current_environment()
+        logger.info(f"Current environment: {current_env}")
+        
         base_paths = db["base_paths"]
         
-        # List of possible base_paths to try
-        possible_base_paths = [
-            "/prisma/root/recordings/segy",   # kefar_saba / production
-            "/prisma/root/recordings",         # staging
-        ]
+        # Map environment to base_path patterns
+        # Each environment has specific base_path patterns that identify its collections
+        env_base_paths = {
+            "staging": ["/prisma/root/recordings"],
+            "kefar_saba": ["/prisma/root/recordings/segy"],
+            "production": ["/prisma/root/recordings/segy"],  # kefar_saba is alias for production
+        }
         
-        base_path_doc = None
-        used_base_path = None
+        # Get base_path patterns for current environment
+        target_base_paths = env_base_paths.get(current_env, [])
         
-        for base_path in possible_base_paths:
-            base_path_doc = base_paths.find_one({
-                "base_path": base_path,
+        if not target_base_paths:
+            logger.warning(f"Unknown environment '{current_env}', trying all base_paths")
+            target_base_paths = ["/prisma/root/recordings", "/prisma/root/recordings/segy"]
+        
+        logger.info(f"Looking for base_paths for environment '{current_env}': {target_base_paths}")
+        
+        # Find base_paths documents for current environment ONLY
+        env_base_path_docs = []
+        for base_path_pattern in target_base_paths:
+            docs = list(base_paths.find({
+                "base_path": base_path_pattern,
                 "is_archive": False
-            })
-            if base_path_doc:
-                used_base_path = base_path
-                logger.info(f"Found base_path document for: {base_path}")
-                break
+            }))
+            env_base_path_docs.extend(docs)
         
-        if not base_path_doc:
+        if not env_base_path_docs:
             # Log all available base_paths for debugging
-            all_docs = list(base_paths.find())
+            all_docs = list(base_paths.find({"is_archive": False}))
             available_paths = [d.get('base_path', 'N/A') for d in all_docs]
-            logger.warning(f"No base_paths document found. Available paths: {available_paths}")
+            logger.warning(f"No base_paths documents found for environment '{current_env}'. Available paths: {available_paths}")
             return RecordingsInfo(recordings=[], query_time=datetime.now())
         
-        # Get the guid (it's the collection name for recordings)
-        guid = base_path_doc.get("guid")
-        if not guid:
-            # Try other common field names
-            guid = base_path_doc.get("_id")
-            if isinstance(guid, dict):
-                guid = str(guid)
+        # Extract GUIDs ONLY from current environment's base_paths
+        guids = []
+        for doc in env_base_path_docs:
+            guid = doc.get("guid")
+            if not guid:
+                guid = doc.get("_id")
+                if isinstance(guid, dict):
+                    guid = str(guid)
+            
+            if guid:
+                guid_str = str(guid)
+                # Only add GUIDs that look like valid UUIDs (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+                if len(guid_str) == 36 and guid_str.count('-') == 4:
+                    guids.append(guid_str)
+                    base_path_val = doc.get('base_path', 'N/A')
+                    logger.info(f"Found GUID for environment '{current_env}' from base_path '{base_path_val}': {guid_str}")
         
-        logger.info(f"Found guid from base_paths for {used_base_path}: {guid}")
+        if not guids:
+            logger.warning(f"No valid GUIDs found for environment '{current_env}'")
+            return RecordingsInfo(recordings=[], query_time=datetime.now())
         
-        # Step 2: Query the collection named by guid
-        collection_name = str(guid)
-        recordings_collection = db[collection_name]
-        logger.info(f"Querying MongoDB collection: {collection_name}")
+        logger.info(f"Found {len(guids)} GUID collections for environment '{current_env}': {guids}")
         
-        # Calculate time range: from today to two weeks ago
-        now = datetime.now()
-        two_weeks_ago = now - timedelta(weeks=weeks_back)
+        # Calculate time range: from today to weeks_back weeks ago
+        # IMPORTANT: Use UTC time since MongoDB stores all datetimes as timezone-naive UTC
+        now = datetime.now(timezone.utc)
+        weeks_ago = now - timedelta(weeks=weeks_back)
         
-        logger.info(f"🔍 Time range filter: {two_weeks_ago.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')} (last {weeks_back} weeks)")
-        logger.info(f"   Duration filter: {min_duration_seconds}-{max_duration_seconds} seconds")
+        logger.info(f"🔍 Time range filter: {weeks_ago.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')} (last {weeks_back} weeks)")
+        logger.info(f"   Collecting ALL recordings from {len(guids)} collections for environment '{current_env}' (no duration/deleted filters)")
         
-        # Query by time range AND deleted: false (Focus Server only uses non-deleted recordings)
-        # This matches the structure shown in MongoDB Compass:
-        # - Collection: 25b4875f-5785-4b24-8895-121039474bcd
-        # - Filter: deleted: false, start_time in range, duration 5-10 seconds
+        # Query by time range only - find ALL recordings that overlap with the time range:
+        # - Recordings that started within the range, OR
+        # - Recordings that ended within the range, OR
+        # - Recordings that span the entire range (started before and ended after)
+        # No filters on deleted status or duration - collect everything in the time range
         query = {
-            "start_time": {
-                "$gte": two_weeks_ago,
-                "$lte": now
-            },
-            "deleted": False  # CRITICAL: Focus Server only finds non-deleted recordings
+            "$or": [
+                # Started within range
+                {
+                    "start_time": {
+                        "$gte": weeks_ago,
+                        "$lte": now
+                    }
+                },
+                # Ended within range
+                {
+                    "end_time": {
+                        "$gte": weeks_ago,
+                        "$lte": now
+                    }
+                },
+                # Spans entire range (started before and ended after)
+                {
+                    "start_time": {"$lt": weeks_ago},
+                    "end_time": {"$gt": now}
+                }
+            ]
         }
         logger.debug(f"MongoDB query: {query}")
         sort = [("start_time", pymongo.DESCENDING)]
         
-        # Count total matching recordings (for logging)
-        total_matching = recordings_collection.count_documents(query)
-        logger.info(f"📊 MongoDB query found {total_matching} recordings matching:")
-        logger.info(f"   - Collection: {collection_name}")
-        logger.info(f"   - Time range: {two_weeks_ago} to {now}")
-        logger.info(f"   - deleted: false")
-        
-        # Fetch more recordings than needed to filter by duration
-        cursor = recordings_collection.find(query).sort(sort).limit(max_recordings * 10)
-        
+        # Step 3: Query ALL GUID collections and collect recordings from all of them
         recordings = []
-        skipped_deleted = 0
         skipped_no_times = 0
-        skipped_duration = 0
+        total_matching_all_collections = 0
         
-        for doc in cursor:
-            start_time = doc.get("start_time")
-            end_time = doc.get("end_time")
-            deleted = doc.get("deleted", False)
+        for guid in guids:
+            collection_name = str(guid)
             
-            # Skip deleted recordings (double-check even though query filters them)
-            if deleted:
-                skipped_deleted += 1
-                logger.debug(f"Skipping deleted recording: {start_time} to {end_time}")
+            # Check if collection exists
+            if collection_name not in db.list_collection_names():
+                logger.debug(f"Collection {collection_name} does not exist, skipping")
                 continue
             
-            if not start_time or not end_time:
-                skipped_no_times += 1
-                logger.debug(f"Skipping recording without start_time or end_time")
-                continue
-            
-            # Convert datetime to epoch milliseconds
-            # IMPORTANT: MongoDB stores datetimes as naive UTC, but Python's timestamp()
-            # assumes local timezone. We need to treat the datetime as UTC explicitly.
-            if isinstance(start_time, datetime):
-                # Treat naive datetime as UTC (MongoDB stores UTC)
-                if start_time.tzinfo is None:
-                    start_utc = start_time.replace(tzinfo=timezone.utc)
-                    start_ms = int(start_utc.timestamp() * 1000)
-                else:
-                    start_ms = int(start_time.timestamp() * 1000)
-            else:
-                start_ms = int(start_time)
-            
-            if isinstance(end_time, datetime):
-                # Treat naive datetime as UTC (MongoDB stores UTC)
-                if end_time.tzinfo is None:
-                    end_utc = end_time.replace(tzinfo=timezone.utc)
-                    end_ms = int(end_utc.timestamp() * 1000)
-                else:
-                    end_ms = int(end_time.timestamp() * 1000)
-            else:
-                end_ms = int(end_time)
-            
-            # Calculate duration
-            duration_seconds = (end_ms - start_ms) / 1000.0
-            
-            # Filter by duration: 5-10 seconds only
-            if min_duration_seconds <= duration_seconds <= max_duration_seconds:
-                recordings.append(Recording(start_time_ms=start_ms, end_time_ms=end_ms))
+            try:
+                recordings_collection = db[collection_name]
                 
-                logger.debug(
-                    f"  Recording: {start_time} to {end_time} "
-                    f"({duration_seconds:.1f}s)"
-                )
+                # Count total matching recordings in this collection
+                total_matching = recordings_collection.count_documents(query)
+                total_matching_all_collections += total_matching
                 
-                # Stop if we have enough recordings
+                logger.info(f"📊 Collection '{collection_name}': {total_matching} recordings in time range")
+                
+                # Fetch recordings from this collection
+                # Use a higher limit per collection to ensure we get enough recordings overall
+                cursor = recordings_collection.find(query).sort(sort).limit(max_recordings * 2)
+                
+                collection_recordings_count = 0
+                for doc in cursor:
+                    # Stop if we have enough recordings overall
+                    if len(recordings) >= max_recordings:
+                        break
+                    
+                    start_time = doc.get("start_time")
+                    end_time = doc.get("end_time")
+                    
+                    # Skip recordings without valid timestamps
+                    if not start_time or not end_time:
+                        skipped_no_times += 1
+                        logger.debug(f"Skipping recording without start_time or end_time")
+                        continue
+                    
+                    # Convert datetime to epoch milliseconds
+                    # IMPORTANT: MongoDB stores datetimes as naive UTC, but Python's timestamp()
+                    # assumes local timezone. We need to treat the datetime as UTC explicitly.
+                    if isinstance(start_time, datetime):
+                        # Treat naive datetime as UTC (MongoDB stores UTC)
+                        if start_time.tzinfo is None:
+                            start_utc = start_time.replace(tzinfo=timezone.utc)
+                            start_ms = int(start_utc.timestamp() * 1000)
+                        else:
+                            start_ms = int(start_time.timestamp() * 1000)
+                    else:
+                        start_ms = int(start_time)
+                    
+                    if isinstance(end_time, datetime):
+                        # Treat naive datetime as UTC (MongoDB stores UTC)
+                        if end_time.tzinfo is None:
+                            end_utc = end_time.replace(tzinfo=timezone.utc)
+                            end_ms = int(end_utc.timestamp() * 1000)
+                        else:
+                            end_ms = int(end_time.timestamp() * 1000)
+                    else:
+                        end_ms = int(end_time)
+                    
+                    # Calculate duration for logging
+                    duration_seconds = (end_ms - start_ms) / 1000.0
+                    
+                    # Add ALL recordings found in the time range (no duration or deleted filters)
+                    recordings.append(Recording(start_time_ms=start_ms, end_time_ms=end_ms))
+                    collection_recordings_count += 1
+                    
+                    logger.debug(
+                        f"  Recording from {collection_name}: {start_time} to {end_time} "
+                        f"({duration_seconds:.1f}s)"
+                    )
+                
+                logger.info(f"   Collected {collection_recordings_count} recordings from '{collection_name}'")
+                
+                # Stop if we have enough recordings overall
                 if len(recordings) >= max_recordings:
+                    logger.info(f"   Reached limit of {max_recordings} recordings, stopping collection")
                     break
-            else:
-                skipped_duration += 1
+            
+            except Exception as e:
+                logger.warning(f"Error querying collection '{collection_name}': {e}")
+                continue
         
-        # Sort by duration (longest first)
-        recordings.sort(key=lambda r: r.duration_seconds, reverse=True)
+        # Sort by start_time (most recent first)
+        recordings.sort(key=lambda r: r.start_time_ms, reverse=True)
         
-        logger.info(f"✅ Found {len(recordings)} recordings in MongoDB collection '{collection_name}' (guid: {guid})")
-        logger.info(f"   - Duration: {min_duration_seconds}-{max_duration_seconds} seconds")
-        logger.info(f"   - Status: deleted: false")
-        if skipped_deleted > 0 or skipped_no_times > 0 or skipped_duration > 0:
-            logger.info(f"   - Filtered out: {skipped_deleted} deleted, {skipped_no_times} missing times, {skipped_duration} wrong duration")
+        logger.info(f"\n✅ Found {len(recordings)} recordings from {len(guids)} MongoDB collections for environment '{current_env}'")
+        logger.info(f"   - Total matching recordings across all collections: {total_matching_all_collections}")
+        logger.info(f"   - Collections queried: {guids}")
+        logger.info(f"   - Time range: {weeks_ago.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')}")
+        logger.info(f"   - No filters applied (collected all recordings in time range)")
+        if skipped_no_times > 0:
+            logger.info(f"   - Skipped: {skipped_no_times} recordings without valid timestamps")
         
         # Log first 5 recordings
         for i, rec in enumerate(recordings[:5]):
