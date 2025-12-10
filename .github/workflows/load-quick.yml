@@ -166,7 +166,6 @@ jobs:
             be_focus_server_tests/load/test_gradual_historic_load.py::TestGradualHistoricJobLoad::test_quick_gradual_load `
             be_focus_server_tests/load/test_quick_load_metrics.py::TestQuickLoadMetrics::test_server_connectivity `
             --env $targetEnv `
-            --skip-health-check `
             --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `

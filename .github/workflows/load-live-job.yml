@@ -156,7 +156,6 @@ jobs:
           py -m pytest be_focus_server_tests/load/test_live_job_load.py `
             --env $targetEnv `
             -m "$markers" `
-            --skip-health-check `
             --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
