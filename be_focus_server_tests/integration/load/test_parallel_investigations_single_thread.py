@@ -2088,10 +2088,26 @@ class TestParallelCreationVerification:
         recording = recordings_info.recordings[0]
         logger.info(f"Using recording: {recording.start_datetime} to {recording.end_datetime} ({recording.duration_seconds:.1f}s)")
         
-        # Use first 60 seconds of recording (or full duration if shorter)
-        test_duration = min(60, int(recording.duration_seconds))
-        start_time = recording.start_time
-        end_time = start_time + test_duration
+        # Define a safe time range strictly WITHIN the recording
+        # Start 2 seconds in, end 2 seconds before end (or less if short)
+        buffer_seconds = 2
+        safe_start = recording.start_time + buffer_seconds
+        safe_end = recording.end_time - buffer_seconds
+        
+        # Validate safe range
+        if safe_end <= safe_start:
+             # If recording is too short for buffer, just use the exact times
+             logger.warning("Recording too short for buffer, using exact times")
+             safe_start = recording.start_time
+             safe_end = recording.end_time
+        
+        # Limit max duration for test (e.g. 60 seconds)
+        max_test_duration = 60
+        if (safe_end - safe_start) > max_test_duration:
+            safe_end = safe_start + max_test_duration
+            
+        test_duration = safe_end - safe_start
+        logger.info(f"Test time range: {datetime.fromtimestamp(safe_start)} to {datetime.fromtimestamp(safe_end)} ({test_duration}s)")
         
         # Historic payload - WITH start_time/end_time
         historic_payload = {
@@ -2100,8 +2116,8 @@ class TestParallelCreationVerification:
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
             "frequencyRange": {"min": 0, "max": 1000},
-            "start_time": start_time,  # Historic mode indicator
-            "end_time": end_time,       # Historic mode indicator
+            "start_time": safe_start,  # Historic mode indicator
+            "end_time": safe_end,       # Historic mode indicator
             "view_type": "0"            # MULTICHANNEL
         }
         
@@ -2114,8 +2130,8 @@ class TestParallelCreationVerification:
             
             # Log historic parameters
             logger.info(f"\n📼 HISTORIC JOB PARAMETERS:")
-            logger.info(f"  Start Time: {datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"  End Time: {datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"  Start Time: {datetime.fromtimestamp(safe_start).strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"  End Time: {datetime.fromtimestamp(safe_end).strftime('%Y-%m-%d %H:%M:%S')}")
             logger.info(f"  Duration: {test_duration} seconds")
             
             # Create Historic jobs in parallel
