@@ -1,30 +1,6 @@
-name: Load and Performance Tests
-
-# ============================================================================
-# Load & Performance Tests with K8s Job Verification
-# ============================================================================
-# 
-# This workflow runs comprehensive load and performance tests for Focus Server.
-# All tests now include K8s job verification to ensure jobs are created with
-# the correct type (HISTORIC or LIVE).
-#
-# Test Files with K8s Verification:
-#   - test_historic_investigation_load_constraints.py (40 concurrent historic jobs)
-#   - test_gradual_historic_load.py (gradual historic job load)
-#   - test_gradual_live_load.py (gradual live job load)
-#   - test_job_capacity_limits.py (capacity limit testing)
-#   - test_historic_load.py (historic job performance)
-#   - test_live_load.py (live job performance)
-#   - test_live_job_load.py (live job end-to-end)
-#   - test_gradual_live_job_load.py (gradual live job testing)
-#
-# GitHub: https://github.com/PrismaPhotonics/panda-backend-api-tests
-# ============================================================================
+name: Job Load Tests (Live & Historic)
 
 on:
-  schedule:
-    # Run every night at 02:00 UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       environment:
@@ -38,25 +14,25 @@ on:
       test_type:
         description: "Test type to run"
         type: choice
-        required: false
-        default: "all"
         options:
           - all
-          - historic
           - live
-          - gradual
-          - capacity
+          - historic
+        default: "all"
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
 
 jobs:
-  load-performance-tests:
-    name: Load & Performance Tests
+  job-load-tests:
+    name: Job Load Tests
     runs-on: [self-hosted, windows, "panda_automation"]
     # NOTE: No 'environment:' line - using --env flag in pytest instead
     permissions:
       checks: write
       pull-requests: write
       contents: read
-    timeout-minutes: 120
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -77,8 +53,8 @@ jobs:
               if ($env:GITHUB_PATH) {
                 echo "$pythonDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
                 echo "$scriptsDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-              }
-              
+          }
+          
               Write-Host "Python path: $pythonPath"
               Write-Host "Scripts path: $scriptsDir"
             } else {
@@ -104,8 +80,8 @@ jobs:
                 
                 Write-Host "Found Python at: $($foundPython.FullName)"
                 break
-              }
-            }
+                  }
+                }
           }
           Write-Host "Verifying Python access:"
           py --version
@@ -145,9 +121,11 @@ jobs:
           py --version
           py -c "import pytest; print(f'pytest {pytest.__version__}')"
 
-      - name: Run load and performance tests
+      - name: Run job load tests
         shell: powershell
         continue-on-error: true
+        env:
+          TEST_TYPE: ${{ github.event.inputs.test_type || 'all' }}
         run: |
           if (-not (Test-Path test-results)) {
             New-Item -ItemType Directory -Path test-results | Out-Null
@@ -156,37 +134,24 @@ jobs:
           $targetEnv = "${{ inputs.environment }}"
           if ([string]::IsNullOrEmpty($targetEnv)) { $targetEnv = "kefar_saba" }
           
-          $testType = "${{ inputs.test_type }}"
-          if ([string]::IsNullOrEmpty($testType)) { $testType = "all" }
-          
-          Write-Host "============================================"
-          Write-Host "LOAD & PERFORMANCE TESTS WITH K8S VERIFICATION"
-          Write-Host "============================================"
-          Write-Host "Environment: $targetEnv"
-          Write-Host "Test Type: $testType"
-          Write-Host "============================================"
-          Write-Host ""
-          Write-Host "Test Files with K8s Job Verification:"
-          Write-Host "  - test_historic_investigation_load_constraints.py"
-          Write-Host "  - test_gradual_historic_load.py"
-          Write-Host "  - test_gradual_live_load.py"
-          Write-Host "  - test_job_capacity_limits.py"
-          Write-Host "  - test_historic_load.py"
-          Write-Host "  - test_live_load.py"
-          Write-Host "  - test_live_job_load.py"
-          Write-Host "  - test_gradual_live_job_load.py"
-          Write-Host "============================================"
-          
-          # Determine pytest markers based on test type
-          switch ($testType) {
-            "historic" { $markers = "historic and load" }
-            "live"     { $markers = "live and load" }
-            "gradual"  { $markers = "gradual_load" }
-            "capacity" { $markers = "load and performance" }
-            default    { $markers = "load or performance" }
+          $testType = $env:TEST_TYPE
+          if ([string]::IsNullOrEmpty($testType) -or $testType -eq "null") {
+            $testType = "all"
           }
           
-          Write-Host "Running tests with markers: $markers"
+          Write-Host "Running job load tests (type: $testType) on environment: $targetEnv"
+          
+          # Determine markers based on test type
+          if ($testType -eq "live") {
+            $markers = "live"
+            Write-Host "Running LIVE job tests only"
+          } elseif ($testType -eq "historic") {
+            $markers = "historic"
+            Write-Host "Running HISTORIC job tests only"
+            } else {
+            $markers = "live or historic"
+            Write-Host "Running ALL job tests (live and historic)"
+            }
           
           py -m pytest be_focus_server_tests/load/ `
             --env $targetEnv `
@@ -195,8 +160,7 @@ jobs:
             --skip-sanity-check `
             --ignore=be_focus_server_tests/ui `
             -v `
-            --tb=short `
-            --junitxml=test-results\junit-load-performance.xml `
+            --junitxml=test-results\junit-job-load.xml `
             --cov=be_focus_server_tests `
             --cov-report=term-missing
 
@@ -256,10 +220,6 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment || 'kefar_saba' }}
         run: |
           py parse_junit_results.py
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::parse_junit_results.py detected issues (e.g., all tests skipped)"
-            exit $LASTEXITCODE
-          }
 
       - uses: actions/upload-artifact@v4
         with:

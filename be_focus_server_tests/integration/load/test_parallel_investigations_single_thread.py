@@ -2053,31 +2053,45 @@ class TestParallelCreationVerification:
         because they need to load and process recorded data.
         
         Steps:
-            1. Create 5 Historic investigation payloads (with start_time/end_time)
-            2. Execute all in parallel
-            3. Verify all jobs are Historic type
-            4. Check response times (expected longer than Live)
-            5. Validate component stability
+            1. Fetch valid recordings from MongoDB (using fetch_recordings_from_mongodb)
+            2. Create 5 Historic investigation payloads (with valid start_time/end_time)
+            3. Execute all in parallel
+            4. Verify all jobs are Historic type
+            5. Check response times (expected longer than Live)
+            6. Validate component stability
         
         Expected:
             - All jobs created as Historic type
             - Response times may be 15-60 seconds per job
-            - Success rate >= 60% (Historic jobs may fail if no recordings available)
+            - Success rate >= 60%
             - Components remain stable
         """
         logger.info(f"\n{'='*100}")
         logger.info("TEST: Parallel HISTORIC Jobs Only")
         logger.info(f"{'='*100}")
         
-        import time as time_module
+        # Import recording helper
+        from be_focus_server_tests.fixtures.recording_fixtures import fetch_recordings_from_mongodb
         
         parallel_count = 5  # Fewer jobs due to longer processing time
         job_ids = []
         
-        # Calculate time range for historic data (1 hour window, starting 2 hours ago)
-        current_time = int(time_module.time())
-        start_time = current_time - 7200  # 2 hours ago
-        end_time = current_time - 3600    # 1 hour ago
+        # Fetch valid recording from MongoDB
+        logger.info("Fetching valid recordings from MongoDB...")
+        # Use a large time window (4 weeks) to ensure we find something
+        recordings_info = fetch_recordings_from_mongodb(config_manager, weeks_back=4)
+        
+        if not recordings_info.has_recordings:
+            pytest.skip("No recordings available in MongoDB to run historic test")
+            
+        # Get the latest recording
+        recording = recordings_info.recordings[0]
+        logger.info(f"Using recording: {recording.start_datetime} to {recording.end_datetime} ({recording.duration_seconds:.1f}s)")
+        
+        # Use first 60 seconds of recording (or full duration if shorter)
+        test_duration = min(60, int(recording.duration_seconds))
+        start_time = recording.start_time
+        end_time = start_time + test_duration
         
         # Historic payload - WITH start_time/end_time
         historic_payload = {
@@ -2102,7 +2116,7 @@ class TestParallelCreationVerification:
             logger.info(f"\n📼 HISTORIC JOB PARAMETERS:")
             logger.info(f"  Start Time: {datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')}")
             logger.info(f"  End Time: {datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"  Duration: {(end_time - start_time) // 60} minutes")
+            logger.info(f"  Duration: {test_duration} seconds")
             
             # Create Historic jobs in parallel
             logger.info(f"\n📼 CREATING {parallel_count} HISTORIC JOBS IN PARALLEL...")
