@@ -114,7 +114,7 @@ def heavy_historic_tester(config_manager, kubernetes_manager):
         channels_min=1,
         channels_max=500,
         frequency_min=0,
-        frequency_max=1000,
+        frequency_max=FREQUENCY_MAX_HZ,  # Use production constant (1000 Hz)
         nfft=2048,
         recording_duration_seconds=30,
         max_grpc_connect_retries=5,

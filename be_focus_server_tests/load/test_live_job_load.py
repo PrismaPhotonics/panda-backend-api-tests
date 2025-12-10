@@ -21,6 +21,9 @@ import logging
 import os
 from typing import Dict, Any, List
 
+# Import production constants
+from be_focus_server_tests.constants import FREQUENCY_MAX_HZ
+
 # Import K8s verification module
 from be_focus_server_tests.load.k8s_job_verification import (
     verify_job_from_k8s,
@@ -119,7 +122,7 @@ def live_job_tester(config_manager, kubernetes_manager):
         channels_min=1,
         channels_max=50,
         frequency_min=0,
-        frequency_max=500,
+        frequency_max=FREQUENCY_MAX_HZ,  # Use production constant (1000 Hz)
         nfft=1024,
         display_height=600,
         # Retry config - KEY for reliability!
@@ -150,7 +153,7 @@ def heavy_load_tester(config_manager, kubernetes_manager):
         channels_min=1,
         channels_max=500,
         frequency_min=0,
-        frequency_max=1000,
+        frequency_max=FREQUENCY_MAX_HZ,  # Use production constant (1000 Hz)
         nfft=2048,
         display_height=800,
         max_grpc_connect_retries=5,
