@@ -105,10 +105,6 @@ class TestViewTypeValidation:
         logger.info("=" * 80)
     
     @pytest.mark.xray("PZ-14093")
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PZ-14093: Backend may accept invalid view_type values instead of returning 400"
-    )
     @pytest.mark.regression
     @pytest.mark.parametrize("invalid_view_type", [999, -1, 100, 3])
     def test_invalid_view_type_rejected(self, focus_server_api: FocusServerAPI, invalid_view_type: int):
@@ -125,9 +121,8 @@ class TestViewTypeValidation:
             - Invalid view_type values are NOT accepted
             - Valid range: 0 (MULTICHANNEL), 1 (SINGLECHANNEL), 2 (WATERFALL)
         
-        Known Issue:
-            PZ-14093 - Backend may accept invalid view_type values.
-            Test marked xfail(strict=True) until backend validation is confirmed.
+        Note:
+            PZ-14093 - Backend validation confirmed working (Dec 2025).
         """
         logger.info(f"Testing invalid view_type = {invalid_view_type}")
         

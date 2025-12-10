@@ -36,6 +36,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
+from pydantic import ValidationError
+
 from src.apis.focus_server_api import FocusServerAPI
 from src.models.focus_server_models import ConfigureRequest, ViewType
 from be_focus_server_tests.constants import SENSORS_RANGE
@@ -507,9 +509,14 @@ class TestTimeRangeValidation:
             
             pytest.fail("Reversed time range should be rejected but was accepted")
         
+        except ValidationError as e:
+            # Expected: Pydantic validation catches reversed time range at model level
+            logger.info(f"✅ Reversed time range rejected by Pydantic validation:")
+            logger.info(f"   {e}")
+        
         except APIError as e:
-            # Expected: Validation error
-            logger.info(f"✅ Reversed time range rejected with error:")
+            # Expected: Server-side validation error
+            logger.info(f"✅ Reversed time range rejected by server:")
             logger.info(f"   {e}")
         
         logger.info(f"\n{'='*80}")
