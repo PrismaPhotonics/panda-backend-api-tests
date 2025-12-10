@@ -30,6 +30,7 @@ from config.config_manager import ConfigManager
 from src.core.exceptions import ConfigurationError, InfrastructureError
 from src.utils.pod_logs_collector import PodLogsCollector
 from src.utils.realtime_pod_monitor import PodLogMonitor
+from be_focus_server_tests.constants import FREQUENCY_MAX_HZ
 
 # Import logging plugin for automatic test log files
 # Note: pytest_plugins moved to root conftest.py to avoid deprecation warning
@@ -581,7 +582,7 @@ def valid_history_payload(config_manager: ConfigManager) -> dict:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 3},
-        "frequencyRange": {"min": 0, "max": 1000},
+        "frequencyRange": {"min": 0, "max": FREQUENCY_MAX_HZ},
         "start_time": int(start_time.timestamp()),
         "end_time": int(end_time.timestamp()),
         "view_type": 0  # MULTICHANNEL
@@ -601,7 +602,7 @@ def valid_live_payload() -> dict:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 3},
-        "frequencyRange": {"min": 0, "max": 1000},
+        "frequencyRange": {"min": 0, "max": FREQUENCY_MAX_HZ},
         "start_time": None,
         "end_time": None,
         "view_type": 0  # MULTICHANNEL
@@ -621,7 +622,7 @@ def invalid_payload() -> dict:
         "nfftSelection": 0,  # Invalid zero value
         "displayInfo": {},  # Empty display info
         "channels": {"min": 10, "max": 5},  # Invalid range (min > max)
-        "frequencyRange": {"min": 1000, "max": 1000},  # Invalid range (min > max)
+        "frequencyRange": {"min": FREQUENCY_MAX_HZ, "max": FREQUENCY_MAX_HZ},  # Invalid range (equal min and max)
         "start_time": 9999999999999,  # Invalid future timestamp
         "end_time": 1000000000000,  # Invalid timestamp
         "view_type": 999  # Invalid view type
