@@ -146,7 +146,7 @@ def live_investigation_config() -> Dict[str, Any]:
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,  # None = Live mode
         "end_time": None,
         "view_type": ViewType.MULTICHANNEL
@@ -632,6 +632,7 @@ class TestGrpcStreamPerformance:
 # =============================================================================
 
 @pytest.mark.summary
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 def test_grpc_data_validation_summary():
     """
     Summary test for gRPC data validation tests.
@@ -642,12 +643,13 @@ def test_grpc_data_validation_summary():
         - PZ-15202: gRPC Stream - Minimum Frames Received
     
     Key Validations:
-        - ✅ Investigation creates gRPC job
-        - ✅ gRPC stream connects
-        - ✅ ACTUAL DATA flows (not just status)
-        - ✅ Data is valid (amplitudes, timestamps)
+        - Investigation creates gRPC job
+        - gRPC stream connects
+        - ACTUAL DATA flows (not just status)
+        - Data is valid (amplitudes, timestamps)
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("gRPC Data Validation Tests Suite Summary")

@@ -994,6 +994,7 @@ def create_gradual_historic_load_tester(
         step_increment: Jobs to add per step (default: 5)
         max_jobs: Maximum jobs (default: 100)
         step_interval: Seconds between steps (default: 10)
+        k8s_manager: Optional KubernetesManager for job verification
         
     Returns:
         Configured GradualHistoricJobLoadTester instance

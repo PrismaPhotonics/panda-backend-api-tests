@@ -38,6 +38,7 @@ from typing import Dict, Any
 
 from src.apis.focus_server_api import FocusServerAPI
 from src.models.focus_server_models import ConfigureRequest, ViewType
+from be_focus_server_tests.constants import SENSORS_RANGE
 from src.core.exceptions import APIError
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ def valid_live_config():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": None,  # Live mode
         "end_time": None,
         "view_type": ViewType.MULTICHANNEL
@@ -74,7 +75,7 @@ def valid_historic_config():
         "nfftSelection": 1024,
         "displayInfo": {"height": 1000},
         "channels": {"min": 1, "max": 50},
-        "frequencyRange": {"min": 0, "max": 500},
+        "frequencyRange": {"min": 0, "max": 1000},
         "start_time": int(start_time.timestamp()),
         "end_time": int(end_time.timestamp()),
         "view_type": ViewType.MULTICHANNEL
@@ -400,7 +401,7 @@ class TestTimeRangeValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": future_start,
             "end_time": future_end,
             "view_type": ViewType.MULTICHANNEL
@@ -479,7 +480,7 @@ class TestTimeRangeValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": int(start_time.timestamp()),
             "end_time": int(end_time.timestamp()),
             "view_type": ViewType.MULTICHANNEL
@@ -560,9 +561,9 @@ class TestConfigurationValidation:
         # First, get valid channel range
         try:
             channels_info = focus_server_api.get_channels()
-            max_channel = channels_info.highest_channel if hasattr(channels_info, 'highest_channel') else 2500
+            max_channel = channels_info.highest_channel if hasattr(channels_info, 'highest_channel') else SENSORS_RANGE
         except:
-            max_channel = 2500  # Default assumption
+            max_channel = SENSORS_RANGE  # Production value from constants
         
         logger.info(f"System max channel: {max_channel}")
         
@@ -572,7 +573,7 @@ class TestConfigurationValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": max_channel + 100},  # Exceed max
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -715,7 +716,7 @@ class TestConfigurationValidation:
                 "nfftSelection": nfft,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.MULTICHANNEL
@@ -773,7 +774,7 @@ class TestConfigurationValidation:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None,
             "view_type": 999  # Invalid view type
@@ -880,7 +881,7 @@ class TestErrorMessageClarity:
                 "nfftSelection": 1024,
                 "displayInfo": {"height": 1000},
                 "channels": {"min": 1, "max": 50},
-                "frequencyRange": {"min": 0, "max": 500},
+                "frequencyRange": {"min": 0, "max": 1000},
                 "start_time": None,
                 "end_time": None,
                 "view_type": ViewType.MULTICHANNEL

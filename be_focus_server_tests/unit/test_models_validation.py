@@ -48,7 +48,7 @@ class TestConfigTaskRequest:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 0, "max": 100},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,
             "end_time": None
         }
@@ -68,7 +68,7 @@ class TestConfigTaskRequest:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 0, "max": 100},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": "251007120000",
             "end_time": "251007130000"
         }
@@ -85,7 +85,7 @@ class TestConfigTaskRequest:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 100, "max": 50},  # Invalid
-            "frequencyRange": {"min": 0, "max": 500}
+            "frequencyRange": {"min": 0, "max": 1000}
         }
         
         with pytest.raises(ValidationError) as exc_info:
@@ -115,7 +115,7 @@ class TestConfigTaskRequest:
             "nfftSelection": 1024,
             "canvasInfo": {"height": 0},  # Invalid
             "sensors": {"min": 0, "max": 100},
-            "frequencyRange": {"min": 0, "max": 500}
+            "frequencyRange": {"min": 0, "max": 1000}
         }
         
         with pytest.raises(ValidationError) as exc_info:
@@ -130,7 +130,7 @@ class TestConfigTaskRequest:
             "nfftSelection": -1024,  # Invalid
             "canvasInfo": {"height": 1000},
             "sensors": {"min": 0, "max": 100},
-            "frequencyRange": {"min": 0, "max": 500}
+            "frequencyRange": {"min": 0, "max": 1000}
         }
         
         with pytest.raises(ValidationError):
@@ -345,7 +345,7 @@ class TestModelEdgeCases:
             nfftSelection=1024,
             canvasInfo={"height": 1000},
             sensors={"min": 0, "max": 100000},  # Very large
-            frequencyRange={"min": 0, "max": 500}
+            frequencyRange={"min": 0, "max": 1000}
         )
         
         assert config.sensors["max"] == 100000
@@ -357,7 +357,7 @@ class TestModelEdgeCases:
             nfftSelection=1024,
             canvasInfo={"height": 1},  # Minimum
             sensors={"min": 0, "max": 100},
-            frequencyRange={"min": 0, "max": 500}
+            frequencyRange={"min": 0, "max": 1000}
         )
         
         assert config.canvasInfo["height"] == 1
@@ -369,7 +369,7 @@ class TestModelEdgeCases:
             nfftSelection=65536,  # Very large
             canvasInfo={"height": 1000},
             sensors={"min": 0, "max": 100},
-            frequencyRange={"min": 0, "max": 500}
+            frequencyRange={"min": 0, "max": 1000}
         )
         
         assert config.nfftSelection == 65536

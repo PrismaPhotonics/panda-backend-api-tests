@@ -193,6 +193,7 @@ jobs:
             -m "$markers" `
             --skip-health-check `
             --skip-sanity-check `
+            --ignore=be_focus_server_tests/ui `
             -v `
             --tb=short `
             --junitxml=test-results\junit-load-performance.xml `

@@ -108,7 +108,7 @@ class TestConfigureMetadataGRPCFlow:
             "nfftSelection": 1024,
             "displayInfo": {"height": 1000},
             "channels": {"min": 1, "max": 50},
-            "frequencyRange": {"min": 0, "max": 500},
+            "frequencyRange": {"min": 0, "max": 1000},
             "start_time": None,  # Live mode
             "end_time": None,
             "view_type": ViewType.MULTICHANNEL
@@ -230,6 +230,7 @@ class TestConfigureMetadataGRPCFlow:
 # ===================================================================
 
 @pytest.mark.summary
+@pytest.mark.skip(reason="Documentation only - no executable assertions")
 def test_e2e_flow_summary():
     """
     Summary test for E2E flow tests.
@@ -238,12 +239,13 @@ def test_e2e_flow_summary():
         - PZ-13570: Configure → Metadata → gRPC
     
     Scope (per PZ-13756):
-        - ✅ Configuration
-        - ✅ Metadata
-        - ✅ gRPC transport readiness
-        - ❌ gRPC stream content (out of scope)
+        - Configuration
+        - Metadata
+        - gRPC transport readiness
+        - (gRPC stream content out of scope)
     
-    This test always passes and serves as documentation.
+    NOTE: This test is skipped - it's documentation only.
+    Real tests are in the class above.
     """
     logger.info("=" * 80)
     logger.info("E2E Flow Tests Suite Summary")
